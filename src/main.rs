@@ -11,6 +11,73 @@ enum Command {
     Exit,
 }
 
+struct CommandInfo {
+    name: &'static str,
+    description: &'static str,
+    usage: &'static str,
+    min_args: usize,
+    max_args: Option<usize>,
+}
+
+const COMMANDS: &[CommandInfo] = &[
+    CommandInfo {
+        name: "help",
+        description: "Show this help message",
+        usage: "help",
+        min_args: 0,
+        max_args: Some(0),
+    },
+    CommandInfo {
+        name: "echo",
+        description: "Display message",
+        usage: "echo <message...>",
+        min_args: 1,
+        max_args: None,
+    },
+    CommandInfo {
+        name: "cat",
+        description: "Display file contents",
+        usage: "cat <filename>",
+        min_args: 1,
+        max_args: Some(1),
+    },
+    CommandInfo {
+        name: "write",
+        description: "Write content to file",
+        usage: "write <filename> <content...>",
+        min_args: 2,
+        max_args: None,
+    },
+    CommandInfo {
+        name: "ls",
+        description: "List directory contents",
+        usage: "ls",
+        min_args: 0,
+        max_args: Some(0),
+    },
+    CommandInfo {
+        name: "repeat",
+        description: "Repeat message count times",
+        usage: "repeat <count> <message...>",
+        min_args: 2,
+        max_args: None,
+    },
+    CommandInfo {
+        name: "exit",
+        description: "Exit the program",
+        usage: "exit",
+        min_args: 0,
+        max_args: Some(0),
+    },
+    CommandInfo {
+        name: "quit",
+        description: "Exit the program",
+        usage: "quit",
+        min_args: 0,
+        max_args: Some(0),
+    },
+];
+
 fn main() {
     println!("Hello, rucli!");
 
@@ -85,14 +152,19 @@ fn execute_command(command : Command)
 
 // ヘルプ命令の中身
 fn handle_help() {
-    println!("help - show help message");
-    println!("echo - display message");
-    println!("cat - show texts in file");
-    println!("repeat <count> <message> - repeat message count times");
-    println!("write <filename> <content> - write content to file");
-    println!("ls - list directory contents");
-    println!("exit - exit the program");
-    println!("quit - exit the program");
+    println!("Available commands:");
+
+    // 左寄せでそろえるために最長のusageを計算
+    let max_width = COMMANDS
+    .iter()
+    .map(|cmd| cmd.usage.len())
+    .max()
+    .unwrap_or(0);
+
+    for cmd in COMMANDS {
+        // cmd.usage と cmd.description を表示
+        println!("  {:<width$} - {}", cmd.usage, cmd.description, width = max_width);
+    }
 }
 
 // 文字列をcount回表示
