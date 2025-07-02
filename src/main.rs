@@ -5,7 +5,8 @@ enum Command {
     Help,
     Echo{message : String},
     Repeat{count : i32, message : String},
-    Cat{path : String},
+    Cat{filename : String},
+    Write{filename : String, content : String},
     Exit,
 }
 
@@ -49,8 +50,11 @@ fn parse_command(input : &str) -> Result<Command, String>{
         ["help"] => Ok(Command::Help),
         ["echo"] => Err("Error : echo requires a message".to_string()),
         ["echo", message @ ..] => Ok(Command::Echo{message : message.join(" ")}),
-        ["cat" , path] => Ok(Command::Cat { path : path.to_string() }),
+        ["cat" , filename] => Ok(Command::Cat { filename : filename.to_string() }),
         ["cat"] => Err("Error: cat requires a filename".to_string()),
+        ["write"] => Err("Error : write requires a filename and a content".to_string()),
+        ["write", _] => Err("Error : write requires a content".to_string()),
+        ["write", filename,content @ ..] => Ok(Command::Write { filename : filename.to_string(), content : content.join(" ")}),
         ["repeat", count , message @ ..] => {
             match count.parse::<i32>() {
                 Ok(count) if count > 0 => Ok(Command::Repeat{count, message : message.join(" ") }),
@@ -68,8 +72,9 @@ fn execute_command(command : Command)
 {
     match command {
         Command::Help => handle_help(),
-        Command::Cat { path } => handle_cat(&path),
+        Command::Cat { filename } => handle_cat(&filename),
         Command::Echo{message} => println!("{}", message),
+        Command::Write { filename, content } => handle_write(&filename, &content),
         Command::Repeat{count, message} => handle_repeat(count, &message),
         Command::Exit => handle_exit(),
     }
@@ -81,6 +86,7 @@ fn handle_help() {
     println!("echo - display message");
     println!("cat - show texts in file");
     println!("repeat <count> <message> - repeat message count times");
+    println!("write <filename> <content> - write content to file");
     println!("exit - exit the program");
     println!("quit - exit the program");  
 }
@@ -94,21 +100,36 @@ fn handle_repeat(count : i32 , message : &str)
 }
 
 // path内のテキスト表示
-fn handle_cat(path : &str)
+fn handle_cat(filename : &str)
 {
-    if Path::new(path).is_dir() {
-        eprintln!("Error: '{}' is a directory", path);
+    if Path::new(filename).is_dir() {
+        eprintln!("Error: '{}' is a directory", filename);
         return;
     }
 
-    match fs::read_to_string(path) {
+    match fs::read_to_string(filename) {
         Ok(contents) => {
-            print!("{}",contents)
+            println!("{}",contents)
         }
         Err(error) =>{
-            eprintln!("{}",error);
+            eprintln!("Error: Failed to cat file '{}': {}", filename, error);
         }
     }
+}
+
+// pathのファイルにテキスト追加
+fn handle_write(filename : &str, content : &str){
+    
+    match fs::write(filename, content)
+    {
+        Ok(_) => {
+            println!("File written successfully: {}", filename);
+        }
+        Err(error) => {
+            eprintln!("Error: Failed to write file '{}': {}", filename, error);
+        }
+    }
+
 }
 
 // プログラムを終了する
