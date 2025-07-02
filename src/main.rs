@@ -1,4 +1,4 @@
-use std::{io,process};
+use std::{io::{self, Write},process};
 
 // 実行できるコマンド群
 enum Command {
@@ -13,6 +13,10 @@ fn main() {
 
     // 入力された命令の処理を行う
     loop {
+        // プロンプトの追加
+        print!("> ");
+        io::stdout().flush().unwrap();
+
         // 入力された文字列の読み取り
         let input = read_input();
 
