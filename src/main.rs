@@ -8,8 +8,11 @@ fn main() {
         // 入力された文字列の読み取り
         let user_command = read_input();
 
+        // コマンドのパース
+        let parse_commands = parse_command(&user_command);
+
         // 命令の実行
-        execute_command(&user_command);
+        execute_command(&parse_commands);
     }
 }
 
@@ -24,25 +27,56 @@ fn read_input() -> String {
     input.trim().to_string()
 }
 
-// 命令の実行
-fn execute_command(command : &str)
+// 文字列のパース
+fn parse_command(input: &str) -> Vec<&str>
 {
-    match command {
-        "help" => show_help(),
-        "exit" | "quit" => exit_code(),
-        command => println!("Unknown command: {}", command),
+    input.split_whitespace().collect()
+}
+
+// 命令の実行
+fn execute_command(commands : &[&str])
+{
+    match commands {
+        ["help"] => handle_help(),
+        ["echo"] => println!("Error : echo requires a message"),
+        ["echo", message @ ..] => handle_echo(&message.join(" ")),
+        ["repeat", count , message @ ..] => {
+            match count.parse::<i32>() {
+                Ok(count) if count > 0 => handle_repeat(count, &message.join(" ")),
+                Ok(_) => println!("Error : count must be positive"),
+                Err(_) => println!("Error: {} isn't a valid number", count),
+            }
+        },
+        ["exit"] | ["quit"] => handle_exit(),
+        commands => println!("Unknown command: {}", commands.join(" ")),
     }
 }
 
 // ヘルプ命令の中身
-fn show_help() {
+fn handle_help() {
     println!("help - show help message");
+    println!("echo - display message");
+    println!("repeat <count> <message> - repeat message count times");
     println!("exit - exit the program");
     println!("quit - exit the program");    
 }
 
+// 文字列の表示
+fn handle_echo(message : &str)
+{
+    println!("{}", message);
+}
+
+// 文字列をcount回表示
+fn handle_repeat(count : i32 , message : &str)
+{
+    for _ in 0..count{
+        println!("{}", message);
+    }
+}
+
 // プログラムを終了する
-fn exit_code() {
+fn handle_exit() {
     println!("good bye");
     // 0が正常終了、1以上がエラー
     process::exit(0);
