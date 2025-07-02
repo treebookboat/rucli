@@ -7,6 +7,7 @@ enum Command {
     Repeat{count : i32, message : String},
     Cat{filename : String},
     Write{filename : String, content : String},
+    Ls,
     Exit,
 }
 
@@ -55,6 +56,7 @@ fn parse_command(input : &str) -> Result<Command, String>{
         ["write"] => Err("Error : write requires a filename and a content".to_string()),
         ["write", _] => Err("Error : write requires a content".to_string()),
         ["write", filename,content @ ..] => Ok(Command::Write { filename : filename.to_string(), content : content.join(" ")}),
+        ["ls"] => Ok(Command::Ls),
         ["repeat", count , message @ ..] => {
             match count.parse::<i32>() {
                 Ok(count) if count > 0 => Ok(Command::Repeat{count, message : message.join(" ") }),
@@ -76,6 +78,7 @@ fn execute_command(command : Command)
         Command::Echo{message} => println!("{}", message),
         Command::Write { filename, content } => handle_write(&filename, &content),
         Command::Repeat{count, message} => handle_repeat(count, &message),
+        Command::Ls => handle_ls(),
         Command::Exit => handle_exit(),
     }
 }
@@ -87,8 +90,9 @@ fn handle_help() {
     println!("cat - show texts in file");
     println!("repeat <count> <message> - repeat message count times");
     println!("write <filename> <content> - write content to file");
+    println!("ls - list directory contents");
     println!("exit - exit the program");
-    println!("quit - exit the program");  
+    println!("quit - exit the program");
 }
 
 // 文字列をcount回表示
@@ -119,7 +123,6 @@ fn handle_cat(filename : &str)
 
 // pathのファイルにテキスト追加
 fn handle_write(filename : &str, content : &str){
-    
     match fs::write(filename, content)
     {
         Ok(_) => {
@@ -129,7 +132,36 @@ fn handle_write(filename : &str, content : &str){
             eprintln!("Error: Failed to write file '{}': {}", filename, error);
         }
     }
+}
 
+// 現在のディレクトリ内のファイル/ディレクトリを表示
+fn handle_ls()
+{
+    match fs::read_dir(".")
+    {
+        Ok(entries) => {
+            for entry in entries {
+                match entry {
+                    Ok(e) => {
+                        let path = e.path();
+                        let file_name = e.file_name();
+                        let name = file_name.to_str().unwrap_or("???");
+                        if path.is_dir() {
+                            println!("{}/", name);
+                        } else {
+                            println!("{}", name);
+                        }
+                    }
+                    Err(error) => {
+                        eprintln!("Error reading entry: {}", error);
+                    }
+                }
+            }
+        }
+        Err(error) => {
+            eprintln!("Error: Failed to read directory: {}", error);
+        }
+    }
 }
 
 // プログラムを終了する

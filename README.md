@@ -11,38 +11,48 @@ A simple command-line interface tool written in Rust.
 - [x] Repeat command - Repeat messages with count validation
 - [x] Cat command - Display file contents
 - [x] Write command - Write content to files
+- [x] Ls command - List directory contents
 - [x] Exit/Quit command - Exit the program
 
 ### TODO 📝
-- [ ] Ls command - List directory contents
 - [ ] Command aliases (e.g., `q` for `quit`)
 - [ ] Command history (↑/↓ arrows)
 - [ ] Tab completion
 - [ ] Append mode for write command
 - [ ] Mkdir command - Create directories
+- [ ] Rm command - Remove files
+- [ ] Cd command - Change directory
+- [ ] Pwd command - Print working directory
 
-## Usage
+## Usage Examples
 
 ```bash
 $ cargo run
 Hello, rucli!
+
 > help
 help - show help message
 echo - display message
 cat - show texts in file
 repeat <count> <message> - repeat message count times
 write <filename> <content> - write content to file
+ls - list directory contents
 exit - exit the program
 quit - exit the program
 
-> write test.txt Hello, World!
-File written successfully: test.txt
+> ls
+Cargo.toml
+Cargo.lock
+README.md
+src
+target
+test.txt
 
-> cat test.txt
+> write hello.txt Hello, World!
+File written successfully: hello.txt
+
+> cat hello.txt
 Hello, World!
 
-> write test.txt Overwritten content
-File written successfully: test.txt
-
-> cat test.txt
-Overwritten content
+> exit
+good bye
