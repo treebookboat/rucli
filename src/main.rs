@@ -1,18 +1,27 @@
 use std::{io,process};
 
+// 実行できるコマンド群
+enum Command {
+    Help,
+    Echo(String),
+    Repeat{count : i32, message : String},
+    Exit,
+}
+
 fn main() {
     println!("Hello, rucli!");
 
     // 入力された命令の処理を行う
     loop {
         // 入力された文字列の読み取り
-        let user_command = read_input();
+        let input = read_input();
 
         // コマンドのパース
-        let parse_commands = parse_command(&user_command);
-
-        // 命令の実行
-        execute_command(&parse_commands);
+        match parse_command(&input) {
+            // 命令の実行
+            Ok(command) => execute_command(command),
+            Err(error) => println!("{}", error)
+        }
     }
 }
 
@@ -28,27 +37,33 @@ fn read_input() -> String {
 }
 
 // 文字列のパース
-fn parse_command(input: &str) -> Vec<&str>
-{
-    input.split_whitespace().collect()
+fn parse_command(input : &str) -> Result<Command, String>{
+    let parts: Vec<&str> = input.split_whitespace().collect();
+
+    match parts.as_slice() {
+        ["help"] => Ok(Command::Help),
+        ["echo"] => Err("Error : echo requires a message".to_string()),
+        ["echo", message @ ..] => Ok(Command::Echo(message.join(" "))),
+        ["repeat", count , message @ ..] => {
+            match count.parse::<i32>() {
+                Ok(count) if count > 0 => Ok(Command::Repeat{count, message : message.join(" ") }),
+                Ok(_) => Err("Error : count must be positive".to_string()),
+                Err(_) => Err(format!("Error: {} isn't a valid number", count)),
+            }
+        },
+        ["exit"] | ["quit"] => Ok(Command::Exit),
+        commands => Err(format!("Unknown command: {}", commands.join(" "))),
+    }
 }
 
 // 命令の実行
-fn execute_command(commands : &[&str])
+fn execute_command(command : Command)
 {
-    match commands {
-        ["help"] => handle_help(),
-        ["echo"] => println!("Error : echo requires a message"),
-        ["echo", message @ ..] => handle_echo(&message.join(" ")),
-        ["repeat", count , message @ ..] => {
-            match count.parse::<i32>() {
-                Ok(count) if count > 0 => handle_repeat(count, &message.join(" ")),
-                Ok(_) => println!("Error : count must be positive"),
-                Err(_) => println!("Error: {} isn't a valid number", count),
-            }
-        },
-        ["exit"] | ["quit"] => handle_exit(),
-        commands => println!("Unknown command: {}", commands.join(" ")),
+    match command {
+        Command::Help => handle_help(),
+        Command::Echo(message) => println!("{}", message),
+        Command::Repeat{count, message} => handle_repeat(count, &message),
+        Command::Exit => handle_exit(),
     }
 }
 
@@ -59,12 +74,6 @@ fn handle_help() {
     println!("repeat <count> <message> - repeat message count times");
     println!("exit - exit the program");
     println!("quit - exit the program");    
-}
-
-// 文字列の表示
-fn handle_echo(message : &str)
-{
-    println!("{}", message);
 }
 
 // 文字列をcount回表示
