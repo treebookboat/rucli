@@ -1,10 +1,11 @@
-use std::{io::{self, Write},process};
+use std::{io::{self, Write},process,fs,path::Path};
 
 // 実行できるコマンド群
 enum Command {
     Help,
-    Echo(String),
+    Echo{message : String},
     Repeat{count : i32, message : String},
+    Cat{path : String},
     Exit,
 }
 
@@ -47,7 +48,9 @@ fn parse_command(input : &str) -> Result<Command, String>{
     match parts.as_slice() {
         ["help"] => Ok(Command::Help),
         ["echo"] => Err("Error : echo requires a message".to_string()),
-        ["echo", message @ ..] => Ok(Command::Echo(message.join(" "))),
+        ["echo", message @ ..] => Ok(Command::Echo{message : message.join(" ")}),
+        ["cat" , path] => Ok(Command::Cat { path : path.to_string() }),
+        ["cat"] => Err("Error: cat requires a filename".to_string()),
         ["repeat", count , message @ ..] => {
             match count.parse::<i32>() {
                 Ok(count) if count > 0 => Ok(Command::Repeat{count, message : message.join(" ") }),
@@ -65,7 +68,8 @@ fn execute_command(command : Command)
 {
     match command {
         Command::Help => handle_help(),
-        Command::Echo(message) => println!("{}", message),
+        Command::Cat { path } => handle_cat(&path),
+        Command::Echo{message} => println!("{}", message),
         Command::Repeat{count, message} => handle_repeat(count, &message),
         Command::Exit => handle_exit(),
     }
@@ -75,9 +79,10 @@ fn execute_command(command : Command)
 fn handle_help() {
     println!("help - show help message");
     println!("echo - display message");
+    println!("cat - show texts in file");
     println!("repeat <count> <message> - repeat message count times");
     println!("exit - exit the program");
-    println!("quit - exit the program");    
+    println!("quit - exit the program");  
 }
 
 // 文字列をcount回表示
@@ -85,6 +90,24 @@ fn handle_repeat(count : i32 , message : &str)
 {
     for _ in 0..count{
         println!("{}", message);
+    }
+}
+
+// path内のテキスト表示
+fn handle_cat(path : &str)
+{
+    if Path::new(path).is_dir() {
+        eprintln!("Error: '{}' is a directory", path);
+        return;
+    }
+
+    match fs::read_to_string(path) {
+        Ok(contents) => {
+            print!("{}",contents)
+        }
+        Err(error) =>{
+            eprintln!("{}",error);
+        }
     }
 }
 
