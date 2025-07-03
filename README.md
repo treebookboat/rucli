@@ -1,58 +1,99 @@
 # rucli - Rust CLI Tool
 
-A simple command-line interface tool written in Rust.
+🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
 
-## Features
+## Progress: 11/100 PRs
+[■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
 
-### Implemented ✅
-- [x] Basic REPL loop with prompt
-- [x] Help command - Show available commands
-- [x] Echo command - Display messages (multi-word support)
-- [x] Repeat command - Repeat messages with count validation
-- [x] Cat command - Display file contents
-- [x] Write command - Write content to files
-- [x] Ls command - List directory contents
-- [x] Exit/Quit command - Exit the program
+## Current Phase: Foundation (11-25)
+Strengthening core infrastructure and command system.
 
-### TODO 📝
-- [ ] Command aliases (e.g., `q` for `quit`)
-- [ ] Command history (↑/↓ arrows)
-- [ ] Tab completion
-- [ ] Append mode for write command
-- [ ] Mkdir command - Create directories
-- [ ] Rm command - Remove files
-- [ ] Cd command - Change directory
-- [ ] Pwd command - Print working directory
+## Completed Features ✅
+- [x] PR #1-2: Basic REPL with help, echo, repeat commands
+- [x] PR #3-4: Command structure and prompt
+- [x] PR #5-7: File operations (cat, write, ls)
+- [x] PR #8: Command metadata and auto-generated help
+- [x] PR #9-10: Module organization
+- [x] PR #11: Argument validation automation
 
-## Usage Examples
+## Latest Changes (PR #11)
+- Automatic argument count validation
+- Consistent error messages with usage hints
+- Reduced code duplication in command parsing
+
+## Usage
 
 ```bash
 $ cargo run
 Hello, rucli!
-
 > help
-help - show help message
-echo - display message
-cat - show texts in file
-repeat <count> <message> - repeat message count times
-write <filename> <content> - write content to file
-ls - list directory contents
-exit - exit the program
-quit - exit the program
+Available commands:
+  help                          - Show this help message
+  echo <message...>             - Display message
+  cat <filename>                - Display file contents
+  write <filename> <content...> - Write content to file
+  ls                            - List directory contents
+  repeat <count> <message...>   - Repeat message count times
+  exit                          - Exit the program
+  quit                          - Exit the program
 
-> ls
-Cargo.toml
-Cargo.lock
-README.md
-src
-target
-test.txt
+> echo Hello World
+Hello World
 
-> write hello.txt Hello, World!
-File written successfully: hello.txt
+> cat README.md
+[File contents displayed]
 
-> cat hello.txt
-Hello, World!
+> write test.txt Some content here
+File written successfully: test.txt
+```
 
-> exit
-good bye
+## Project Structure
+```
+src/
+├── main.rs       # Entry point and REPL loop
+├── commands.rs   # Command definitions and execution
+├── parser.rs     # Command parsing and validation
+└── handlers.rs   # Command implementation handlers
+```
+
+## Roadmap 🗺️
+
+### Phase 1: Foundation (PR 11-25) - 15 PRs
+- [x] PR #11: Argument validation
+- [ ] PR #12-13: Unit tests for commands
+- [ ] PR #14-15: Integration test framework
+- [ ] PR #16-17: Custom error types
+- [ ] PR #18-19: Result type everywhere
+- [ ] PR #20-21: Logging framework
+- [ ] PR #22-23: Debug mode
+- [ ] PR #24-25: First refactoring
+
+### Phase 2: Basic Features (PR 26-45) - 20 PRs
+Basic file operations, process management, search capabilities
+
+### Phase 3: Advanced Features (PR 46-65) - 20 PRs
+Pipes, redirection, scripting support
+
+### Phase 4: Interactive Features (PR 66-85) - 20 PRs
+History, completion, visual enhancements
+
+### Phase 5: Extensions (PR 86-100) - 15 PRs
+Plugins, themes, configuration system
+
+## Building
+
+```bash
+# Development
+cargo build
+cargo run
+
+# Release
+cargo build --release
+
+# Run tests (coming in PR #12)
+cargo test
+```
+
+## Contributing
+
+This is a learning project following the 100 PR Challenge. Each PR focuses on a single, well-defined improvement.
