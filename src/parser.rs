@@ -70,3 +70,112 @@ pub fn parse_command(input : &str) -> Result<Command, String>{
         commands => Err(format!("Unknown command: {}", commands.join(" "))),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{commands::{CommandInfo,Command}, parser::{find_command, parse_command, validate_args}};
+
+#[test]
+fn test_find_command_exists() {
+    // "echo" コマンドが見つかることを確認
+    let result = find_command("echo");
+
+    assert!(matches!(result, Some(cmd) if cmd.name == "echo"))
+}
+
+#[test]
+fn test_find_command_not_exists() {
+    // 存在しないコマンドでNoneが返ることを確認
+    let result = find_command("abc");
+
+    assert!(result.is_none())
+}
+
+#[test]
+fn test_validate_args_min_args() {
+    // 最小引数のエラーをテスト
+        
+    // テスト用のCommandInfoを作成
+    let cmd_info = CommandInfo {
+        name: "test_cmd",
+        description: "Test command",
+        usage: "test_cmd <arg1> <arg2>",
+        min_args: 2,
+        max_args: None,
+    };
+    
+    // 引数が足りないケース
+    let args = vec!["arg1"];  // 1個だけ（2個必要）
+
+    let result = validate_args(&cmd_info, &args);
+
+    assert!(result.is_err())
+}
+
+#[test]
+fn test_validate_args_max_args() {
+    // 最大引数のエラーをテスト
+    
+    // テスト用のCommandInfoを作成
+    let cmd_info = CommandInfo {
+        name: "test_cmd",
+        description: "Test command",
+        usage: "test_cmd <arg1> <arg2>",
+        min_args: 2,
+        max_args: Some(3),
+    };
+    
+    // 引数が足りないケース
+    let args = vec!["arg1","arg2","arg3","arg4"];  // 4個（3個まで）
+
+    let result = validate_args(&cmd_info, &args);
+
+    assert!(result.is_err())
+}
+
+#[test]
+fn test_validate_args_success() {
+    // 正常なケースをテスト
+
+    // テスト用のCommandInfoを作成
+    let cmd_info = CommandInfo {
+        name: "test_cmd",
+        description: "Test command",
+        usage: "test_cmd <arg1> <arg2>",
+        min_args: 2,
+        max_args: Some(3),
+    };
+    
+    // 引数が足りないケース
+    let args = vec!["arg1","arg2"];  // 1個だけ（2個必要）
+
+    let result = validate_args(&cmd_info, &args);
+
+    assert!(result.is_ok())
+}
+
+#[test]
+fn test_parse_command_empty_input() {
+    // 空入力のテスト
+    let result = parse_command("");
+
+    assert!(result.is_err())
+}
+
+#[test]
+fn test_parse_command_echo() {
+    // echoコマンドのパース成功
+
+    let result = parse_command("echo input");
+
+    assert!(matches!(result,Ok(Command::Echo{message}) if message == "input"))
+}
+
+#[test]
+fn test_parse_command_unknown() {
+    // 不明なコマンドのエラー
+    let result = parse_command("abc input");
+
+    assert!(result.is_err())
+}
+}

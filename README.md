@@ -2,8 +2,8 @@
 
 🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
 
-## Progress: 11/100 PRs
-[■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+## Progress: 12/100 PRs
+[■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
 
 ## Current Phase: Foundation (11-25)
 Strengthening core infrastructure and command system.
@@ -15,11 +15,12 @@ Strengthening core infrastructure and command system.
 - [x] PR #8: Command metadata and auto-generated help
 - [x] PR #9-10: Module organization
 - [x] PR #11: Argument validation automation
+- [x] PR #12: Unit tests for parser module
 
-## Latest Changes (PR #11)
-- Automatic argument count validation
-- Consistent error messages with usage hints
-- Reduced code duplication in command parsing
+## Latest Changes (PR #12)
+- Added 8 unit tests for parser functions
+- Test coverage for find_command, validate_args, and parse_command
+- All tests passing
 
 ## Usage
 
@@ -52,15 +53,29 @@ File written successfully: test.txt
 src/
 ├── main.rs       # Entry point and REPL loop
 ├── commands.rs   # Command definitions and execution
-├── parser.rs     # Command parsing and validation
+├── parser.rs     # Command parsing and validation (with tests)
 └── handlers.rs   # Command implementation handlers
+```
+
+## Testing
+
+```bash
+# Run all tests
+cargo test
+
+# Run parser tests only
+cargo test parser
+
+# Run with output
+cargo test -- --nocapture
 ```
 
 ## Roadmap 🗺️
 
 ### Phase 1: Foundation (PR 11-25) - 15 PRs
 - [x] PR #11: Argument validation
-- [ ] PR #12-13: Unit tests for commands
+- [x] PR #12: Unit tests for parser
+- [ ] PR #13: Unit tests for commands
 - [ ] PR #14-15: Integration test framework
 - [ ] PR #16-17: Custom error types
 - [ ] PR #18-19: Result type everywhere
@@ -90,7 +105,7 @@ cargo run
 # Release
 cargo build --release
 
-# Run tests (coming in PR #12)
+# Run tests
 cargo test
 ```
 
