@@ -2,7 +2,7 @@ mod commands;
 mod handles;
 mod parser;
 
-use commands::{Command, execute_command};
+use commands::{execute_command};
 
 
 use std::io::{self, Write};

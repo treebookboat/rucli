@@ -2,8 +2,8 @@
 
 🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
 
-## Progress: 14/100 PRs
-[■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+## Progress: 15/100 PRs
+[■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
 
 ## Current Phase: Foundation (11-25)
 Strengthening core infrastructure and command system.
@@ -17,13 +17,15 @@ Strengthening core infrastructure and command system.
 - [x] PR #11: Argument validation automation
 - [x] PR #12: Unit tests for parser module
 - [x] PR #13: Unit tests for commands module
-- [x] PR #14: Integration tests for CLI commands
+- [x] PR #14: Integration test framework
+- [x] PR #15: Complete integration test suite
 
-## Latest Changes (PR #14)
-- Added comprehensive integration tests
-- Created lib.rs to expose public API
-- Test actual CLI behavior with process spawning
-- Use temporary directories for safe file testing
+## Latest Changes (PR #15)
+- Added 6 additional integration tests
+- Test coverage for all commands including ls, repeat, exit, quit
+- Edge case testing (empty input, invalid arguments)
+- Sequential command execution testing
+- Total: 11 comprehensive integration tests
 
 ## Usage
 
@@ -44,6 +46,11 @@ Available commands:
 > echo Hello World
 Hello World
 
+> repeat 3 Hi!
+Hi!
+Hi!
+Hi!
+
 > cat README.md
 [File contents displayed]
 
@@ -61,7 +68,7 @@ src/
 └── handlers.rs   # Command implementation handlers
 
 tests/
-└── cli_tests.rs  # Integration tests
+└── cli_tests.rs  # Integration tests (11 tests)
 ```
 
 ## Testing
@@ -80,9 +87,10 @@ cargo test --test cli_tests
 cargo test -- --nocapture
 ```
 
-## Test Coverage
-- Unit tests: Parser and command structure validation
-- Integration tests: Actual CLI behavior and file operations
+## Test Coverage Summary
+- **Unit tests**: 10 tests (parser: 8, commands: 2)
+- **Integration tests**: 11 tests (all commands + edge cases)
+- **Total**: 21 tests ensuring reliability
 
 ## Roadmap 🗺️
 
@@ -91,7 +99,7 @@ cargo test -- --nocapture
 - [x] PR #12: Unit tests for parser
 - [x] PR #13: Unit tests for commands
 - [x] PR #14: Integration test framework
-- [ ] PR #15: Complete integration tests
+- [x] PR #15: Complete integration tests
 - [ ] PR #16-17: Custom error types
 - [ ] PR #18-19: Result type everywhere
 - [ ] PR #20-21: Logging framework
