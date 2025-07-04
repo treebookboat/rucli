@@ -91,3 +91,31 @@ pub fn execute_command(command : Command)
         Command::Exit => handle_exit(),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    //被りがないかチェック
+    fn test_command_info_no_duplicates() {
+        let mut names: Vec<&str> = COMMANDS.iter().map(|c| c.name).collect();
+        names.sort();
+
+        for i in 1..names.len() {
+            assert_ne!(names[i], names[i-1], "Duplicate {}", names[i]);
+        }
+    }
+
+    #[test]
+    // min/maxの論理エラーを検出
+    fn test_command_info_valid_args() {
+        for cmd in COMMANDS
+        {
+            if let Some(max) = cmd.max_args
+            {
+                assert!(cmd.min_args <= max)
+            }
+        }
+    }
+}

@@ -2,8 +2,8 @@
 
 🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
 
-## Progress: 12/100 PRs
-[■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+## Progress: 13/100 PRs
+[■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
 
 ## Current Phase: Foundation (11-25)
 Strengthening core infrastructure and command system.
@@ -16,11 +16,13 @@ Strengthening core infrastructure and command system.
 - [x] PR #9-10: Module organization
 - [x] PR #11: Argument validation automation
 - [x] PR #12: Unit tests for parser module
+- [x] PR #13: Unit tests for commands module
 
-## Latest Changes (PR #12)
-- Added 8 unit tests for parser functions
-- Test coverage for find_command, validate_args, and parse_command
-- All tests passing
+## Latest Changes (PR #13)
+- Added unit tests for CommandInfo consistency
+- Test for duplicate command names
+- Test for valid argument constraints
+- Focused on metadata validation rather than I/O testing
 
 ## Usage
 
@@ -30,11 +32,11 @@ Hello, rucli!
 > help
 Available commands:
   help                          - Show this help message
-  echo <message...>             - Display message
-  cat <filename>                - Display file contents
-  write <filename> <content...> - Write content to file
+  echo              - Display message
+  cat                 - Display file contents
+  write   - Write content to file
   ls                            - List directory contents
-  repeat <count> <message...>   - Repeat message count times
+  repeat     - Repeat message count times
   exit                          - Exit the program
   quit                          - Exit the program
 
@@ -52,7 +54,7 @@ File written successfully: test.txt
 ```
 src/
 ├── main.rs       # Entry point and REPL loop
-├── commands.rs   # Command definitions and execution
+├── commands.rs   # Command definitions and execution (with tests)
 ├── parser.rs     # Command parsing and validation (with tests)
 └── handlers.rs   # Command implementation handlers
 ```
@@ -63,8 +65,9 @@ src/
 # Run all tests
 cargo test
 
-# Run parser tests only
+# Run specific module tests
 cargo test parser
+cargo test commands
 
 # Run with output
 cargo test -- --nocapture
@@ -75,7 +78,7 @@ cargo test -- --nocapture
 ### Phase 1: Foundation (PR 11-25) - 15 PRs
 - [x] PR #11: Argument validation
 - [x] PR #12: Unit tests for parser
-- [ ] PR #13: Unit tests for commands
+- [x] PR #13: Unit tests for commands
 - [ ] PR #14-15: Integration test framework
 - [ ] PR #16-17: Custom error types
 - [ ] PR #18-19: Result type everywhere
