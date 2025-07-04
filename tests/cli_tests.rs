@@ -130,7 +130,7 @@ fn test_invalid_command() {
     let mut child = Command::new("cargo")
         .args(["run", "--quiet"])
         .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .spawn()
         .unwrap();
 
@@ -141,10 +141,10 @@ fn test_invalid_command() {
 
     // 出力を取得
     let output = child.wait_with_output().unwrap();
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
 
     // errorメッセージが出ているか確認
-    assert!(stdout.contains("Unknown command: abc"));
+    assert!(stderr.contains("unknown command error"));
 }
 
 #[test]
@@ -195,7 +195,7 @@ fn test_repeat_invalid_count() {
     let mut child = Command::new("cargo")
         .args(["run", "--quiet"])
         .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .spawn()
         .unwrap();
 
@@ -205,10 +205,10 @@ fn test_repeat_invalid_count() {
     writeln!(stdin, "quit").unwrap();
 
     let output = child.wait_with_output().unwrap();
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
 
-    assert!(stdout.contains("must be positive"));
-    assert!(stdout.contains("isn't a valid number"));
+    assert!(stderr.contains("must be positive"));
+    assert!(stderr.contains("isn't a valid number"));
 }
 
 #[test]
@@ -251,7 +251,7 @@ fn test_empty_input() {
     let mut child = Command::new("cargo")
         .args(["run", "--quiet"])
         .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .spawn()
         .unwrap();
 
@@ -260,9 +260,9 @@ fn test_empty_input() {
     writeln!(stdin, "quit").unwrap();
 
     let output = child.wait_with_output().unwrap();
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
 
-    assert!(stdout.contains("No command provided"));
+    assert!(stderr.contains("No command provided"));
 }
 
 #[test]

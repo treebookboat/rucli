@@ -1,4 +1,5 @@
 use crate::commands::{Command, CommandInfo, COMMANDS};
+use crate::error::{RucliError,Result};
 
 // コマンド情報の取得
 fn find_command(name: &str) -> Option<&CommandInfo>
@@ -7,26 +8,26 @@ fn find_command(name: &str) -> Option<&CommandInfo>
 }
 
 // 引数チェック
-fn validate_args(cmd_info: &CommandInfo, args: &[&str]) -> Result<(),String>
+fn validate_args(cmd_info: &CommandInfo, args: &[&str]) -> Result<()>
 {
     // 引数の個数
     let arg_count = args.len();
 
     // 最小引数チェック
     if arg_count < cmd_info.min_args {
-        return Err([
-            format!("Error: {} requires at least {} argument(s)", cmd_info.name, cmd_info.min_args),
+        return Err(RucliError::InvalidArgument([
+            format!("{} requires at least {} argument(s)", cmd_info.name, cmd_info.min_args),
             format!("Usage: {}", cmd_info.usage)
-        ].join("\n"));
+        ].join("\n")));
     }
 
     // 最大引数チェック
     if let Some(max) = cmd_info.max_args {
         if max < arg_count {
-                    return Err([
-            format!("Error: {} accepts at most {} argument(s)", cmd_info.name, max),
+                    return Err(RucliError::InvalidArgument([
+            format!("{} accepts at most {} argument(s)", cmd_info.name, max),
             format!("Usage: {}", cmd_info.usage)
-        ].join("\n"));
+        ].join("\n")));
         }
     }
 
@@ -35,13 +36,13 @@ fn validate_args(cmd_info: &CommandInfo, args: &[&str]) -> Result<(),String>
 }
 
 // 文字列のパース
-pub fn parse_command(input : &str) -> Result<Command, String>{
+pub fn parse_command(input : &str) -> Result<Command>{
 
     let parts: Vec<&str> = input.split_whitespace().collect();
 
     // 空入力チェック
     if parts.is_empty() {
-        return Err("No command provided".to_string());
+        return Err(RucliError::ParseError("No command provided".to_string()));
     }
 
     let cmd_name = parts[0];
@@ -62,12 +63,12 @@ pub fn parse_command(input : &str) -> Result<Command, String>{
         ["repeat", count , message @ ..] => {
             match count.parse::<i32>() {
                 Ok(count) if count > 0 => Ok(Command::Repeat{count, message : message.join(" ") }),
-                Ok(_) => Err("Error : count must be positive".to_string()),
-                Err(_) => Err(format!("Error: {} isn't a valid number", count)),
+                Ok(_) => Err(RucliError::ParseError("count must be positive".to_string())),
+                Err(_) => Err(RucliError::ParseError(format!("{} isn't a valid number", count))),
             }
         },
         ["exit"] | ["quit"] => Ok(Command::Exit),
-        commands => Err(format!("Unknown command: {}", commands.join(" "))),
+        commands => Err(RucliError::UnknownCommand(commands.join(" ").to_string())),
     }
 }
 

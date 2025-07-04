@@ -26,7 +26,7 @@ fn main() {
         match parse_command(&input) {
             // 命令の実行
             Ok(command) => execute_command(command),
-            Err(error) => println!("{}", error)
+            Err(error) => eprintln!("{}", error)
         }
     }
 }

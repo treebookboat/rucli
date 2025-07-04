@@ -2,8 +2,8 @@
 
 🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
 
-## Progress: 16/100 PRs
-[■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+## Progress: 17/100 PRs
+[■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
 
 ## Current Phase: Foundation (11-25)
 Strengthening core infrastructure and command system.
@@ -20,12 +20,13 @@ Strengthening core infrastructure and command system.
 - [x] PR #14: Integration test framework
 - [x] PR #15: Complete integration test suite
 - [x] PR #16: Custom error type (RucliError)
+- [x] PR #17: Apply custom error type throughout
 
-## Latest Changes (PR #16)
-- Created custom `RucliError` enum for type-safe error handling
-- Implemented Display and Error traits
-- Added automatic conversion from io::Error
-- Prepared foundation for better error handling
+## Latest Changes (PR #17)
+- Replaced all `Result<T, String>` with `Result<T, RucliError>`
+- Applied appropriate error categories (ParseError, InvalidArgument)
+- Improved error handling consistency
+- Changed error output to use `eprintln!`
 
 ## Usage
 
@@ -64,13 +65,20 @@ src/
 ├── main.rs       # Entry point and REPL loop
 ├── lib.rs        # Library root (exposes public API)
 ├── commands.rs   # Command definitions and execution (with tests)
-├── parser.rs     # Command parsing and validation (with tests)
+├── parser.rs     # Command parsing with RucliError (with tests)
 ├── handlers.rs   # Command implementation handlers
-└── error.rs      # Custom error types (new!)
+└── error.rs      # Custom error types
 
 tests/
 └── cli_tests.rs  # Integration tests (11 tests)
 ```
+
+## Error Handling
+The project now uses a custom `RucliError` type for all error handling:
+- Type-safe error propagation
+- Automatic conversion from `io::Error`
+- Consistent error messages
+- Better error categorization
 
 ## Testing
 
@@ -102,7 +110,7 @@ cargo test -- --nocapture
 - [x] PR #14: Integration test framework
 - [x] PR #15: Complete integration tests
 - [x] PR #16: Custom error type introduction
-- [ ] PR #17: Apply custom error type
+- [x] PR #17: Apply custom error type
 - [ ] PR #18-19: Result type everywhere
 - [ ] PR #20-21: Logging framework
 - [ ] PR #22-23: Debug mode

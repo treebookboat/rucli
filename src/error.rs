@@ -16,7 +16,7 @@ pub enum RucliError {
     UnknownCommand(String),
     
     // その他のエラー
-    Other(String),
+    // Other(String),
 }
 
 impl fmt::Display for RucliError {
@@ -26,7 +26,7 @@ impl fmt::Display for RucliError {
             RucliError::IoError(err) => write!(f, "IO error: {}", err),
             RucliError::InvalidArgument(msg) => write!(f, "argument error: {}", msg),
             RucliError::UnknownCommand(msg) => write!(f, "unknown command error: {}", msg),
-            RucliError::Other(msg) => write!(f, "Other error: {}", msg),
+            // RucliError::Other(msg) => write!(f, "Other error: {}", msg),
         }
     }
 }
