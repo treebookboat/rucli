@@ -2,8 +2,8 @@
 
 🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
 
-## Progress: 13/100 PRs
-[■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+## Progress: 14/100 PRs
+[■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
 
 ## Current Phase: Foundation (11-25)
 Strengthening core infrastructure and command system.
@@ -17,12 +17,13 @@ Strengthening core infrastructure and command system.
 - [x] PR #11: Argument validation automation
 - [x] PR #12: Unit tests for parser module
 - [x] PR #13: Unit tests for commands module
+- [x] PR #14: Integration tests for CLI commands
 
-## Latest Changes (PR #13)
-- Added unit tests for CommandInfo consistency
-- Test for duplicate command names
-- Test for valid argument constraints
-- Focused on metadata validation rather than I/O testing
+## Latest Changes (PR #14)
+- Added comprehensive integration tests
+- Created lib.rs to expose public API
+- Test actual CLI behavior with process spawning
+- Use temporary directories for safe file testing
 
 ## Usage
 
@@ -32,11 +33,11 @@ Hello, rucli!
 > help
 Available commands:
   help                          - Show this help message
-  echo              - Display message
-  cat                 - Display file contents
-  write   - Write content to file
+  echo <message...>             - Display message
+  cat <filename>                - Display file contents
+  write <filename> <content...> - Write content to file
   ls                            - List directory contents
-  repeat     - Repeat message count times
+  repeat <count> <message...>   - Repeat message count times
   exit                          - Exit the program
   quit                          - Exit the program
 
@@ -54,9 +55,13 @@ File written successfully: test.txt
 ```
 src/
 ├── main.rs       # Entry point and REPL loop
+├── lib.rs        # Library root (exposes public API)
 ├── commands.rs   # Command definitions and execution (with tests)
 ├── parser.rs     # Command parsing and validation (with tests)
 └── handlers.rs   # Command implementation handlers
+
+tests/
+└── cli_tests.rs  # Integration tests
 ```
 
 ## Testing
@@ -65,13 +70,19 @@ src/
 # Run all tests
 cargo test
 
-# Run specific module tests
-cargo test parser
-cargo test commands
+# Run unit tests only
+cargo test --lib
+
+# Run integration tests only
+cargo test --test cli_tests
 
 # Run with output
 cargo test -- --nocapture
 ```
+
+## Test Coverage
+- Unit tests: Parser and command structure validation
+- Integration tests: Actual CLI behavior and file operations
 
 ## Roadmap 🗺️
 
@@ -79,7 +90,8 @@ cargo test -- --nocapture
 - [x] PR #11: Argument validation
 - [x] PR #12: Unit tests for parser
 - [x] PR #13: Unit tests for commands
-- [ ] PR #14-15: Integration test framework
+- [x] PR #14: Integration test framework
+- [ ] PR #15: Complete integration tests
 - [ ] PR #16-17: Custom error types
 - [ ] PR #18-19: Result type everywhere
 - [ ] PR #20-21: Logging framework
