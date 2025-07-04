@@ -2,8 +2,8 @@
 
 🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
 
-## Progress: 15/100 PRs
-[■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+## Progress: 16/100 PRs
+[■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
 
 ## Current Phase: Foundation (11-25)
 Strengthening core infrastructure and command system.
@@ -19,13 +19,13 @@ Strengthening core infrastructure and command system.
 - [x] PR #13: Unit tests for commands module
 - [x] PR #14: Integration test framework
 - [x] PR #15: Complete integration test suite
+- [x] PR #16: Custom error type (RucliError)
 
-## Latest Changes (PR #15)
-- Added 6 additional integration tests
-- Test coverage for all commands including ls, repeat, exit, quit
-- Edge case testing (empty input, invalid arguments)
-- Sequential command execution testing
-- Total: 11 comprehensive integration tests
+## Latest Changes (PR #16)
+- Created custom `RucliError` enum for type-safe error handling
+- Implemented Display and Error traits
+- Added automatic conversion from io::Error
+- Prepared foundation for better error handling
 
 ## Usage
 
@@ -65,7 +65,8 @@ src/
 ├── lib.rs        # Library root (exposes public API)
 ├── commands.rs   # Command definitions and execution (with tests)
 ├── parser.rs     # Command parsing and validation (with tests)
-└── handlers.rs   # Command implementation handlers
+├── handlers.rs   # Command implementation handlers
+└── error.rs      # Custom error types (new!)
 
 tests/
 └── cli_tests.rs  # Integration tests (11 tests)
@@ -100,7 +101,8 @@ cargo test -- --nocapture
 - [x] PR #13: Unit tests for commands
 - [x] PR #14: Integration test framework
 - [x] PR #15: Complete integration tests
-- [ ] PR #16-17: Custom error types
+- [x] PR #16: Custom error type introduction
+- [ ] PR #17: Apply custom error type
 - [ ] PR #18-19: Result type everywhere
 - [ ] PR #20-21: Logging framework
 - [ ] PR #22-23: Debug mode

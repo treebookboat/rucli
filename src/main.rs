@@ -1,6 +1,7 @@
 mod commands;
 mod handles;
 mod parser;
+mod error;
 
 use commands::{execute_command};
 
