@@ -84,7 +84,7 @@ pub const COMMANDS: &[CommandInfo] = &[
 // 命令の実行
 pub fn execute_command(command: Command) -> Result<()> {
     // コマンド実行開始を記録
-    debug!("Executing command: {:?}", command);
+    debug!("Executing command: {command:?}");
 
     match command {
         Command::Help => {
@@ -93,7 +93,7 @@ pub fn execute_command(command: Command) -> Result<()> {
         }
         Command::Cat { filename } => handle_cat(&filename),
         Command::Echo { message } => {
-            println!("{}", message);
+            println!("{message}");
             Ok(())
         }
         Command::Write { filename, content } => handle_write(&filename, &content),

@@ -4,7 +4,7 @@ use log::{debug, trace};
 
 // コマンド情報の取得
 fn find_command(name: &str) -> Option<&CommandInfo> {
-    trace!("Looking for command: {}", name);
+    trace!("Looking for command: {name}");
     COMMANDS.iter().find(|command| command.name == name)
 }
 
@@ -34,16 +34,16 @@ fn validate_args(cmd_info: &CommandInfo, args: &[&str]) -> Result<()> {
     }
 
     // 最大引数チェック
-    if let Some(max) = cmd_info.max_args {
-        if max < arg_count {
-            return Err(RucliError::InvalidArgument(
-                [
-                    format!("{} accepts at most {} argument(s)", cmd_info.name, max),
-                    format!("Usage: {}", cmd_info.usage),
-                ]
-                .join("\n"),
-            ));
-        }
+    if let Some(max) = cmd_info.max_args
+        && max < arg_count
+    {
+        return Err(RucliError::InvalidArgument(
+            [
+                format!("{} accepts at most {} argument(s)", cmd_info.name, max),
+                format!("Usage: {}", cmd_info.usage),
+            ]
+            .join("\n"),
+        ));
     }
 
     // ここまでくればOK
@@ -52,7 +52,7 @@ fn validate_args(cmd_info: &CommandInfo, args: &[&str]) -> Result<()> {
 
 // 文字列のパース
 pub fn parse_command(input: &str) -> Result<Command> {
-    debug!("Parsing input: '{}'", input);
+    debug!("Parsing input: '{input}'");
 
     let parts: Vec<&str> = input.split_whitespace().collect();
 
@@ -97,8 +97,7 @@ pub fn parse_command(input: &str) -> Result<Command> {
             }),
             Ok(_) => Err(RucliError::ParseError("count must be positive".to_string())),
             Err(_) => Err(RucliError::ParseError(format!(
-                "{} isn't a valid number",
-                count
+                "{count} isn't a valid number"
             ))),
         },
         ["exit"] | ["quit"] => Ok(Command::Exit),

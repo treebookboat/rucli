@@ -5,16 +5,15 @@ use std::io;
 pub enum RucliError {
     // パースエラー
     ParseError(String),
-    
+
     // ファイル操作エラー
     IoError(io::Error),
-    
+
     // 引数エラー
     InvalidArgument(String),
-    
+
     // コマンドが見つからない
     UnknownCommand(String),
-    
     // その他のエラー
     // Other(String),
 }
@@ -22,10 +21,10 @@ pub enum RucliError {
 impl fmt::Display for RucliError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            RucliError::ParseError(msg) => write!(f, "Parse error: {}", msg),
-            RucliError::IoError(err) => write!(f, "IO error: {}", err),
-            RucliError::InvalidArgument(msg) => write!(f, "argument error: {}", msg),
-            RucliError::UnknownCommand(msg) => write!(f, "unknown command error: {}", msg),
+            RucliError::ParseError(msg) => write!(f, "Parse error: {msg}"),
+            RucliError::IoError(err) => write!(f, "IO error: {err}"),
+            RucliError::InvalidArgument(msg) => write!(f, "argument error: {msg}"),
+            RucliError::UnknownCommand(msg) => write!(f, "unknown command error: {msg}"),
             // RucliError::Other(msg) => write!(f, "Other error: {}", msg),
         }
     }

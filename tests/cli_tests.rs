@@ -1,18 +1,18 @@
-use std::process::{Command, Stdio};
-use std::io::Write;
-use std::fs;
-use tempfile::TempDir;
 use rucli::commands::COMMANDS;
+use std::fs;
+use std::io::Write;
+use std::process::{Command, Stdio};
+use tempfile::TempDir;
 
 #[test]
 // helpコマンドの出力をテスト
 fn test_help_command() {
     let mut child = Command::new("cargo")
-    .args(["run", "--quiet"])
-    .stdin(Stdio::piped())
-    .stdout(Stdio::piped())
-    .spawn()
-    .unwrap();
+        .args(["run", "--quiet"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
 
     // helpコマンド実行
     let stdin = child.stdin.as_mut().unwrap();
@@ -37,11 +37,11 @@ fn test_help_command() {
 // echoコマンドの動作をテスト
 fn test_echo_command() {
     let mut child = Command::new("cargo")
-    .args(["run", "--quiet"])
-    .stdin(Stdio::piped())
-    .stdout(Stdio::piped())
-    .spawn()
-    .unwrap();
+        .args(["run", "--quiet"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
 
     // echoコマンド実行
     let stdin = child.stdin.as_mut().unwrap();
@@ -156,17 +156,17 @@ fn test_ls_command() {
         .stdout(Stdio::piped())
         .spawn()
         .unwrap();
-    
+
     let stdin = child.stdin.as_mut().unwrap();
     writeln!(stdin, "ls").unwrap();
     writeln!(stdin, "exit").unwrap();
-    
+
     let output = child.wait_with_output().unwrap();
     let stdout = String::from_utf8_lossy(&output.stdout);
 
     // プロジェクトに必ず存在するファイルを確認
     assert!(stdout.contains("Cargo.toml"));
-    assert!(stdout.contains("src/"));  // ディレクトリ
+    assert!(stdout.contains("src/")); // ディレクトリ
 }
 
 #[test]
@@ -187,7 +187,7 @@ fn test_repeat_command() {
     let stdout = String::from_utf8_lossy(&output.stdout);
 
     let hello_count = stdout.matches("hello").count();
-    assert_eq!(hello_count,3);
+    assert_eq!(hello_count, 3);
 }
 
 #[test]
@@ -269,11 +269,11 @@ fn test_empty_input() {
 // 複数コマンドの連続実行
 fn test_multiple_commands() {
     let mut child = Command::new("cargo")
-    .args(["run", "--quiet"])
-    .stdin(Stdio::piped())
-    .stdout(Stdio::piped())
-    .spawn()
-    .unwrap();
+        .args(["run", "--quiet"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
 
     // echoコマンド実行
     let stdin = child.stdin.as_mut().unwrap();

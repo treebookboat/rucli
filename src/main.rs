@@ -49,7 +49,7 @@ fn main() {
 
         // 入力された文字列の読み取り
         let input = read_input();
-        debug!("Received input: {}", input); // 入力内容の記録
+        debug!("Received input: {input}"); // 入力内容の記録
 
         // コマンドのパース
         match parse_command(&input) {
@@ -58,15 +58,15 @@ fn main() {
                 debug!("Command parsed successfully"); // パース成功
                 let start = Instant::now();
                 if let Err(err) = execute_command(command) {
-                    error!("Command execution failed: {}", err);
-                    eprintln!("{}", err);
+                    error!("Command execution failed: {err}");
+                    eprintln!("{err}");
                 }
                 let duration = start.elapsed().as_secs_f64() * 1000.0;
-                debug!("処理時間: {:?}ms", duration);
+                debug!("処理時間: {duration:?}ms");
             }
             Err(error) => {
-                debug!("Parse error occurred: {}", error);
-                eprintln!("{}", error);
+                debug!("Parse error occurred: {error}");
+                eprintln!("{error}");
             }
         }
     }

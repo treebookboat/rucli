@@ -4,6 +4,15 @@ use std::{fs, io, os::unix::fs::PermissionsExt, path::Path, process};
 
 use crate::commands::COMMANDS;
 
+const PERMISSION_MASK: u32 = 0o777;
+
+fn debug_file_metadata(metadata: &fs::Metadata) {
+    debug!(
+        "File metadata: size={} bytes, permissions={}",
+        metadata.len(),
+        metadata.permissions().mode() & PERMISSION_MASK,
+    );
+}
 // ヘルプ命令の中身
 pub fn handle_help() {
     println!("Available commands:");
@@ -32,38 +41,33 @@ pub fn handle_help() {
 // 文字列をcount回表示
 pub fn handle_repeat(count: i32, message: &str) {
     for _ in 0..count {
-        println!("{}", message);
+        println!("{message}");
     }
 }
 
 // path内のテキスト表示
 pub fn handle_cat(filename: &str) -> Result<()> {
-    debug!("Attempting to read file: {}", filename);
+    debug!("Attempting to read file: {filename}");
 
     if Path::new(filename).is_dir() {
-        warn!("Attempted to cat a directory: {}", filename);
+        warn!("Attempted to cat a directory: {filename}");
 
-        return Err(RucliError::IoError(io::Error::new(
-            io::ErrorKind::Other,
-            format!("'{}' is a directory", filename),
-        )));
+        return Err(RucliError::IoError(io::Error::other(format!(
+            "'{filename}' is a directory"
+        ))));
     }
 
     // ファイル情報表示
     if log::log_enabled!(log::Level::Debug) {
         let metadata = fs::metadata(filename)?;
-        debug!(
-            "File metadata: size={} bytes, permissions={}",
-            metadata.len(),
-            metadata.permissions().mode() & 0o777,
-        );
+        debug_file_metadata(&metadata);
     }
 
     let contents = fs::read_to_string(filename)?;
-    println!("{}", contents);
+    println!("{contents}");
 
     // ファイル読み込み成功時
-    info!("Successfully read file: {}", filename);
+    info!("Successfully read file: {filename}");
 
     Ok(())
 }
@@ -73,16 +77,12 @@ pub fn handle_write(filename: &str, content: &str) -> Result<()> {
     debug!("Writing to file: {} ({} bytes)", filename, content.len());
 
     fs::write(filename, content)?;
-    println!("File written successfully: {}", filename);
+    println!("File written successfully: {filename}");
 
     // ファイル情報表示
     if log::log_enabled!(log::Level::Debug) {
         let metadata = fs::metadata(filename)?;
-        debug!(
-            "File metadata: size={} bytes, permissions={}",
-            metadata.len(),
-            metadata.permissions().mode() & 0o777,
-        );
+        debug_file_metadata(&metadata);
     }
 
     Ok(())
@@ -100,19 +100,15 @@ pub fn handle_ls() -> Result<()> {
         let file_name = entry.file_name();
         let name = file_name.to_str().unwrap_or("???");
         if path.is_dir() {
-            println!("{}/", name);
+            println!("{name}/");
         } else {
-            println!("{}", name);
+            println!("{name}");
         }
 
         // ファイル情報表示
         if log::log_enabled!(log::Level::Debug) {
             let metadata = entry.metadata()?;
-            debug!(
-                "File metadata: size={} bytes, permissions={}",
-                metadata.len(),
-                metadata.permissions().mode() & 0o777,
-            );
+            debug_file_metadata(&metadata);
         }
     }
 
