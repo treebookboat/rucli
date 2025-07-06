@@ -16,7 +16,7 @@ use std::time::Instant;
 
 use crate::parser::parse_command;
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     // コマンドライン引数をチェック
     let debug_mode = env::args().any(|arg| arg == "--debug");
 
@@ -36,6 +36,10 @@ fn main() {
     if debug_mode {
         info!("Debug mode enabled");
     }
+
+    // 起動時の作業ディレクトリを記録（デバッグ用）
+    let initial_dir = env::current_dir()?;
+    debug!("Initial working directory: {initial_dir:?}");
 
     info!("Starting rucli...");
     println!("Hello, rucli!");

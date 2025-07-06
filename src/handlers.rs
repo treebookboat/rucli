@@ -2,7 +2,7 @@
 
 use crate::error::{Result, RucliError};
 use log::{debug, info, warn};
-use std::{fs, io, os::unix::fs::PermissionsExt, path::Path, process};
+use std::{env, fs, io, os::unix::fs::PermissionsExt, path::Path, process};
 
 use crate::commands::COMMANDS;
 
@@ -112,7 +112,10 @@ pub fn handle_write(filename: &str, content: &str) -> Result<()> {
 pub fn handle_ls() -> Result<()> {
     debug!("Listing current directory contents");
 
-    let entries = fs::read_dir(".")?;
+    let current_dir = env::current_dir()?;
+    debug!("Listing directory: {current_dir:?}");
+
+    let entries = fs::read_dir(current_dir)?;
     for entry in entries {
         let entry = entry?;
 
