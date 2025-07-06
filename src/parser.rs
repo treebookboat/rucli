@@ -109,6 +109,7 @@ pub fn parse_command(input: &str) -> Result<Command> {
                 "{count} isn't a valid number"
             ))),
         },
+        ["pwd"] => Ok(Command::Pwd),
         ["exit" | "quit"] => Ok(Command::Exit),
         commands => Err(RucliError::UnknownCommand(commands.join(" ").to_string())),
     }

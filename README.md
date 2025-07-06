@@ -2,9 +2,9 @@
 
 🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
 
-## Progress: 26/100 PRs
+## Progress: 27/100 PRs
 
-[■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+[■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
 
 ## Current Phase: Basic Features (26-45)
 
@@ -33,13 +33,14 @@ Implementing file operations and search capabilities.
 - [x] PR #24: First refactoring (Part 1)
 - [x] PR #25: First refactoring (Part 2) - Documentation
 - [x] PR #26: Working directory management foundation
+- [x] PR #27: pwd command implementation
 
-## Latest Changes (PR #26)
+## Latest Changes (PR #27)
 
-- Changed main function to return Result for better error handling
-- Added initial working directory logging on startup
-- Updated handle_ls to explicitly get current directory
-- Prepared foundation for directory navigation commands
+- Implemented pwd command to display current working directory
+- Added error handling for inaccessible or deleted directories
+- Used display() method for clean path output
+- Added debug logging for directory operations
 
 ## Usage
 
@@ -53,6 +54,7 @@ Available commands:
   cat <filename>                - Display file contents
   write <filename> <content...> - Write content to file
   ls                            - List directory contents
+  pwd                           - Print working directory
   repeat <count> <message...>   - Repeat message count times
   exit                          - Exit the program
   quit                          - Exit the program
@@ -109,7 +111,6 @@ tests/
 ## Error Handling
 
 The project now uses a custom `RucliError` type with complete Result-based error handling:
-
 - Type-safe error propagation throughout the application
 - Unified error handling in main loop
 - Automatic conversion from `io::Error`
@@ -134,7 +135,6 @@ RUST_LOG=rucli::handlers=debug cargo run  # Debug for handlers only
 ```
 
 ### Log Categories:
-
 - **ERROR**: Command execution failures
 - **WARN**: Invalid operations (e.g., cat on directory)
 - **INFO**: Important operations (file writes, reads, program start/exit)

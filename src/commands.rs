@@ -1,9 +1,7 @@
 //! コマンドの定義と実行を管理するモジュール
 
 use crate::error::Result;
-use crate::handlers::{
-    handle_cat, handle_exit, handle_help, handle_ls, handle_repeat, handle_write,
-};
+use crate::handlers::*;
 use log::debug;
 
 /// 実行可能なコマンドを表す列挙型
@@ -21,6 +19,8 @@ pub enum Command {
     Write { filename: String, content: String },
     /// ディレクトリの内容を一覧表示
     Ls,
+    /// 現在の作業ディレクトリを表示
+    Pwd,
     /// プログラムを終了
     Exit,
 }
@@ -97,6 +97,13 @@ pub const COMMANDS: &[CommandInfo] = &[
         min_args: 0,
         max_args: Some(0),
     },
+    CommandInfo {
+        name: "pwd",
+        description: "output the current working directory",
+        usage: "pwd",
+        min_args: 0,
+        max_args: Some(0),
+    },
 ];
 
 /// コマンドを実行する
@@ -125,6 +132,7 @@ pub fn execute_command(command: Command) -> Result<()> {
             Ok(())
         }
         Command::Ls => handle_ls(),
+        Command::Pwd => handle_pwd(),
         Command::Exit => {
             handle_exit();
             Ok(())

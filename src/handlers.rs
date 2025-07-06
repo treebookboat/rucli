@@ -138,6 +138,20 @@ pub fn handle_ls() -> Result<()> {
     Ok(())
 }
 
+/// 現在の作業ディレクトリを表示
+///
+/// # Errors
+///
+/// - 現在のディレクトリが削除されている場合
+/// - アクセス権限がない場合
+pub fn handle_pwd() -> Result<()> {
+    debug!("output the current working directory");
+
+    let current_dir = env::current_dir()?;
+    println!("{}", current_dir.display());
+    Ok(())
+}
+
 /// プログラムを終了する
 pub fn handle_exit() {
     info!("Exiting rucli");
