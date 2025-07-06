@@ -1,12 +1,12 @@
-use crate::handles::*;
+use crate::handlers::*;
 
 // 実行できるコマンド群
 pub enum Command {
     Help,
-    Echo{message : String},
-    Repeat{count : i32, message : String},
-    Cat{filename : String},
-    Write{filename : String, content : String},
+    Echo { message: String },
+    Repeat { count: i32, message: String },
+    Cat { filename: String },
+    Write { filename: String, content: String },
     Ls,
     Exit,
 }
@@ -79,15 +79,26 @@ pub const COMMANDS: &[CommandInfo] = &[
 ];
 
 // 命令の実行
-pub fn execute_command(command : Command)
-{
+pub fn execute_command(command: Command) {
     match command {
         Command::Help => handle_help(),
-        Command::Cat { filename } => handle_cat(&filename),
-        Command::Echo{message} => println!("{}", message),
-        Command::Write { filename, content } => handle_write(&filename, &content),
-        Command::Repeat{count, message} => handle_repeat(count, &message),
-        Command::Ls => handle_ls(),
+        Command::Cat { filename } => {
+            if let Err(e) = handle_cat(&filename) {
+                eprintln!("{}", e);
+            }
+        }
+        Command::Echo { message } => println!("{}", message),
+        Command::Write { filename, content } => {
+            if let Err(e) = handle_write(&filename, &content) {
+                eprintln!("{}", e);
+            }
+        }
+        Command::Repeat { count, message } => handle_repeat(count, &message),
+        Command::Ls => {
+            if let Err(e) = handle_ls() {
+                eprintln!("{}", e);
+            }
+        }
         Command::Exit => handle_exit(),
     }
 }
@@ -103,17 +114,15 @@ mod tests {
         names.sort();
 
         for i in 1..names.len() {
-            assert_ne!(names[i], names[i-1], "Duplicate {}", names[i]);
+            assert_ne!(names[i], names[i - 1], "Duplicate {}", names[i]);
         }
     }
 
     #[test]
     // min/maxの論理エラーを検出
     fn test_command_info_valid_args() {
-        for cmd in COMMANDS
-        {
-            if let Some(max) = cmd.max_args
-            {
+        for cmd in COMMANDS {
+            if let Some(max) = cmd.max_args {
                 assert!(cmd.min_args <= max)
             }
         }
