@@ -1,3 +1,4 @@
+use crate::error::Result;
 use crate::handlers::*;
 
 // 実行できるコマンド群
@@ -79,27 +80,27 @@ pub const COMMANDS: &[CommandInfo] = &[
 ];
 
 // 命令の実行
-pub fn execute_command(command: Command) {
+pub fn execute_command(command: Command) -> Result<()> {
     match command {
-        Command::Help => handle_help(),
-        Command::Cat { filename } => {
-            if let Err(e) = handle_cat(&filename) {
-                eprintln!("{}", e);
-            }
+        Command::Help => {
+            handle_help();
+            Ok(())
         }
-        Command::Echo { message } => println!("{}", message),
-        Command::Write { filename, content } => {
-            if let Err(e) = handle_write(&filename, &content) {
-                eprintln!("{}", e);
-            }
+        Command::Cat { filename } => handle_cat(&filename),
+        Command::Echo { message } => {
+            println!("{}", message);
+            Ok(())
         }
-        Command::Repeat { count, message } => handle_repeat(count, &message),
-        Command::Ls => {
-            if let Err(e) = handle_ls() {
-                eprintln!("{}", e);
-            }
+        Command::Write { filename, content } => handle_write(&filename, &content),
+        Command::Repeat { count, message } => {
+            handle_repeat(count, &message);
+            Ok(())
         }
-        Command::Exit => handle_exit(),
+        Command::Ls => handle_ls(),
+        Command::Exit => {
+            handle_exit();
+            Ok(())
+        }
     }
 }
 

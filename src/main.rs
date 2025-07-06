@@ -24,7 +24,11 @@ fn main() {
         // コマンドのパース
         match parse_command(&input) {
             // 命令の実行
-            Ok(command) => execute_command(command),
+            Ok(command) => {
+                if let Err(err) = execute_command(command) {
+                    eprintln!("{}", err);
+                }
+            }
             Err(error) => eprintln!("{}", error),
         }
     }
