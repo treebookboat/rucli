@@ -1,18 +1,23 @@
+//! エラー型の定義モジュール
+
 use std::fmt;
 use std::io;
 
+/// rucliで使用するカスタムエラー型
+///
+/// 各種エラーを統一的に扱うための列挙型
 #[derive(Debug)]
 pub enum RucliError {
-    // パースエラー
+    /// コマンドのパース時に発生するエラー
     ParseError(String),
 
-    // ファイル操作エラー
+    /// ファイル操作時のI/Oエラー
     IoError(io::Error),
 
-    // 引数エラー
+    /// 引数の数や形式が不正な場合のエラー
     InvalidArgument(String),
 
-    // コマンドが見つからない
+    /// 存在しないコマンドが入力された場合のエラー
     UnknownCommand(String),
     // その他のエラー
     // Other(String),
@@ -38,4 +43,5 @@ impl From<io::Error> for RucliError {
 
 impl std::error::Error for RucliError {}
 
+/// Result型のエイリアス
 pub type Result<T> = std::result::Result<T, RucliError>;

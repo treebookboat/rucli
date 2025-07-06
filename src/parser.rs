@@ -1,14 +1,16 @@
+//! コマンドライン入力をパースするモジュール
+
 use crate::commands::{COMMANDS, Command, CommandInfo};
 use crate::error::{Result, RucliError};
 use log::{debug, trace};
 
-// コマンド情報の取得
+/// `コマンド名から対応するCommandInfo` を検索する
 fn find_command(name: &str) -> Option<&CommandInfo> {
     trace!("Looking for command: {name}");
     COMMANDS.iter().find(|command| command.name == name)
 }
 
-// 引数チェック
+/// コマンドの引数数を検証する
 fn validate_args(cmd_info: &CommandInfo, args: &[&str]) -> Result<()> {
     debug!(
         "Validating args for '{}': {} args provided",
@@ -50,7 +52,14 @@ fn validate_args(cmd_info: &CommandInfo, args: &[&str]) -> Result<()> {
     Ok(())
 }
 
-// 文字列のパース
+/// ユーザー入力をコマンドに変換する
+///
+/// # Errors
+///
+/// - 空入力の場合
+/// - 存在しないコマンドの場合
+/// - 引数の数が不正な場合
+/// - repeatコマンドで数値以外や負の数を指定した場合
 pub fn parse_command(input: &str) -> Result<Command> {
     debug!("Parsing input: '{input}'");
 
@@ -83,10 +92,10 @@ pub fn parse_command(input: &str) -> Result<Command> {
             message: message.join(" "),
         }),
         ["cat", filename] => Ok(Command::Cat {
-            filename: filename.to_string(),
+            filename: (*filename).to_string(),
         }),
         ["write", filename, content @ ..] => Ok(Command::Write {
-            filename: filename.to_string(),
+            filename: (*filename).to_string(),
             content: content.join(" "),
         }),
         ["ls"] => Ok(Command::Ls),
@@ -100,7 +109,7 @@ pub fn parse_command(input: &str) -> Result<Command> {
                 "{count} isn't a valid number"
             ))),
         },
-        ["exit"] | ["quit"] => Ok(Command::Exit),
+        ["exit" | "quit"] => Ok(Command::Exit),
         commands => Err(RucliError::UnknownCommand(commands.join(" ").to_string())),
     }
 }

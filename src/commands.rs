@@ -1,27 +1,45 @@
+//! コマンドの定義と実行を管理するモジュール
+
 use crate::error::Result;
-use crate::handlers::*;
+use crate::handlers::{
+    handle_cat, handle_exit, handle_help, handle_ls, handle_repeat, handle_write,
+};
 use log::debug;
 
-// 実行できるコマンド群
+/// 実行可能なコマンドを表す列挙型
 #[derive(Debug)]
 pub enum Command {
+    /// ヘルプを表示
     Help,
+    /// メッセージを出力
     Echo { message: String },
+    /// メッセージを繰り返し出力
     Repeat { count: i32, message: String },
+    /// ファイルの内容を表示
     Cat { filename: String },
+    /// ファイルに内容を書き込む
     Write { filename: String, content: String },
+    /// ディレクトリの内容を一覧表示
     Ls,
+    /// プログラムを終了
     Exit,
 }
 
+/// コマンドのメタ情報を保持する構造体
 pub struct CommandInfo {
+    /// コマンド名（例: "echo", "cat"）
     pub name: &'static str,
+    /// コマンドの説明文
     pub description: &'static str,
+    /// コマンドの使い方
     pub usage: &'static str,
+    /// コマンドの最小引数個数
     pub min_args: usize,
+    /// コマンドの最大引数個数(無制限であればNone)
     pub max_args: Option<usize>,
 }
 
+/// 利用可能なコマンド一覧
 pub const COMMANDS: &[CommandInfo] = &[
     CommandInfo {
         name: "help",
@@ -81,7 +99,12 @@ pub const COMMANDS: &[CommandInfo] = &[
     },
 ];
 
-// 命令の実行
+/// コマンドを実行する
+///
+/// # Errors
+///
+/// - ファイル操作系コマンドでI/Oエラーが発生した場合
+/// - ファイルが存在しない、権限がない等
 pub fn execute_command(command: Command) -> Result<()> {
     // コマンド実行開始を記録
     debug!("Executing command: {command:?}");

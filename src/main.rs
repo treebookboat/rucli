@@ -1,3 +1,5 @@
+//! rucliのエントリポイント
+
 mod commands;
 mod error;
 mod handlers;

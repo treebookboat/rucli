@@ -1,11 +1,15 @@
+//! 各コマンドの実装を提供するモジュール
+
 use crate::error::{Result, RucliError};
 use log::{debug, info, warn};
 use std::{fs, io, os::unix::fs::PermissionsExt, path::Path, process};
 
 use crate::commands::COMMANDS;
 
+/// ファイルパーミッションのマスク値
 const PERMISSION_MASK: u32 = 0o777;
 
+/// ファイルメタデータをデバッグログに出力する
 fn debug_file_metadata(metadata: &fs::Metadata) {
     debug!(
         "File metadata: size={} bytes, permissions={}",
@@ -13,7 +17,8 @@ fn debug_file_metadata(metadata: &fs::Metadata) {
         metadata.permissions().mode() & PERMISSION_MASK,
     );
 }
-// ヘルプ命令の中身
+
+/// ヘルプメッセージを表示する
 pub fn handle_help() {
     println!("Available commands:");
 
@@ -38,14 +43,20 @@ pub fn handle_help() {
     println!("  --debug    Enable debug mode with detailed logging");
 }
 
-// 文字列をcount回表示
+/// 文字列をcount回表示
 pub fn handle_repeat(count: i32, message: &str) {
     for _ in 0..count {
         println!("{message}");
     }
 }
 
-// path内のテキスト表示
+/// ファイルの内容を表示する
+///
+/// # Errors
+///
+/// - ファイルが存在しない場合
+/// - ディレクトリを指定した場合
+/// - 読み取り権限がない場合
 pub fn handle_cat(filename: &str) -> Result<()> {
     debug!("Attempting to read file: {filename}");
 
@@ -72,7 +83,12 @@ pub fn handle_cat(filename: &str) -> Result<()> {
     Ok(())
 }
 
-// pathのファイルにテキスト追加
+/// ファイルに内容を書き込む
+///
+/// # Errors
+///
+/// - 書き込み権限がない場合
+/// - ディスク容量不足の場合
 pub fn handle_write(filename: &str, content: &str) -> Result<()> {
     debug!("Writing to file: {} ({} bytes)", filename, content.len());
 
@@ -88,7 +104,11 @@ pub fn handle_write(filename: &str, content: &str) -> Result<()> {
     Ok(())
 }
 
-// 現在のディレクトリ内のファイル/ディレクトリを表示
+/// 現在のディレクトリの内容を一覧表示する
+///
+/// # Errors
+///
+/// - ディレクトリの読み取り権限がない場合
 pub fn handle_ls() -> Result<()> {
     debug!("Listing current directory contents");
 
@@ -115,7 +135,7 @@ pub fn handle_ls() -> Result<()> {
     Ok(())
 }
 
-// プログラムを終了する
+/// プログラムを終了する
 pub fn handle_exit() {
     info!("Exiting rucli");
     println!("good bye");
