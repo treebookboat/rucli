@@ -4,13 +4,21 @@ mod handlers;
 mod parser;
 
 use commands::execute_command;
+use log::{debug, info};
 
 use std::io::{self, Write};
 
 use crate::parser::parse_command;
 
 fn main() {
+    // この行を追加！
+    env_logger::init();
+
+    info!("Starting rucli...");
     println!("Hello, rucli!");
+
+    // ループ開始前
+    debug!("Entering command loop");
 
     // 入力された命令の処理を行う
     loop {
@@ -20,16 +28,21 @@ fn main() {
 
         // 入力された文字列の読み取り
         let input = read_input();
+        debug!("Received input: {}", input); // 入力内容の記録
 
         // コマンドのパース
         match parse_command(&input) {
             // 命令の実行
             Ok(command) => {
+                debug!("Command parsed successfully"); // パース成功
                 if let Err(err) = execute_command(command) {
                     eprintln!("{}", err);
                 }
             }
-            Err(error) => eprintln!("{}", error),
+            Err(error) => {
+                debug!("Parse error occurred"); // パースエラー
+                eprintln!("{}", error);
+            }
         }
     }
 }

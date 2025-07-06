@@ -2,9 +2,9 @@
 
 🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
 
-## Progress: 19/100 PRs
+## Progress: 20/100 PRs
 
-[■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+[■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
 
 ## Current Phase: Foundation (11-25)
 
@@ -26,13 +26,14 @@ Strengthening core infrastructure and command system.
 - [x] PR #17: Apply custom error type throughout
 - [x] PR #18: Result type in handlers (Part 1)
 - [x] PR #19: Complete Result type implementation
+- [x] PR #20: Logging framework introduction
 
-## Latest Changes (PR #19)
+## Latest Changes (PR #20)
 
-- Updated execute_command to return Result<()>
-- Unified error handling in main.rs
-- All commands now consistently return Result type
-- Maintained simplicity for non-failing operations
+- Added env_logger for configurable logging support
+- Initialized logging framework in main function
+- Added debug logs for command lifecycle tracking
+- Implemented Debug trait for Command enum
 
 ## Usage
 
@@ -157,6 +158,11 @@ cargo build --release
 
 # Run tests
 cargo test
+
+# Run with logging
+RUST_LOG=info cargo run      # Show info logs
+RUST_LOG=debug cargo run     # Show debug logs
+RUST_LOG=rucli=debug cargo run  # Show debug logs for rucli only
 ```
 
 ## Contributing

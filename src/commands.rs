@@ -1,7 +1,9 @@
 use crate::error::Result;
 use crate::handlers::*;
+use log::debug;
 
 // 実行できるコマンド群
+#[derive(Debug)]
 pub enum Command {
     Help,
     Echo { message: String },
@@ -81,6 +83,9 @@ pub const COMMANDS: &[CommandInfo] = &[
 
 // 命令の実行
 pub fn execute_command(command: Command) -> Result<()> {
+    // コマンド実行開始を記録
+    debug!("Executing command: {:?}", command);
+
     match command {
         Command::Help => {
             handle_help();
