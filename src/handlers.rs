@@ -24,6 +24,9 @@ pub fn handle_help() {
             width = max_width
         );
     }
+
+    println!("\nOptions:");
+    println!("  --debug    Enable debug mode with detailed logging");
 }
 
 // 文字列をcount回表示

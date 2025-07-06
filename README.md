@@ -2,9 +2,9 @@
 
 🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
 
-## Progress: 21/100 PRs
+## Progress: 22/100 PRs
 
-[■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+[■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
 
 ## Current Phase: Foundation (11-25)
 
@@ -28,14 +28,12 @@ Strengthening core infrastructure and command system.
 - [x] PR #19: Complete Result type implementation
 - [x] PR #20: Logging framework introduction
 
-## Latest Changes (PR #21)
+## Latest Changes (PR #22)
 
-- Added comprehensive logging across all modules
-- Implemented trace logging for command lookup and parsing
-- Added debug logs for validation and file operations
-- Enhanced error logging with detailed context
-- Added operation metrics (file sizes, directory entry counts)
-- Implemented appropriate log levels (info, warn, error, debug, trace)
+- Added --debug command-line flag for debug mode
+- Automatically sets log level to debug when flag is used
+- Respects RUST_LOG environment variable if already set
+- Updated help message to show available options
 
 ## Usage
 
@@ -53,6 +51,9 @@ Available commands:
   exit                          - Exit the program
   quit                          - Exit the program
 
+Options:
+  --debug                       - Enable debug mode with detailed logging
+
 > echo Hello World
 Hello World
 
@@ -66,6 +67,16 @@ Hi!
 
 > write test.txt Some content here
 File written successfully: test.txt
+```
+
+### Debug Mode
+
+```bash
+# Run with debug logging enabled
+$ cargo run -- --debug
+
+# Override with custom log level
+$ RUST_LOG=trace cargo run -- --debug
 ```
 
 ## Project Structure

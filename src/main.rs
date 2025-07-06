@@ -6,13 +6,33 @@ mod parser;
 use commands::execute_command;
 use log::{debug, error, info};
 
+use env_logger::Builder;
+use log::LevelFilter;
+use std::env;
 use std::io::{self, Write};
 
 use crate::parser::parse_command;
 
 fn main() {
-    // この行を追加！
-    env_logger::init();
+    // コマンドライン引数をチェック
+    let debug_mode = env::args().any(|arg| arg == "--debug");
+
+    // env_loggerの設定
+    let mut builder = Builder::from_default_env();
+
+    if debug_mode {
+        // RUST_LOG環境変数が設定されている場合はそちら優先
+        if env::var("RUST_LOG").is_err() {
+            builder.filter_level(LevelFilter::Debug);
+        }
+    }
+
+    // builderを初期化
+    builder.init();
+
+    if debug_mode {
+        info!("Debug mode enabled");
+    }
 
     info!("Starting rucli...");
     println!("Hello, rucli!");
