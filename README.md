@@ -2,9 +2,9 @@
 
 🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
 
-## Progress: 20/100 PRs
+## Progress: 21/100 PRs
 
-[■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+[■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
 
 ## Current Phase: Foundation (11-25)
 
@@ -28,12 +28,14 @@ Strengthening core infrastructure and command system.
 - [x] PR #19: Complete Result type implementation
 - [x] PR #20: Logging framework introduction
 
-## Latest Changes (PR #20)
+## Latest Changes (PR #21)
 
-- Added env_logger for configurable logging support
-- Initialized logging framework in main function
-- Added debug logs for command lifecycle tracking
-- Implemented Debug trait for Command enum
+- Added comprehensive logging across all modules
+- Implemented trace logging for command lookup and parsing
+- Added debug logs for validation and file operations
+- Enhanced error logging with detailed context
+- Added operation metrics (file sizes, directory entry counts)
+- Implemented appropriate log levels (info, warn, error, debug, trace)
 
 ## Usage
 
@@ -90,6 +92,31 @@ The project now uses a custom `RucliError` type with complete Result-based error
 - Automatic conversion from `io::Error`
 - Consistent error messages
 - All commands return Result<()> for consistency
+
+## Logging
+
+The project uses `env_logger` for configurable logging:
+
+```bash
+# Log levels
+RUST_LOG=error cargo run    # Only errors
+RUST_LOG=warn cargo run     # Warnings and errors
+RUST_LOG=info cargo run     # Info, warnings, and errors
+RUST_LOG=debug cargo run    # Debug info and above
+RUST_LOG=trace cargo run    # Everything (very verbose)
+
+# Module-specific logging
+RUST_LOG=rucli::parser=trace cargo run    # Trace for parser only
+RUST_LOG=rucli::handlers=debug cargo run  # Debug for handlers only
+```
+
+### Log Categories:
+
+- **ERROR**: Command execution failures
+- **WARN**: Invalid operations (e.g., cat on directory)
+- **INFO**: Important operations (file writes, reads, program start/exit)
+- **DEBUG**: Command parsing, validation, operation details
+- **TRACE**: Detailed command lookup and parsing steps
 
 ## Testing
 
@@ -158,11 +185,6 @@ cargo build --release
 
 # Run tests
 cargo test
-
-# Run with logging
-RUST_LOG=info cargo run      # Show info logs
-RUST_LOG=debug cargo run     # Show debug logs
-RUST_LOG=rucli=debug cargo run  # Show debug logs for rucli only
 ```
 
 ## Contributing

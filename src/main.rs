@@ -4,7 +4,7 @@ mod handlers;
 mod parser;
 
 use commands::execute_command;
-use log::{debug, info};
+use log::{debug, error, info};
 
 use std::io::{self, Write};
 
@@ -36,11 +36,12 @@ fn main() {
             Ok(command) => {
                 debug!("Command parsed successfully"); // パース成功
                 if let Err(err) = execute_command(command) {
+                    error!("Command execution failed: {}", err);
                     eprintln!("{}", err);
                 }
             }
             Err(error) => {
-                debug!("Parse error occurred"); // パースエラー
+                debug!("Parse error occurred: {}", error);
                 eprintln!("{}", error);
             }
         }
