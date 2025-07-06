@@ -1,6 +1,6 @@
 use crate::error::{Result, RucliError};
 use log::{debug, info, warn};
-use std::{fs, io, path::Path, process};
+use std::{fs, io, os::unix::fs::PermissionsExt, path::Path, process};
 
 use crate::commands::COMMANDS;
 
@@ -49,6 +49,16 @@ pub fn handle_cat(filename: &str) -> Result<()> {
         )));
     }
 
+    // ファイル情報表示
+    if log::log_enabled!(log::Level::Debug) {
+        let metadata = fs::metadata(filename)?;
+        debug!(
+            "File metadata: size={} bytes, permissions={}",
+            metadata.len(),
+            metadata.permissions().mode() & 0o777,
+        );
+    }
+
     let contents = fs::read_to_string(filename)?;
     println!("{}", contents);
 
@@ -64,6 +74,17 @@ pub fn handle_write(filename: &str, content: &str) -> Result<()> {
 
     fs::write(filename, content)?;
     println!("File written successfully: {}", filename);
+
+    // ファイル情報表示
+    if log::log_enabled!(log::Level::Debug) {
+        let metadata = fs::metadata(filename)?;
+        debug!(
+            "File metadata: size={} bytes, permissions={}",
+            metadata.len(),
+            metadata.permissions().mode() & 0o777,
+        );
+    }
+
     Ok(())
 }
 
@@ -82,6 +103,16 @@ pub fn handle_ls() -> Result<()> {
             println!("{}/", name);
         } else {
             println!("{}", name);
+        }
+
+        // ファイル情報表示
+        if log::log_enabled!(log::Level::Debug) {
+            let metadata = entry.metadata()?;
+            debug!(
+                "File metadata: size={} bytes, permissions={}",
+                metadata.len(),
+                metadata.permissions().mode() & 0o777,
+            );
         }
     }
 

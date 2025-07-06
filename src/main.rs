@@ -10,6 +10,7 @@ use env_logger::Builder;
 use log::LevelFilter;
 use std::env;
 use std::io::{self, Write};
+use std::time::Instant;
 
 use crate::parser::parse_command;
 
@@ -55,10 +56,13 @@ fn main() {
             // 命令の実行
             Ok(command) => {
                 debug!("Command parsed successfully"); // パース成功
+                let start = Instant::now();
                 if let Err(err) = execute_command(command) {
                     error!("Command execution failed: {}", err);
                     eprintln!("{}", err);
                 }
+                let duration = start.elapsed().as_secs_f64() * 1000.0;
+                debug!("処理時間: {:?}ms", duration);
             }
             Err(error) => {
                 debug!("Parse error occurred: {}", error);

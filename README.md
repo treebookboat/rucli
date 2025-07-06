@@ -2,9 +2,9 @@
 
 🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
 
-## Progress: 22/100 PRs
+## Progress: 23/100 PRs
 
-[■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+[■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
 
 ## Current Phase: Foundation (11-25)
 
@@ -28,12 +28,12 @@ Strengthening core infrastructure and command system.
 - [x] PR #19: Complete Result type implementation
 - [x] PR #20: Logging framework introduction
 
-## Latest Changes (PR #22)
+## Latest Changes (PR #23)
 
-- Added --debug command-line flag for debug mode
-- Automatically sets log level to debug when flag is used
-- Respects RUST_LOG environment variable if already set
-- Updated help message to show available options
+- Added command execution time measurement in debug mode
+- Implemented file metadata display (size, permissions) for file operations
+- Optimized ls command to use entry.metadata() for better performance
+- Debug information only displayed when debug logging is enabled
 
 ## Usage
 
@@ -74,6 +74,11 @@ File written successfully: test.txt
 ```bash
 # Run with debug logging enabled
 $ cargo run -- --debug
+
+# Debug output includes:
+# - Command execution time
+# - File metadata (size, permissions)
+# - Detailed operation logs
 
 # Override with custom log level
 $ RUST_LOG=trace cargo run -- --debug
