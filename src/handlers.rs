@@ -245,6 +245,23 @@ pub fn handle_rm(path: &str, recursive: bool, force: bool) -> Result<()> {
     }
 }
 
+/// ファイルをコピーする
+///
+/// # Errors
+///
+/// - ソースファイルが存在しない場合
+/// - ソースがディレクトリの場合
+/// - 書き込み権限がない場合
+pub fn handle_cp(source: &str, destination: &str) -> Result<()> {
+    debug!("Copying {source} to {destination}");
+
+    let bytes = fs::copy(source, destination)?;
+
+    info!("Copied {bytes} bytes from {source} to {destination}");
+
+    Ok(())
+}
+
 /// プログラムを終了する
 pub fn handle_exit() {
     info!("Exiting rucli");

@@ -144,6 +144,10 @@ pub fn parse_command(input: &str) -> Result<Command> {
             recursive: false,
             force: false,
         }),
+        ["cp", source, destination] => Ok(Command::Cp {
+            source: (*source).to_string(),
+            destination: (*destination).to_string(),
+        }),
         ["exit" | "quit"] => Ok(Command::Exit),
         commands => Err(RucliError::UnknownCommand(commands.join(" ").to_string())),
     }

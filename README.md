@@ -2,9 +2,9 @@
 
 🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
 
-## Progress: 33/100 PRs
+## Progress: 34/100 PRs
 
-[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
 
 ## Current Phase: Basic Features (26-45)
 
@@ -37,13 +37,18 @@ Implementing file operations and search capabilities.
 - [x] PR #28: cd command basic implementation
 - [x] PR #29: cd advanced features (-, ~, ..)
 - [x] PR #30: mkdir command basic implementation
+- [x] PR #31: mkdir -p option (recursive)
+- [x] PR #32: rm command basic implementation (files only)
+- [x] PR #33: rm extended options (-r, -f, -rf)
+- [x] PR #34: cp command basic implementation
 
-## Latest Changes (PR #33)
+## Latest Changes (PR #34)
 
-- Added rm -r option for recursive directory removal
-- Implemented rm -f for force deletion (ignore errors)
-- Support rm -rf combination for powerful cleanup
-- Handle both files and directories with recursive option
+- Implemented cp command for copying files
+- Support source to destination file copying
+- Proper error handling for non-existent files
+- Error when attempting to copy directories (intentional)
+- Log bytes copied for successful operations
 
 ## Usage
 
@@ -68,6 +73,7 @@ Available commands:
   rm -r <directory>             - Remove directory recursively
   rm -f <file>                  - Force remove (ignore errors)
   rm -rf <path>                 - Force recursive removal
+  cp <source> <destination>     - Copy files
   repeat <count> <message...>   - Repeat message count times
   exit                          - Exit the program
   quit                          - Exit the program
@@ -75,52 +81,19 @@ Available commands:
 Options:
   --debug                       - Enable debug mode with detailed logging
 
-> pwd
-/home/user/rucli
+> write original.txt Hello, World!
+File written successfully: original.txt
 
-> cd src
-> pwd
-/home/user/rucli/src
+> cp original.txt copy.txt
+> cat copy.txt
+Hello, World!
 
-> cd -
-> pwd
-/home/user/rucli
-
-> cd ~
-> pwd
-/home/user
-
-> cd
-> pwd
-/home/user
+> cp nonexistent.txt dest.txt
+IO error: No such file or directory (os error 2)
 
 > mkdir testdir
-> ls
-testdir/
-src/
-Cargo.toml
-
-> mkdir -p deep/nested/directory
-> cd deep/nested
-> pwd
-/home/user/rucli/deep/nested
-
-> write test.txt Hello world
-File written successfully: test.txt
-
-> mkdir -p test/nested
-> rm test
-IO error: Is a directory
-
-> rm -r test
-> ls
-# test directory removed
-
-> rm -f nonexistent.txt
-# No error (force mode)
-
-> rm -rf anything
-# Removes anything, no errors
+> cp testdir dest
+IO error: the source path is neither a regular file nor a symlink to a regular file
 ```
 
 ### Debug Mode
@@ -129,14 +102,16 @@ IO error: Is a directory
 # Run with debug logging enabled
 $ cargo run -- --debug
 
-# Debug output includes:
-# - Initial working directory
-# - Command execution time
-# - File metadata (size, permissions)
-# - Detailed operation logs
+# Debug output for cp command includes:
+# - Source and destination paths
+# - Number of bytes copied
+# - Operation timing
 
-# Override with custom log level
-$ RUST_LOG=trace cargo run -- --debug
+# Example debug output:
+> cp file1.txt file2.txt
+[DEBUG] Copying file1.txt to file2.txt
+[INFO] Copied 1024 bytes from file1.txt to file2.txt
+[DEBUG] 処理時間: 0.5ms
 ```
 
 ## Project Structure
@@ -183,7 +158,7 @@ RUST_LOG=rucli::handlers=debug cargo run  # Debug for handlers only
 ### Log Categories:
 - **ERROR**: Command execution failures
 - **WARN**: Invalid operations (e.g., cat on directory)
-- **INFO**: Important operations (file writes, reads, program start/exit)
+- **INFO**: Important operations (file writes, reads, copies, program start/exit)
 - **DEBUG**: Command parsing, validation, operation details
 - **TRACE**: Detailed command lookup and parsing steps
 
@@ -238,11 +213,14 @@ cargo test -- --nocapture
 - [x] PR #30: mkdir command basic implementation
 - [x] PR #31: mkdir -p option (recursive)
 - [x] PR #32: rm command basic implementation (files only)
-- [ ] PR #34-37: cp command with directory support
+- [x] PR #33: rm extended options (-r, -f, -rf)
+- [x] PR #34: cp command basic implementation
+- [ ] PR #35-36: Second refactoring
+- [ ] PR #37: cp command with directory support
 - [ ] PR #38: mv command implementation
 - [ ] PR #39-42: find and grep commands
 - [ ] PR #43: Command aliases
-- [ ] PR #44-45: Second refactoring
+- [ ] PR #44-45: Third refactoring
 
 ### Phase 3: Advanced Features (PR 46-65) - 20 PRs
 

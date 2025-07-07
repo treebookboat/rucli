@@ -10,26 +10,46 @@ pub enum Command {
     /// ヘルプを表示
     Help,
     /// メッセージを出力
-    Echo { message: String },
+    Echo {
+        message: String,
+    },
     /// メッセージを繰り返し出力
-    Repeat { count: i32, message: String },
+    Repeat {
+        count: i32,
+        message: String,
+    },
     /// ファイルの内容を表示
-    Cat { filename: String },
+    Cat {
+        filename: String,
+    },
     /// ファイルに内容を書き込む
-    Write { filename: String, content: String },
+    Write {
+        filename: String,
+        content: String,
+    },
     /// ディレクトリの内容を一覧表示
     Ls,
     /// ディレクトリを変更
-    Cd { path: String },
+    Cd {
+        path: String,
+    },
     /// 現在の作業ディレクトリを表示
     Pwd,
     /// ディレクトリを作成
-    Mkdir { path: String, parents: bool },
+    Mkdir {
+        path: String,
+        parents: bool,
+    },
     /// ファイル/ディレクトリを削除
     Rm {
         path: String,
         recursive: bool,
         force: bool,
+    },
+    // ファイルをコピー
+    Cp {
+        source: String,
+        destination: String,
     },
     /// プログラムを終了
     Exit,
@@ -129,6 +149,13 @@ pub const COMMANDS: &[CommandInfo] = &[
         max_args: Some(2),
     },
     CommandInfo {
+        name: "cp",
+        description: "Copy files",
+        usage: "cp <source> <destination>",
+        min_args: 2,
+        max_args: Some(2),
+    },
+    CommandInfo {
         name: "mkdir",
         description: "Make directories",
         usage: "mkdir <directory>",
@@ -171,6 +198,10 @@ pub fn execute_command(command: Command) -> Result<()> {
             recursive,
             force,
         } => handle_rm(&path, recursive, force),
+        Command::Cp {
+            source,
+            destination,
+        } => handle_cp(&source, &destination),
         Command::Exit => {
             handle_exit();
             Ok(())
