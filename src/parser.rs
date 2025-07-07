@@ -124,6 +124,9 @@ pub fn parse_command(input: &str) -> Result<Command> {
             path: (*path).to_string(),
             parents: false,
         }),
+        ["rm", path] => Ok(Command::Rm {
+            path: (*path).to_string(),
+        }),
         ["exit" | "quit"] => Ok(Command::Exit),
         commands => Err(RucliError::UnknownCommand(commands.join(" ").to_string())),
     }

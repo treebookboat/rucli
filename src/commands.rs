@@ -25,6 +25,8 @@ pub enum Command {
     Pwd,
     /// ディレクトリを作成
     Mkdir { path: String, parents: bool },
+    /// ファイルを削除
+    Rm { path: String },
     /// プログラムを終了
     Exit,
 }
@@ -116,6 +118,13 @@ pub const COMMANDS: &[CommandInfo] = &[
         max_args: Some(0),
     },
     CommandInfo {
+        name: "rm",
+        description: "Remove files",
+        usage: "rm <file>",
+        min_args: 1,
+        max_args: Some(1),
+    },
+    CommandInfo {
         name: "mkdir",
         description: "Make directories",
         usage: "mkdir <directory>",
@@ -153,6 +162,7 @@ pub fn execute_command(command: Command) -> Result<()> {
         Command::Cd { path } => handle_cd(&path),
         Command::Pwd => handle_pwd(),
         Command::Mkdir { path, parents } => handle_mkdir(&path, parents),
+        Command::Rm { path } => handle_rm(&path),
         Command::Exit => {
             handle_exit();
             Ok(())

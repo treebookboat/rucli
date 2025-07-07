@@ -213,6 +213,22 @@ pub fn handle_mkdir(path: &str, parents: bool) -> Result<()> {
     Ok(())
 }
 
+/// ファイルを削除する
+///
+/// # Errors
+///
+/// - ファイルが存在しない場合
+/// - ディレクトリを指定した場合
+/// - 削除権限がない場合
+pub fn handle_rm(path: &str) -> Result<()> {
+    debug!("deleting file: {path}");
+
+    fs::remove_file(path)?;
+    info!("Deleted file: {path}");
+
+    Ok(())
+}
+
 /// プログラムを終了する
 pub fn handle_exit() {
     info!("Exiting rucli");

@@ -2,9 +2,9 @@
 
 🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
 
-## Progress: 31/100 PRs
+## Progress: 32/100 PRs
 
-[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
 
 ## Current Phase: Basic Features (26-45)
 
@@ -38,12 +38,12 @@ Implementing file operations and search capabilities.
 - [x] PR #29: cd advanced features (-, ~, ..)
 - [x] PR #30: mkdir command basic implementation
 
-## Latest Changes (PR #31)
+## Latest Changes (PR #32)
 
-- Added mkdir -p option for recursive directory creation
-- Create parent directories automatically with -p flag
-- Allow existing directories without error when using -p
-- Support deep nested directory structures in one command
+- Implemented rm command for basic file removal
+- Support deletion of single files only
+- Prevent accidental directory deletion
+- Clear error messages for non-existent files and permission issues
 
 ## Usage
 
@@ -64,6 +64,7 @@ Available commands:
   cd ~                          - Change to home directory
   mkdir <directory>             - Make directory
   mkdir -p <directory>          - Make directory (create parents)
+  rm <file>                     - Remove file
   repeat <count> <message...>   - Repeat message count times
   exit                          - Exit the program
   quit                          - Exit the program
@@ -101,11 +102,19 @@ Cargo.toml
 > pwd
 /home/user/rucli/deep/nested
 
-> echo Hello World
-Hello World
+> write test.txt Hello world
+File written successfully: test.txt
 
-> cat README.md
-[File contents displayed]
+> rm test.txt
+> ls
+src/
+Cargo.toml
+
+> rm nonexistent.txt
+IO error: No such file or directory (os error 2)
+
+> rm src
+IO error: Is a directory
 ```
 
 ### Debug Mode
@@ -222,7 +231,7 @@ cargo test -- --nocapture
 - [x] PR #29: cd advanced features (-, ~, ..)
 - [x] PR #30: mkdir command basic implementation
 - [x] PR #31: mkdir -p option (recursive)
-- [ ] PR #32-33: rm command with safety features
+- [x] PR #32: rm command basic implementation (files only)
 - [ ] PR #34-37: cp command with directory support
 - [ ] PR #38: mv command implementation
 - [ ] PR #39-42: find and grep commands
