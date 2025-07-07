@@ -5,6 +5,7 @@ use log::{debug, info, warn};
 use std::{env, fs, io, os::unix::fs::PermissionsExt, path::Path, process};
 
 use crate::commands::COMMANDS;
+use crate::parser::{DEFAULT_HOME_INDICATOR, PREVIOUS_DIR_INDICATOR};
 
 /// ファイルパーミッションのマスク値
 const PERMISSION_MASK: u32 = 0o777;
@@ -149,7 +150,7 @@ pub fn handle_cd(path: &str) -> Result<()> {
     // 移動するディレクトリ
     let target_path = match path {
         // 前のディレクトリを取得
-        "-" => match env::var("OLDPWD") {
+        PREVIOUS_DIR_INDICATOR => match env::var("OLDPWD") {
             Ok(old) => old,
             Err(_) => {
                 return Err(RucliError::InvalidArgument(
@@ -158,7 +159,7 @@ pub fn handle_cd(path: &str) -> Result<()> {
             }
         },
         // ホームディレクトリを取得
-        "~" => env::var("HOME").unwrap_or_else(|_| "/".to_string()),
+        DEFAULT_HOME_INDICATOR => env::var("HOME").unwrap_or_else(|_| "/".to_string()),
         // 通常のディレクトリを取得
         _ => path.to_string(),
     };

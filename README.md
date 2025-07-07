@@ -2,9 +2,9 @@
 
 🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
 
-## Progress: 34/100 PRs
+## Progress: 35/100 PRs
 
-[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
 
 ## Current Phase: Basic Features (26-45)
 
@@ -41,14 +41,14 @@ Implementing file operations and search capabilities.
 - [x] PR #32: rm command basic implementation (files only)
 - [x] PR #33: rm extended options (-r, -f, -rf)
 - [x] PR #34: cp command basic implementation
+- [x] PR #35: Second refactoring (Part 1) - Constants
 
-## Latest Changes (PR #34)
+## Latest Changes (PR #35)
 
-- Implemented cp command for copying files
-- Support source to destination file copying
-- Proper error handling for non-existent files
-- Error when attempting to copy directories (intentional)
-- Log bytes copied for successful operations
+- Extract magic strings as named constants
+- Define DEFAULT_HOME_PATH and PREVIOUS_DIR_PATH
+- Improve code readability and maintainability
+- Small but important refactoring for better code quality
 
 ## Usage
 
@@ -128,6 +128,15 @@ src/
 tests/
 └── cli_tests.rs  # Integration tests (11 tests)
 ```
+
+## Code Quality
+
+The codebase follows Rust best practices:
+- Named constants instead of magic strings
+- Comprehensive error handling with custom types
+- Modular architecture with clear separation of concerns
+- Extensive logging for debugging
+- Thorough test coverage
 
 ## Error Handling
 
@@ -215,7 +224,8 @@ cargo test -- --nocapture
 - [x] PR #32: rm command basic implementation (files only)
 - [x] PR #33: rm extended options (-r, -f, -rf)
 - [x] PR #34: cp command basic implementation
-- [ ] PR #35-36: Second refactoring
+- [x] PR #35: Second refactoring (Part 1) - Constants
+- [ ] PR #36: Second refactoring (Part 2)
 - [ ] PR #37: cp command with directory support
 - [ ] PR #38: mv command implementation
 - [ ] PR #39-42: find and grep commands

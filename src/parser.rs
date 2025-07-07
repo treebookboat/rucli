@@ -4,6 +4,9 @@ use crate::commands::{COMMANDS, Command, CommandInfo};
 use crate::error::{Result, RucliError};
 use log::{debug, trace};
 
+pub const DEFAULT_HOME_INDICATOR: &str = "~";
+pub const PREVIOUS_DIR_INDICATOR: &str = "-";
+
 /// `コマンド名から対応するCommandInfo` を検索する
 fn find_command(name: &str) -> Option<&CommandInfo> {
     trace!("Looking for command: {name}");
@@ -110,7 +113,7 @@ pub fn parse_command(input: &str) -> Result<Command> {
             ))),
         },
         ["cd"] => Ok(Command::Cd {
-            path: "~".to_string(),
+            path: DEFAULT_HOME_INDICATOR.to_string(),
         }),
         ["cd", path] => Ok(Command::Cd {
             path: (*path).to_string(),
