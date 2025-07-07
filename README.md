@@ -2,9 +2,9 @@
 
 🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
 
-## Progress: 30/100 PRs
+## Progress: 31/100 PRs
 
-[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
 
 ## Current Phase: Basic Features (26-45)
 
@@ -38,12 +38,12 @@ Implementing file operations and search capabilities.
 - [x] PR #29: cd advanced features (-, ~, ..)
 - [x] PR #30: mkdir command basic implementation
 
-## Latest Changes (PR #30)
+## Latest Changes (PR #31)
 
-- Implemented mkdir command for creating directories
-- Handle errors for existing directories
-- Support basic single directory creation
-- Clear error messages for permission and existence issues
+- Added mkdir -p option for recursive directory creation
+- Create parent directories automatically with -p flag
+- Allow existing directories without error when using -p
+- Support deep nested directory structures in one command
 
 ## Usage
 
@@ -63,6 +63,7 @@ Available commands:
   cd -                          - Change to previous directory
   cd ~                          - Change to home directory
   mkdir <directory>             - Make directory
+  mkdir -p <directory>          - Make directory (create parents)
   repeat <count> <message...>   - Repeat message count times
   exit                          - Exit the program
   quit                          - Exit the program
@@ -94,6 +95,11 @@ Options:
 testdir/
 src/
 Cargo.toml
+
+> mkdir -p deep/nested/directory
+> cd deep/nested
+> pwd
+/home/user/rucli/deep/nested
 
 > echo Hello World
 Hello World
@@ -215,7 +221,7 @@ cargo test -- --nocapture
 - [x] PR #28: cd command basic implementation
 - [x] PR #29: cd advanced features (-, ~, ..)
 - [x] PR #30: mkdir command basic implementation
-- [ ] PR #31: mkdir -p option (recursive)
+- [x] PR #31: mkdir -p option (recursive)
 - [ ] PR #32-33: rm command with safety features
 - [ ] PR #34-37: cp command with directory support
 - [ ] PR #38: mv command implementation

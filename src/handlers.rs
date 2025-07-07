@@ -200,12 +200,16 @@ pub fn handle_pwd() -> Result<()> {
 /// - 既にディレクトリが存在する場合
 /// - 親ディレクトリが存在しない場合
 /// - 書き込み権限がない場合
-pub fn handle_mkdir(path: &str) -> Result<()> {
+pub fn handle_mkdir(path: &str, parents: bool) -> Result<()> {
     debug!("Creating directory : {path}");
 
-    fs::create_dir(path)?;
-
-    debug!("Created directory : {path}");
+    if parents {
+        fs::create_dir_all(path)?;
+        info!("Created directory (with parents): {path}");
+    } else {
+        fs::create_dir(path)?;
+        info!("Created directory: {path}");
+    }
     Ok(())
 }
 

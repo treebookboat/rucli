@@ -24,7 +24,7 @@ pub enum Command {
     /// 現在の作業ディレクトリを表示
     Pwd,
     /// ディレクトリを作成
-    Mkdir { path: String },
+    Mkdir { path: String, parents: bool },
     /// プログラムを終了
     Exit,
 }
@@ -120,7 +120,7 @@ pub const COMMANDS: &[CommandInfo] = &[
         description: "Make directories",
         usage: "mkdir <directory>",
         min_args: 1,
-        max_args: Some(1),
+        max_args: Some(2),
     },
 ];
 
@@ -152,7 +152,7 @@ pub fn execute_command(command: Command) -> Result<()> {
         Command::Ls => handle_ls(),
         Command::Cd { path } => handle_cd(&path),
         Command::Pwd => handle_pwd(),
-        Command::Mkdir { path } => handle_mkdir(&path),
+        Command::Mkdir { path, parents } => handle_mkdir(&path, parents),
         Command::Exit => {
             handle_exit();
             Ok(())
