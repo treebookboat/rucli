@@ -109,6 +109,9 @@ pub fn parse_command(input: &str) -> Result<Command> {
                 "{count} isn't a valid number"
             ))),
         },
+        ["cd"] => Ok(Command::Cd {
+            path: "~".to_string(),
+        }),
         ["cd", path] => Ok(Command::Cd {
             path: (*path).to_string(),
         }),

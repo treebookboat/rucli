@@ -96,7 +96,7 @@ pub const COMMANDS: &[CommandInfo] = &[
         name: "cd",
         description: "Change directory",
         usage: "cd <directory>",
-        min_args: 1,
+        min_args: 0,
         max_args: Some(1),
     },
     CommandInfo {

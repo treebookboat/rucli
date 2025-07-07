@@ -36,12 +36,12 @@ Implementing file operations and search capabilities.
 - [x] PR #27: pwd command implementation
 - [x] PR #28: cd command basic implementation
 
-## Latest Changes (PR #28)
+## Latest Changes (PR #29)
 
-- Implemented cd command for basic directory navigation
-- Added validation for path existence and directory type
-- Included proper error messages for invalid paths
-- Supports both relative and absolute paths
+- Added cd - to return to previous directory
+- Implemented cd ~ and cd (no args) for home directory navigation  
+- Store previous directory in OLDPWD environment variable
+- Proper error handling for unset OLDPWD and HOME variables
 
 ## Usage
 
@@ -57,6 +57,9 @@ Available commands:
   ls                            - List directory contents
   pwd                           - Print working directory
   cd <directory>                - Change directory
+  cd                            - Change to home directory
+  cd -                          - Change to previous directory
+  cd ~                          - Change to home directory
   repeat <count> <message...>   - Repeat message count times
   exit                          - Exit the program
   quit                          - Exit the program
@@ -71,9 +74,17 @@ Options:
 > pwd
 /home/user/rucli/src
 
-> cd ..
+> cd -
 > pwd
 /home/user/rucli
+
+> cd ~
+> pwd
+/home/user
+
+> cd
+> pwd
+/home/user
 
 > echo Hello World
 Hello World
@@ -193,7 +204,7 @@ cargo test -- --nocapture
 - [x] PR #26: Working directory management foundation
 - [x] PR #27: pwd command implementation
 - [x] PR #28: cd command basic implementation
-- [ ] PR #29: cd advanced features (-, ~, ..)
+- [x] PR #29: cd advanced features (-, ~, ..)
 - [ ] PR #30-31: mkdir command with options
 - [ ] PR #32-33: rm command with safety features
 - [ ] PR #34-37: cp command with directory support

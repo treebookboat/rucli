@@ -146,10 +146,35 @@ pub fn handle_ls() -> Result<()> {
 /// - ディレクトリではなくファイルを指定した場合
 /// - アクセス権限がない場合
 pub fn handle_cd(path: &str) -> Result<()> {
-    // ディレクトリ変更
-    env::set_current_dir(path)?;
+    // 移動するディレクトリ
+    let target_path = match path {
+        // 前のディレクトリを取得
+        "-" => match env::var("OLDPWD") {
+            Ok(old) => old,
+            Err(_) => {
+                return Err(RucliError::InvalidArgument(
+                    "cd: OLDPWD not set".to_string(),
+                ));
+            }
+        },
+        // ホームディレクトリを取得
+        "~" => env::var("HOME").unwrap_or_else(|_| "/".to_string()),
+        // 通常のディレクトリを取得
+        _ => path.to_string(),
+    };
 
-    debug!("change directory to : {path}");
+    // ディレクトリ変更前に現在の場所を保存
+    let old_dir = env::current_dir()?;
+
+    // ディレクトリ変更
+    env::set_current_dir(&target_path)?;
+
+    // ディレクトリ移動に成功したらOLDPWDを更新
+    unsafe {
+        env::set_var("OLDPWD", old_dir);
+    }
+
+    debug!("change directory to : {target_path}");
 
     Ok(())
 }
