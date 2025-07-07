@@ -124,8 +124,25 @@ pub fn parse_command(input: &str) -> Result<Command> {
             path: (*path).to_string(),
             parents: false,
         }),
+        ["rm", "-r", path] => Ok(Command::Rm {
+            path: (*path).to_string(),
+            recursive: true,
+            force: false,
+        }),
+        ["rm", "-f", path] => Ok(Command::Rm {
+            path: (*path).to_string(),
+            recursive: false,
+            force: true,
+        }),
+        ["rm", "-rf", path] | ["rm", "-fr", path] => Ok(Command::Rm {
+            path: (*path).to_string(),
+            recursive: true,
+            force: true,
+        }),
         ["rm", path] => Ok(Command::Rm {
             path: (*path).to_string(),
+            recursive: false,
+            force: false,
         }),
         ["exit" | "quit"] => Ok(Command::Exit),
         commands => Err(RucliError::UnknownCommand(commands.join(" ").to_string())),

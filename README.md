@@ -2,9 +2,9 @@
 
 🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
 
-## Progress: 32/100 PRs
+## Progress: 33/100 PRs
 
-[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
 
 ## Current Phase: Basic Features (26-45)
 
@@ -38,12 +38,12 @@ Implementing file operations and search capabilities.
 - [x] PR #29: cd advanced features (-, ~, ..)
 - [x] PR #30: mkdir command basic implementation
 
-## Latest Changes (PR #32)
+## Latest Changes (PR #33)
 
-- Implemented rm command for basic file removal
-- Support deletion of single files only
-- Prevent accidental directory deletion
-- Clear error messages for non-existent files and permission issues
+- Added rm -r option for recursive directory removal
+- Implemented rm -f for force deletion (ignore errors)
+- Support rm -rf combination for powerful cleanup
+- Handle both files and directories with recursive option
 
 ## Usage
 
@@ -65,6 +65,9 @@ Available commands:
   mkdir <directory>             - Make directory
   mkdir -p <directory>          - Make directory (create parents)
   rm <file>                     - Remove file
+  rm -r <directory>             - Remove directory recursively
+  rm -f <file>                  - Force remove (ignore errors)
+  rm -rf <path>                 - Force recursive removal
   repeat <count> <message...>   - Repeat message count times
   exit                          - Exit the program
   quit                          - Exit the program
@@ -105,16 +108,19 @@ Cargo.toml
 > write test.txt Hello world
 File written successfully: test.txt
 
-> rm test.txt
-> ls
-src/
-Cargo.toml
-
-> rm nonexistent.txt
-IO error: No such file or directory (os error 2)
-
-> rm src
+> mkdir -p test/nested
+> rm test
 IO error: Is a directory
+
+> rm -r test
+> ls
+# test directory removed
+
+> rm -f nonexistent.txt
+# No error (force mode)
+
+> rm -rf anything
+# Removes anything, no errors
 ```
 
 ### Debug Mode

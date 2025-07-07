@@ -213,20 +213,36 @@ pub fn handle_mkdir(path: &str, parents: bool) -> Result<()> {
     Ok(())
 }
 
-/// ファイルを削除する
+/// ファイル/ディレクトリを削除する
 ///
 /// # Errors
 ///
 /// - ファイルが存在しない場合
 /// - ディレクトリを指定した場合
 /// - 削除権限がない場合
-pub fn handle_rm(path: &str) -> Result<()> {
+pub fn handle_rm(path: &str, recursive: bool, force: bool) -> Result<()> {
     debug!("deleting file: {path}");
 
-    fs::remove_file(path)?;
-    info!("Deleted file: {path}");
+    let result = if recursive {
+        fs::remove_dir_all(path).or_else(|_| fs::remove_file(path))
+    } else {
+        fs::remove_file(path)
+    };
 
-    Ok(())
+    match result {
+        Ok(()) => {
+            info!("Deleted file: {path}");
+            Ok(())
+        }
+        Err(e) => {
+            if force {
+                debug!("force mode : ignoring error - {e}");
+                Ok(())
+            } else {
+                Err(RucliError::IoError(e))
+            }
+        }
+    }
 }
 
 /// プログラムを終了する
