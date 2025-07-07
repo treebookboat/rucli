@@ -193,6 +193,22 @@ pub fn handle_pwd() -> Result<()> {
     Ok(())
 }
 
+/// ディレクトリを作成する
+///
+/// # Errors
+///
+/// - 既にディレクトリが存在する場合
+/// - 親ディレクトリが存在しない場合
+/// - 書き込み権限がない場合
+pub fn handle_mkdir(path: &str) -> Result<()> {
+    debug!("Creating directory : {path}");
+
+    fs::create_dir(path)?;
+
+    debug!("Created directory : {path}");
+    Ok(())
+}
+
 /// プログラムを終了する
 pub fn handle_exit() {
     info!("Exiting rucli");

@@ -116,6 +116,9 @@ pub fn parse_command(input: &str) -> Result<Command> {
             path: (*path).to_string(),
         }),
         ["pwd"] => Ok(Command::Pwd),
+        ["mkdir", path] => Ok(Command::Mkdir {
+            path: (*path).to_string(),
+        }),
         ["exit" | "quit"] => Ok(Command::Exit),
         commands => Err(RucliError::UnknownCommand(commands.join(" ").to_string())),
     }

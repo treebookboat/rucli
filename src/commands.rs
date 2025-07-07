@@ -23,6 +23,8 @@ pub enum Command {
     Cd { path: String },
     /// 現在の作業ディレクトリを表示
     Pwd,
+    /// ディレクトリを作成
+    Mkdir { path: String },
     /// プログラムを終了
     Exit,
 }
@@ -113,6 +115,13 @@ pub const COMMANDS: &[CommandInfo] = &[
         min_args: 0,
         max_args: Some(0),
     },
+    CommandInfo {
+        name: "mkdir",
+        description: "Make directories",
+        usage: "mkdir <directory>",
+        min_args: 1,
+        max_args: Some(1),
+    },
 ];
 
 /// コマンドを実行する
@@ -143,6 +152,7 @@ pub fn execute_command(command: Command) -> Result<()> {
         Command::Ls => handle_ls(),
         Command::Cd { path } => handle_cd(&path),
         Command::Pwd => handle_pwd(),
+        Command::Mkdir { path } => handle_mkdir(&path),
         Command::Exit => {
             handle_exit();
             Ok(())

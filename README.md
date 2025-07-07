@@ -2,9 +2,9 @@
 
 🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
 
-## Progress: 28/100 PRs
+## Progress: 30/100 PRs
 
-[■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
 
 ## Current Phase: Basic Features (26-45)
 
@@ -35,13 +35,15 @@ Implementing file operations and search capabilities.
 - [x] PR #26: Working directory management foundation
 - [x] PR #27: pwd command implementation
 - [x] PR #28: cd command basic implementation
+- [x] PR #29: cd advanced features (-, ~, ..)
+- [x] PR #30: mkdir command basic implementation
 
-## Latest Changes (PR #29)
+## Latest Changes (PR #30)
 
-- Added cd - to return to previous directory
-- Implemented cd ~ and cd (no args) for home directory navigation  
-- Store previous directory in OLDPWD environment variable
-- Proper error handling for unset OLDPWD and HOME variables
+- Implemented mkdir command for creating directories
+- Handle errors for existing directories
+- Support basic single directory creation
+- Clear error messages for permission and existence issues
 
 ## Usage
 
@@ -60,6 +62,7 @@ Available commands:
   cd                            - Change to home directory
   cd -                          - Change to previous directory
   cd ~                          - Change to home directory
+  mkdir <directory>             - Make directory
   repeat <count> <message...>   - Repeat message count times
   exit                          - Exit the program
   quit                          - Exit the program
@@ -85,6 +88,12 @@ Options:
 > cd
 > pwd
 /home/user
+
+> mkdir testdir
+> ls
+testdir/
+src/
+Cargo.toml
 
 > echo Hello World
 Hello World
@@ -205,7 +214,8 @@ cargo test -- --nocapture
 - [x] PR #27: pwd command implementation
 - [x] PR #28: cd command basic implementation
 - [x] PR #29: cd advanced features (-, ~, ..)
-- [ ] PR #30-31: mkdir command with options
+- [x] PR #30: mkdir command basic implementation
+- [ ] PR #31: mkdir -p option (recursive)
 - [ ] PR #32-33: rm command with safety features
 - [ ] PR #34-37: cp command with directory support
 - [ ] PR #38: mv command implementation
