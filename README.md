@@ -2,9 +2,9 @@
 
 🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
 
-## Progress: 27/100 PRs
+## Progress: 28/100 PRs
 
-[■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+[■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
 
 ## Current Phase: Basic Features (26-45)
 
@@ -34,13 +34,14 @@ Implementing file operations and search capabilities.
 - [x] PR #25: First refactoring (Part 2) - Documentation
 - [x] PR #26: Working directory management foundation
 - [x] PR #27: pwd command implementation
+- [x] PR #28: cd command basic implementation
 
-## Latest Changes (PR #27)
+## Latest Changes (PR #28)
 
-- Implemented pwd command to display current working directory
-- Added error handling for inaccessible or deleted directories
-- Used display() method for clean path output
-- Added debug logging for directory operations
+- Implemented cd command for basic directory navigation
+- Added validation for path existence and directory type
+- Included proper error messages for invalid paths
+- Supports both relative and absolute paths
 
 ## Usage
 
@@ -55,6 +56,7 @@ Available commands:
   write <filename> <content...> - Write content to file
   ls                            - List directory contents
   pwd                           - Print working directory
+  cd <directory>                - Change directory
   repeat <count> <message...>   - Repeat message count times
   exit                          - Exit the program
   quit                          - Exit the program
@@ -62,19 +64,22 @@ Available commands:
 Options:
   --debug                       - Enable debug mode with detailed logging
 
+> pwd
+/home/user/rucli
+
+> cd src
+> pwd
+/home/user/rucli/src
+
+> cd ..
+> pwd
+/home/user/rucli
+
 > echo Hello World
 Hello World
 
-> repeat 3 Hi!
-Hi!
-Hi!
-Hi!
-
 > cat README.md
 [File contents displayed]
-
-> write test.txt Some content here
-File written successfully: test.txt
 ```
 
 ### Debug Mode
@@ -186,8 +191,8 @@ cargo test -- --nocapture
 ### Phase 2: Basic Features (PR 26-45) - 20 PRs
 
 - [x] PR #26: Working directory management foundation
-- [ ] PR #27: pwd command implementation
-- [ ] PR #28: cd command basic implementation
+- [x] PR #27: pwd command implementation
+- [x] PR #28: cd command basic implementation
 - [ ] PR #29: cd advanced features (-, ~, ..)
 - [ ] PR #30-31: mkdir command with options
 - [ ] PR #32-33: rm command with safety features

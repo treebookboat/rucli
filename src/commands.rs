@@ -19,6 +19,8 @@ pub enum Command {
     Write { filename: String, content: String },
     /// ディレクトリの内容を一覧表示
     Ls,
+    /// ディレクトリを変更
+    Cd { path: String },
     /// 現在の作業ディレクトリを表示
     Pwd,
     /// プログラムを終了
@@ -91,6 +93,13 @@ pub const COMMANDS: &[CommandInfo] = &[
         max_args: Some(0),
     },
     CommandInfo {
+        name: "cd",
+        description: "Change directory",
+        usage: "cd <directory>",
+        min_args: 1,
+        max_args: Some(1),
+    },
+    CommandInfo {
         name: "quit",
         description: "Exit the program",
         usage: "quit",
@@ -132,6 +141,7 @@ pub fn execute_command(command: Command) -> Result<()> {
             Ok(())
         }
         Command::Ls => handle_ls(),
+        Command::Cd { path } => handle_cd(&path),
         Command::Pwd => handle_pwd(),
         Command::Exit => {
             handle_exit();

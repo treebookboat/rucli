@@ -138,6 +138,22 @@ pub fn handle_ls() -> Result<()> {
     Ok(())
 }
 
+/// 現在のディレクトリの内容を一覧表示する
+///
+/// # Errors
+///
+/// - ディレクトリが存在しない場合
+/// - ディレクトリではなくファイルを指定した場合
+/// - アクセス権限がない場合
+pub fn handle_cd(path: &str) -> Result<()> {
+    // ディレクトリ変更
+    env::set_current_dir(path)?;
+
+    debug!("change directory to : {path}");
+
+    Ok(())
+}
+
 /// 現在の作業ディレクトリを表示
 ///
 /// # Errors
