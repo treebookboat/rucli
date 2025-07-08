@@ -2,9 +2,9 @@
 
 🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
 
-## Progress: 38/100 PRs
+## Progress: 39/100 PRs
 
-[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
 
 ## Current Phase: Basic Features (26-45)
 
@@ -45,14 +45,15 @@ Implementing file operations and search capabilities.
 - [x] PR #36: mv command implementation
 - [x] PR #37: PR numbering adjustment
 - [x] PR #38: find command basic implementation
+- [x] PR #39: find command with wildcard support
 
-## Latest Changes (PR #38)
+## Latest Changes (PR #39)
 
-- Implemented find command for recursive file search
-- Search by exact filename match
-- Optional directory argument (defaults to current directory)
-- Recursive traversal through subdirectories
-- Clean path display using display() method
+- Added wildcard pattern matching to find command
+- Support for `*` (matches 0 or more characters)
+- Support for `?` (matches exactly 1 character)
+- Recursive pattern matching algorithm with backtracking
+- Proper handling of edge cases and boundary conditions
 
 ## Usage
 
@@ -80,7 +81,7 @@ Available commands:
   cp <source> <destination>     - Copy files
   cp -r <source> <destination>  - Copy directories recursively
   mv <source> <destination>     - Move/rename files or directories
-  find [directory] <filename>   - Find files by name
+  find [directory] <pattern>    - Find files by name (wildcards: *, ?)
   repeat <count> <message...>   - Repeat message count times
   exit                          - Exit the program
   quit                          - Exit the program
@@ -88,29 +89,49 @@ Available commands:
 Options:
   --debug                       - Enable debug mode with detailed logging
 
-# File search examples
-> find README.md
-./README.md
-
-> find src main.rs
-src/main.rs
-
-> write test.txt Hello
-File written successfully: test.txt
-> mkdir -p deep/nested/dir
-> cp test.txt deep/nested/dir/
-> find test.txt
+# Find examples with wildcards
+> find "*.txt"
+./README.txt
+./docs/guide.txt
 ./test.txt
-./deep/nested/dir/test.txt
 
-# Search in specific directory
-> find src lib.rs
+> find "test*"
+./test.txt
+./test.rs
+./tests/
+
+> find "???.rs"
+./src/lib.rs
+./src/app.rs
+
+> find "*test*.rs"
+./tests/test_basic.rs
+./tests/test_advanced.rs
+./src/test_utils.rs
+
+# Complex patterns
+> find "src/*.rs"
+src/main.rs
 src/lib.rs
+src/error.rs
+src/parser.rs
+src/commands.rs
+src/handlers.rs
 
-# No results (silent)
-> find nonexistent.txt
->
+# Multiple wildcards
+> find "*.*"
+./README.md
+./Cargo.toml
+./test.txt
+... (all files with extensions)
 ```
+
+### Wildcard Patterns
+
+- `*` - Matches zero or more characters
+- `?` - Matches exactly one character
+- Patterns can contain multiple wildcards
+- Case-sensitive matching
 
 ### Debug Mode
 
@@ -119,18 +140,18 @@ src/lib.rs
 $ cargo run -- --debug
 
 # Debug output for find command includes:
-# - Search start directory
-# - Each directory traversed
-# - Match detection
-# - Error handling for inaccessible directories
+# - Pattern matching steps
+# - Backtracking decisions
+# - Directory traversal
+# - Match results
 
 # Example debug output:
-> find test.txt
-[DEBUG] Searching for test.txt starting from .
-[DEBUG] Checking ./test.txt
+> find "t*.txt"
+[DEBUG] Searching for pattern: t*.txt
+[DEBUG] Checking: test.txt
+[DEBUG] Pattern match successful
 [DEBUG] Found match: ./test.txt
-[DEBUG] Entering directory: ./src
-[DEBUG] 処理時間: 1.2ms
+[DEBUG] 処理時間: 2.5ms
 ```
 
 ## Project Structure
@@ -157,6 +178,7 @@ The codebase follows Rust best practices:
 - Extensive logging for debugging
 - Thorough test coverage
 - Atomic file operations where possible
+- Efficient pattern matching algorithms
 
 ## Error Handling
 
@@ -188,7 +210,7 @@ RUST_LOG=rucli::handlers=debug cargo run  # Debug for handlers only
 - **ERROR**: Command execution failures
 - **WARN**: Invalid operations (e.g., cat on directory)
 - **INFO**: Important operations (file writes, reads, copies, moves, program start/exit)
-- **DEBUG**: Command parsing, validation, operation details, directory traversal
+- **DEBUG**: Command parsing, validation, operation details, pattern matching steps
 - **TRACE**: Detailed command lookup and parsing steps
 
 ## Testing
@@ -248,7 +270,7 @@ cargo test -- --nocapture
 - [x] PR #36: mv command implementation
 - [x] PR #37: PR numbering adjustment
 - [x] PR #38: find command basic implementation
-- [ ] PR #39: find command with wildcards
+- [x] PR #39: find command with wildcard support
 - [ ] PR #40-41: grep command implementation
 - [ ] PR #42: Command aliases
 - [ ] PR #43-44: Third refactoring

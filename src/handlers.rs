@@ -350,12 +350,12 @@ pub fn handle_mv(source: &str, destination: &str) -> Result<()> {
     Ok(())
 }
 
-/// ファイルを名前で検索する
+/// ファイルを名前で検索する（ワイルドカード対応）
 ///
 /// # Arguments
 ///
 /// * `path` - 検索を開始するディレクトリ（Noneの場合はカレントディレクトリ）
-/// * `name` - 検索するファイル名
+/// * `pattern` - 検索パターン（ワイルドカード: *, ? を使用可能）
 ///
 /// # Errors
 ///
@@ -371,8 +371,10 @@ pub fn handle_find(path: Option<&str>, name: &str) -> Result<()> {
         let entry_path = entry.path();
 
         // ファイル名が一致すればパスを出力
-        if entry_path.file_name().and_then(|n| n.to_str()) == Some(name) {
-            println!("{}", entry_path.display());
+        if let Some(filename) = entry_path.file_name().and_then(|n| n.to_str()) {
+            if matches_pattern(filename, name) {
+                println!("{}", entry_path.display());
+            }
         }
 
         // ディレクトリであれば再帰的に探索
@@ -382,6 +384,56 @@ pub fn handle_find(path: Option<&str>, name: &str) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// パターンがファイル名にマッチするかチェック
+fn matches_pattern(filename: &str, pattern: &str) -> bool {
+    match_helper(filename.as_bytes(), pattern.as_bytes(), 0, 0)
+}
+
+fn match_helper(filename: &[u8], pattern: &[u8], fi: usize, pi: usize) -> bool {
+    // 両方終わった → OK
+    if pi >= pattern.len() && fi >= filename.len() {
+        return true;
+    }
+
+    // パターンだけ終わった → NG
+    if pi >= pattern.len() {
+        return false;
+    }
+
+    // ファイル名だけ終わったなら残りが全部*ならOK
+    if fi >= filename.len() {
+        return pattern[pi..].iter().all(|&c| c == b'*');
+    }
+
+    match pattern[pi] {
+        b'?' => {
+            // ファイルの長さがパターンより短いとダメ
+            match_helper(filename, pattern, fi + 1, pi + 1)
+        }
+        b'*' => {
+            // *を消して次の文字と比較
+            if match_helper(filename, pattern, fi, pi + 1) {
+                return true;
+            }
+
+            // *の文字を増やす
+            if match_helper(filename, pattern, fi + 1, pi) {
+                return true;
+            }
+
+            // 多分ここまで来ないはず
+            false
+        }
+        _ => {
+            if pattern[pi] == filename[fi] {
+                match_helper(filename, pattern, fi + 1, pi + 1)
+            } else {
+                false
+            }
+        }
+    }
 }
 
 /// プログラムを終了する

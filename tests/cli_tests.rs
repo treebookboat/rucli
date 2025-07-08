@@ -76,7 +76,7 @@ fn test_cat_command() {
     // catコマンド実行
     let stdin = child.stdin.as_mut().unwrap();
     let file_path_str = file_path.to_str().unwrap();
-    writeln!(stdin, "cat {}", file_path_str).unwrap();
+    writeln!(stdin, "cat {file_path_str}").unwrap();
     writeln!(stdin, "exit").unwrap();
 
     // 出力確認
@@ -106,7 +106,7 @@ fn test_write_command() {
     // writeコマンド実行
     let stdin = child.stdin.as_mut().unwrap();
     let file_path_str = file_path.to_str().unwrap();
-    writeln!(stdin, "write {} Hello from write!", file_path_str).unwrap();
+    writeln!(stdin, "write {file_path_str} Hello from write!").unwrap();
     writeln!(stdin, "exit").unwrap();
 
     // 出力確認
