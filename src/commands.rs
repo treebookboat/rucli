@@ -42,10 +42,15 @@ pub enum Command {
     /// ファイルの検索
     Find {
         path: Option<String>, // 検索開始ディレクトリ(何もなければホームポジション)
-        name: String,         // 検索するふぃあるめい
+        name: String,         // 検索するファイル名
     },
     /// ファイル内のテキスト検索
     Grep { pattern: String, files: Vec<String> },
+    /// アライアス設定
+    Alias {
+        name: Option<String>,
+        command: Option<String>,
+    },
     /// プログラムを終了
     Exit,
 }
@@ -164,13 +169,19 @@ pub const COMMANDS: &[CommandInfo] = &[
         min_args: 1,
         max_args: Some(2),
     },
-    // CommandInfo に追加
     CommandInfo {
         name: "grep",
         description: "Search for pattern in files",
         usage: "grep <pattern> <file...>",
         min_args: 2,
         max_args: None, // 複数ファイル対応
+    },
+    CommandInfo {
+        name: "alias",
+        description: "Set or show command aliases",
+        usage: "alias [name=command]",
+        min_args: 0,
+        max_args: Some(1),
     },
     CommandInfo {
         name: "find",
@@ -226,6 +237,7 @@ pub fn execute_command(command: Command) -> Result<()> {
         } => handle_mv(&source, &destination),
         Command::Find { path, name } => handle_find(path.as_deref(), &name),
         Command::Grep { pattern, files } => handle_grep(&pattern, &files),
+        Command::Alias { name, command } => handle_alias(name.as_deref(), command.as_deref()),
         Command::Exit => {
             handle_exit();
             Ok(())

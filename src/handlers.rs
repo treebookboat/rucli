@@ -1,5 +1,6 @@
 //! 各コマンドの実装を提供するモジュール
 
+use crate::alias::{list_aliases, set_alias};
 use crate::error::{Result, RucliError};
 use log::{debug, info, warn};
 use regex::Regex;
@@ -490,6 +491,37 @@ fn grep_file(pattern: &str, filepath: &str) -> Result<Vec<(usize, String)>> {
     }
 
     Ok(results)
+}
+
+// handlers.rs に追加
+/// コマンドエイリアスを管理する
+///
+/// # Arguments
+///
+/// * `name` - エイリアス名（Noneの場合は一覧表示）
+/// * `command` - エイリアスに設定するコマンド
+///
+/// # Errors
+///
+/// - 無効なエイリアス名の場合
+pub fn handle_alias(name: Option<&str>, command: Option<&str>) -> Result<()> {
+    match (name, command) {
+        (None, None) => {
+            // ALIASESから全て取得して一覧表示
+            for (name, cmd) in list_aliases() {
+                println!("{name} = {cmd}");
+            }
+        }
+        (Some(name), Some(cmd)) => {
+            set_alias(name, cmd);
+        }
+        _ => {
+            // このパターンは来ないはず（パーサーで防いでいる）
+            unreachable!()
+        }
+    }
+
+    Ok(())
 }
 
 /// プログラムを終了する

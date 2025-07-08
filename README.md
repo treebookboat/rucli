@@ -2,9 +2,9 @@
 
 🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
 
-## Progress: 41/100 PRs
+## Progress: 42/100 PRs
 
-[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
 
 ## Current Phase: Basic Features (26-45)
 
@@ -48,14 +48,15 @@ Implementing file operations and search capabilities.
 - [x] PR #39: find command with wildcard support
 - [x] PR #40: grep command basic implementation
 - [x] PR #41: grep with regex support
+- [x] PR #42: Command aliases
 
-## Latest Changes (PR #41)
+## Latest Changes (PR #42)
 
-- Added regular expression support to grep command
-- Integrated regex crate for pattern matching
-- Support for common regex patterns: ^, $, ., *, +, [], etc.
-- Efficient regex compilation (once per file)
-- Proper error handling for invalid regex patterns
+- Implemented command alias functionality
+- Set aliases with `alias name=command` syntax
+- List all aliases with `alias` command
+- Automatic alias expansion during command parsing
+- Thread-safe global alias storage using once_cell
 
 ## Usage
 
@@ -85,6 +86,7 @@ Available commands:
   mv <source> <destination>     - Move/rename files or directories
   find [directory] <pattern>    - Find files by name (wildcards: *, ?)
   grep <pattern> <file...>      - Search for pattern in files (regex)
+  alias [name=command]          - Set or show command aliases
   repeat <count> <message...>   - Repeat message count times
   exit                          - Exit the program
   quit                          - Exit the program
@@ -92,53 +94,46 @@ Available commands:
 Options:
   --debug                       - Enable debug mode with detailed logging
 
-# Regex grep examples
-> write code.rs fn main() {\n    println!(\"Hello\");\n}\nfn test() {}
-File written successfully: code.rs
+# Alias examples
+> alias ll=ls
+Alias 'll' set to 'ls'
 
-# Basic regex patterns
-> grep ^fn code.rs
-1: fn main() {
-4: fn test() {}
+> alias la=ls
+Alias 'la' set to 'ls'
 
-> grep main.* code.rs
-1: fn main() {
+> ll
+main.rs
+lib.rs
+commands.rs
+handlers.rs
 
-> grep [0-9]+ numbers.txt
-3: Version 1.2.3
-5: Count: 42
+# List all aliases
+> alias
+ll = ls
+la = ls
 
-# Character classes
-> grep [a-z]+ file.txt
-# Matches lowercase words
+# Using aliases with arguments
+> alias g=grep
+Alias 'g' set to 'grep'
 
-# Anchors
-> grep ^# README.md
-# Matches lines starting with #
+> g TODO src/*.rs
+src/main.rs:5: // TODO: Add configuration file support
+src/handlers.rs:12: // TODO: Implement streaming for large files
 
-# Repetition
-> grep lo+ test.txt
-# Matches "lo", "loo", "looo", etc.
+# Aliases work everywhere except in alias command itself
+> alias ll
+ll = ls  # Would show if individual lookup was supported
 
-# Note: Currently quotes must be omitted in patterns
-# Use: grep ^test file.txt
-# Not: grep "^test" file.txt
+# Note: Aliases are not persistent (lost on exit)
 ```
 
-### Regular Expression Support
+### Alias Features
 
-Common regex patterns:
-- `.` - Any character
-- `*` - Zero or more of preceding
-- `+` - One or more of preceding
-- `?` - Zero or one of preceding
-- `^` - Start of line
-- `$` - End of line
-- `[abc]` - Character class
-- `[a-z]` - Character range
-- `\d` - Digit
-- `\w` - Word character
-- `|` - Alternation (OR)
+- Simple command shortcuts
+- One-level expansion (no recursive aliases)
+- Protected keywords (cannot alias 'alias' command)
+- In-memory storage (not persistent)
+- Thread-safe implementation
 
 ### Debug Mode
 
@@ -146,25 +141,21 @@ Common regex patterns:
 # Run with debug logging enabled
 $ cargo run -- --debug
 
-# Debug output for grep includes:
-# - Regex compilation status
-# - Pattern being searched
-# - Match results per line
+# Debug output for alias includes:
+# - Alias expansion attempts
+# - Storage operations
+# - Command transformation
 
 # Example debug output:
-> grep [0-9]+ test.txt
-[DEBUG] Regex compiled: '[0-9]+'
-[DEBUG] Searching in file: test.txt
-[DEBUG] Line 5 matches pattern
-5: Count: 123
-[DEBUG] 処理時間: 2.1ms
+> alias ll=ls
+[DEBUG] Setting alias: ll = ls
+[INFO] Alias 'll' set to 'ls'
+
+> ll
+[DEBUG] Looking up alias for: ll
+[DEBUG] Alias found: ll -> ls
+[DEBUG] Executing command: ls
 ```
-
-## Known Limitations
-
-- Quote handling in the parser needs improvement
-- Currently, regex patterns should be entered without quotes
-- Complex patterns with spaces require parser updates (future PR)
 
 ## Dependencies
 
@@ -173,6 +164,7 @@ $ cargo run -- --debug
 env_logger = "0.11"
 log = "0.4"
 regex = "1.11"
+once_cell = "1.19"
 ```
 
 ## Project Structure
@@ -184,7 +176,8 @@ src/
 ├── commands.rs   # Command definitions and execution with Result types
 ├── parser.rs     # Command parsing with RucliError (with tests)
 ├── handlers.rs   # Command implementation handlers
-└── error.rs      # Custom error types
+├── error.rs      # Custom error types
+└── alias.rs      # Alias management module
 
 tests/
 └── cli_tests.rs  # Integration tests (11 tests)
@@ -202,6 +195,7 @@ The codebase follows Rust best practices:
 - Efficient pattern matching algorithms
 - Memory-efficient file processing
 - Optimized regex compilation
+- Thread-safe global state management
 
 ## Error Handling
 
@@ -233,8 +227,8 @@ RUST_LOG=rucli::handlers=debug cargo run  # Debug for handlers only
 ### Log Categories:
 - **ERROR**: Command execution failures, invalid regex patterns
 - **WARN**: Invalid operations (e.g., cat on directory)
-- **INFO**: Important operations (file writes, reads, copies, moves, grep matches, program start/exit)
-- **DEBUG**: Command parsing, validation, operation details, regex compilation
+- **INFO**: Important operations (file writes, reads, copies, moves, grep matches, alias operations, program start/exit)
+- **DEBUG**: Command parsing, validation, operation details, alias expansion
 - **TRACE**: Detailed command lookup and parsing steps
 
 ## Testing
@@ -297,7 +291,7 @@ cargo test -- --nocapture
 - [x] PR #39: find command with wildcard support
 - [x] PR #40: grep command basic implementation
 - [x] PR #41: grep with regex support
-- [ ] PR #42: Command aliases
+- [x] PR #42: Command aliases
 - [ ] PR #43-44: Third refactoring
 - [ ] PR #45: Phase 2 completion
 

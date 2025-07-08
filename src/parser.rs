@@ -1,5 +1,6 @@
 //! コマンドライン入力をパースするモジュール
 
+use crate::alias::get_alias;
 use crate::commands::{COMMANDS, Command, CommandInfo};
 use crate::error::{Result, RucliError};
 use log::{debug, trace};
@@ -77,6 +78,16 @@ pub fn parse_command(input: &str) -> Result<Command> {
     let cmd_name = parts[0];
     let args = &parts[1..];
 
+    // エイリアス展開部分
+    let alias = get_alias(cmd_name);
+    let cmd_name = if cmd_name != "alias" {
+        debug!("alias succeed");
+        alias.as_deref().unwrap_or(cmd_name)
+    } else {
+        debug!("no alias");
+        cmd_name
+    };
+
     // 引数の数チェック
     if let Some(cmd_info) = find_command(cmd_name) {
         validate_args(cmd_info, args)?;
@@ -89,92 +100,189 @@ pub fn parse_command(input: &str) -> Result<Command> {
         args.len()
     );
 
-    match parts.as_slice() {
-        ["help"] => Ok(Command::Help),
-        ["echo", message @ ..] => Ok(Command::Echo {
-            message: message.join(" "),
+    match cmd_name {
+        "help" if args.is_empty() => Ok(Command::Help),
+
+        "echo" => Ok(Command::Echo {
+            message: args.join(" "),
         }),
-        ["cat", filename] => Ok(Command::Cat {
-            filename: (*filename).to_string(),
-        }),
-        ["write", filename, content @ ..] => Ok(Command::Write {
-            filename: (*filename).to_string(),
-            content: content.join(" "),
-        }),
-        ["ls"] => Ok(Command::Ls),
-        ["repeat", count, message @ ..] => match count.parse::<i32>() {
-            Ok(count) if count > 0 => Ok(Command::Repeat {
-                count,
-                message: message.join(" "),
+
+        "cat" => match args {
+            [filename] => Ok(Command::Cat {
+                filename: filename.to_string(),
             }),
-            Ok(_) => Err(RucliError::ParseError("count must be positive".to_string())),
-            Err(_) => Err(RucliError::ParseError(format!(
-                "{count} isn't a valid number"
-            ))),
+            _ => Err(RucliError::InvalidArgument(
+                "cat requires exactly 1 argument".to_string(),
+            )),
         },
-        ["cd"] => Ok(Command::Cd {
-            path: DEFAULT_HOME_INDICATOR.to_string(),
-        }),
-        ["cd", path] => Ok(Command::Cd {
-            path: (*path).to_string(),
-        }),
-        ["pwd"] => Ok(Command::Pwd),
-        ["mkdir", "-p", path] => Ok(Command::Mkdir {
-            path: (*path).to_string(),
-            parents: true,
-        }),
-        ["mkdir", path] => Ok(Command::Mkdir {
-            path: (*path).to_string(),
-            parents: false,
-        }),
-        ["rm", "-r", path] => Ok(Command::Rm {
-            path: (*path).to_string(),
-            recursive: true,
-            force: false,
-        }),
-        ["rm", "-f", path] => Ok(Command::Rm {
-            path: (*path).to_string(),
-            recursive: false,
-            force: true,
-        }),
-        ["rm", "-rf", path] | ["rm", "-fr", path] => Ok(Command::Rm {
-            path: (*path).to_string(),
-            recursive: true,
-            force: true,
-        }),
-        ["rm", path] => Ok(Command::Rm {
-            path: (*path).to_string(),
-            recursive: false,
-            force: false,
-        }),
-        ["cp", source, destination] => Ok(Command::Cp {
-            source: (*source).to_string(),
-            destination: (*destination).to_string(),
-            recursive: false,
-        }),
-        ["cp", "-r", source, destination] => Ok(Command::Cp {
-            source: (*source).to_string(),
-            destination: (*destination).to_string(),
-            recursive: true,
-        }),
-        ["mv", source, destination] => Ok(Command::Mv {
-            source: (*source).to_string(),
-            destination: (*destination).to_string(),
-        }),
-        ["find", path, name] => Ok(Command::Find {
-            path: Some((*path).to_string()),
-            name: (*name).to_string(),
-        }),
-        ["find", name] => Ok(Command::Find {
-            path: None,
-            name: (*name).to_string(),
-        }),
-        ["grep", pattern, files @ ..] => Ok(Command::Grep {
-            pattern: (*pattern).to_string(),
-            files: files.iter().map(|f| (*f).to_string()).collect(),
-        }),
-        ["exit" | "quit"] => Ok(Command::Exit),
-        commands => Err(RucliError::UnknownCommand(commands.join(" ").to_string())),
+
+        "write" => match args {
+            [filename, content @ ..] => Ok(Command::Write {
+                filename: filename.to_string(),
+                content: content.join(" "),
+            }),
+            _ => Err(RucliError::InvalidArgument(
+                "write requires at least 2 arguments".to_string(),
+            )),
+        },
+
+        "ls" if args.is_empty() => Ok(Command::Ls),
+
+        "repeat" => match args {
+            [count, message @ ..] => match count.parse::<i32>() {
+                Ok(count) if count > 0 => Ok(Command::Repeat {
+                    count,
+                    message: message.join(" "),
+                }),
+                Ok(_) => Err(RucliError::ParseError("count must be positive".to_string())),
+                Err(_) => Err(RucliError::ParseError(format!(
+                    "{count} isn't a valid number"
+                ))),
+            },
+            _ => Err(RucliError::InvalidArgument(
+                "repeat requires at least 2 arguments".to_string(),
+            )),
+        },
+
+        "cd" => match args {
+            [] => Ok(Command::Cd {
+                path: DEFAULT_HOME_INDICATOR.to_string(),
+            }),
+            [path] => Ok(Command::Cd {
+                path: path.to_string(),
+            }),
+            _ => Err(RucliError::InvalidArgument(
+                "cd accepts at most 1 argument".to_string(),
+            )),
+        },
+
+        "pwd" if args.is_empty() => Ok(Command::Pwd),
+
+        "mkdir" => match args {
+            ["-p", path] => Ok(Command::Mkdir {
+                path: path.to_string(),
+                parents: true,
+            }),
+            [path] => Ok(Command::Mkdir {
+                path: path.to_string(),
+                parents: false,
+            }),
+            _ => Err(RucliError::InvalidArgument(
+                "mkdir requires 1 or 2 arguments".to_string(),
+            )),
+        },
+
+        "rm" => match args {
+            ["-r", path] => Ok(Command::Rm {
+                path: path.to_string(),
+                recursive: true,
+                force: false,
+            }),
+            ["-f", path] => Ok(Command::Rm {
+                path: path.to_string(),
+                recursive: false,
+                force: true,
+            }),
+            ["-rf", path] | ["-fr", path] => Ok(Command::Rm {
+                path: path.to_string(),
+                recursive: true,
+                force: true,
+            }),
+            [path] => Ok(Command::Rm {
+                path: path.to_string(),
+                recursive: false,
+                force: false,
+            }),
+            _ => Err(RucliError::InvalidArgument(
+                "rm requires 1 or 2 arguments".to_string(),
+            )),
+        },
+
+        "cp" => match args {
+            [source, destination] => Ok(Command::Cp {
+                source: source.to_string(),
+                destination: destination.to_string(),
+                recursive: false,
+            }),
+            ["-r", source, destination] => Ok(Command::Cp {
+                source: source.to_string(),
+                destination: destination.to_string(),
+                recursive: true,
+            }),
+            _ => Err(RucliError::InvalidArgument(
+                "cp requires 2 or 3 arguments".to_string(),
+            )),
+        },
+
+        "mv" => match args {
+            [source, destination] => Ok(Command::Mv {
+                source: source.to_string(),
+                destination: destination.to_string(),
+            }),
+            _ => Err(RucliError::InvalidArgument(
+                "mv requires exactly 2 arguments".to_string(),
+            )),
+        },
+
+        "find" => match args {
+            [path, name] => Ok(Command::Find {
+                path: Some(path.to_string()),
+                name: name.to_string(),
+            }),
+            [name] => Ok(Command::Find {
+                path: None,
+                name: name.to_string(),
+            }),
+            _ => Err(RucliError::InvalidArgument(
+                "find requires 1 or 2 arguments".to_string(),
+            )),
+        },
+
+        "grep" => match args {
+            [pattern, files @ ..] if !files.is_empty() => Ok(Command::Grep {
+                pattern: pattern.to_string(),
+                files: files.iter().map(|f| f.to_string()).collect(),
+            }),
+            _ => Err(RucliError::InvalidArgument(
+                "grep requires at least 2 arguments".to_string(),
+            )),
+        },
+
+        "alias" => match args {
+            [] => Ok(Command::Alias {
+                name: None,
+                command: None,
+            }),
+            [setting] => {
+                if let Some((name, cmd)) = setting.split_once("=") {
+                    Ok(Command::Alias {
+                        name: Some(name.to_string()),
+                        command: Some(cmd.to_string()),
+                    })
+                } else {
+                    Err(RucliError::ParseError("alias needs =".to_string()))
+                }
+            }
+            _ => Err(RucliError::InvalidArgument(
+                "alias accepts at most 1 argument".to_string(),
+            )),
+        },
+
+        "exit" | "quit" => {
+            if args.is_empty() {
+                Ok(Command::Exit)
+            } else {
+                Err(RucliError::InvalidArgument(
+                    "exit/quit accepts no arguments".to_string(),
+                ))
+            }
+        }
+
+        _ => Err(RucliError::UnknownCommand(format!(
+            "{} {}",
+            cmd_name,
+            args.join(" ")
+        ))),
     }
 }
 
