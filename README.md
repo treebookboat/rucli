@@ -2,9 +2,9 @@
 
 🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
 
-## Progress: 35/100 PRs
+## Progress: 38/100 PRs
 
-[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
 
 ## Current Phase: Basic Features (26-45)
 
@@ -42,13 +42,16 @@ Implementing file operations and search capabilities.
 - [x] PR #33: rm extended options (-r, -f, -rf)
 - [x] PR #34: cp command basic implementation
 - [x] PR #35: Second refactoring (Part 1) - Constants
+- [x] PR #37: cp command with directory support (PR #36 merged)
+- [x] PR #38: mv command implementation
 
-## Latest Changes (PR #35)
+## Latest Changes (PR #38)
 
-- Extract magic strings as named constants
-- Define DEFAULT_HOME_PATH and PREVIOUS_DIR_PATH
-- Improve code readability and maintainability
-- Small but important refactoring for better code quality
+- Implemented mv command for moving and renaming files/directories
+- Smart handling when moving files into directories
+- Atomic operations using fs::rename
+- Support for both file and directory moves
+- Proper error handling for cross-device moves
 
 ## Usage
 
@@ -74,6 +77,8 @@ Available commands:
   rm -f <file>                  - Force remove (ignore errors)
   rm -rf <path>                 - Force recursive removal
   cp <source> <destination>     - Copy files
+  cp -r <source> <destination>  - Copy directories recursively
+  mv <source> <destination>     - Move/rename files or directories
   repeat <count> <message...>   - Repeat message count times
   exit                          - Exit the program
   quit                          - Exit the program
@@ -81,19 +86,31 @@ Available commands:
 Options:
   --debug                       - Enable debug mode with detailed logging
 
-> write original.txt Hello, World!
-File written successfully: original.txt
+# File operations
+> write test.txt Hello, World!
+File written successfully: test.txt
 
-> cp original.txt copy.txt
-> cat copy.txt
+# Rename file
+> mv test.txt renamed.txt
+> cat renamed.txt
 Hello, World!
 
-> cp nonexistent.txt dest.txt
-IO error: No such file or directory (os error 2)
+# Move file to directory
+> mkdir docs
+> mv renamed.txt docs/
+> ls docs/
+renamed.txt
 
-> mkdir testdir
-> cp testdir dest
-IO error: the source path is neither a regular file nor a symlink to a regular file
+# Rename directory
+> mv docs documentation
+> ls
+documentation/
+
+# Move directory
+> mkdir archive
+> mv documentation archive/
+> ls archive/
+documentation/
 ```
 
 ### Debug Mode
@@ -102,15 +119,16 @@ IO error: the source path is neither a regular file nor a symlink to a regular f
 # Run with debug logging enabled
 $ cargo run -- --debug
 
-# Debug output for cp command includes:
+# Debug output for mv command includes:
 # - Source and destination paths
-# - Number of bytes copied
-# - Operation timing
+# - Final destination path calculation
+# - Operation success/failure status
 
 # Example debug output:
-> cp file1.txt file2.txt
-[DEBUG] Copying file1.txt to file2.txt
-[INFO] Copied 1024 bytes from file1.txt to file2.txt
+> mv file.txt docs/
+[DEBUG] Moving file.txt to docs/
+[DEBUG] Final destination: docs/file.txt
+[INFO] Successfully moved file.txt to docs/file.txt
 [DEBUG] 処理時間: 0.5ms
 ```
 
@@ -137,6 +155,7 @@ The codebase follows Rust best practices:
 - Modular architecture with clear separation of concerns
 - Extensive logging for debugging
 - Thorough test coverage
+- Atomic file operations where possible
 
 ## Error Handling
 
@@ -167,8 +186,8 @@ RUST_LOG=rucli::handlers=debug cargo run  # Debug for handlers only
 ### Log Categories:
 - **ERROR**: Command execution failures
 - **WARN**: Invalid operations (e.g., cat on directory)
-- **INFO**: Important operations (file writes, reads, copies, program start/exit)
-- **DEBUG**: Command parsing, validation, operation details
+- **INFO**: Important operations (file writes, reads, copies, moves, program start/exit)
+- **DEBUG**: Command parsing, validation, operation details, path calculations
 - **TRACE**: Detailed command lookup and parsing steps
 
 ## Testing
@@ -225,9 +244,8 @@ cargo test -- --nocapture
 - [x] PR #33: rm extended options (-r, -f, -rf)
 - [x] PR #34: cp command basic implementation
 - [x] PR #35: Second refactoring (Part 1) - Constants
-- [ ] PR #36: Second refactoring (Part 2)
-- [ ] PR #37: cp command with directory support
-- [ ] PR #38: mv command implementation
+- [x] PR #37: cp command with directory support (PR #36 merged)
+- [x] PR #38: mv command implementation
 - [ ] PR #39-42: find and grep commands
 - [ ] PR #43: Command aliases
 - [ ] PR #44-45: Third refactoring

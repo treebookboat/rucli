@@ -253,13 +253,100 @@ pub fn handle_rm(path: &str, recursive: bool, force: bool) -> Result<()> {
 /// - ソースファイルが存在しない場合
 /// - ソースがディレクトリの場合
 /// - 書き込み権限がない場合
-pub fn handle_cp(source: &str, destination: &str) -> Result<()> {
+pub fn handle_cp(source: &str, destination: &str, recursive: bool) -> Result<()> {
     debug!("Copying {source} to {destination}");
 
-    let bytes = fs::copy(source, destination)?;
+    let source_path = Path::new(source);
+    let destination_path = Path::new(destination);
+
+    // -rオプションがない状態ではディレクトリのコピーはできない
+    if !recursive && source_path.is_dir() {
+        return Err(RucliError::InvalidArgument(
+            "source is a directory (use -r for recursive copy)".to_string(),
+        ));
+    }
+
+    let bytes = if recursive {
+        copy_dir_recursive(source_path, destination_path)?
+    } else {
+        // destinationがディレクトリであればディレクトリの先にコピー
+        let destination_path = if destination_path.is_dir() {
+            destination_path.join(source_path.file_name().unwrap())
+        } else {
+            destination_path.to_path_buf()
+        };
+
+        fs::copy(source_path, destination_path)?
+    };
 
     info!("Copied {bytes} bytes from {source} to {destination}");
 
+    Ok(())
+}
+
+// 再帰的なコピーを行う
+fn copy_dir_recursive(source: &Path, destination: &Path) -> Result<u64> {
+    // 合計のバイト数
+    let mut bytes = 0;
+
+    // destinationがディレクトリの場合、まず作成
+    if !destination.exists() {
+        fs::create_dir(destination)?;
+    }
+
+    let entries = fs::read_dir(source)?;
+
+    for entry in entries {
+        debug!("now source directory : {entry:?}");
+
+        let entry = entry?;
+
+        // ディレクトリであれば新しいディレクトリを作成し、再帰的に関数を呼ぶ
+        if entry.path().is_dir() {
+            let new_source: std::path::PathBuf = entry.path();
+            let new_destination = Path::new(destination).join(entry.file_name());
+
+            // 新しいディレクトリを作成
+            fs::create_dir(&new_destination)?;
+
+            bytes += copy_dir_recursive(&new_source, &new_destination)?;
+        }
+        // ファイルなのでコピーをする
+        else {
+            let new_source: std::path::PathBuf = entry.path();
+            let new_destination = Path::new(destination).join(entry.file_name());
+
+            bytes += fs::copy(new_source, new_destination)?;
+        }
+    }
+
+    Ok(bytes)
+}
+
+/// ファイルまたはディレクトリを移動・リネームする
+///
+/// # Arguments
+///
+/// * `source` - 移動元のファイルまたはディレクトリのパス
+/// * `destination` - 移動先のパス
+///
+/// # Errors
+///
+/// - ソースが存在しない場合
+/// - 移動先に書き込み権限がない場合
+/// - クロスデバイス移動でコピーに失敗した場合
+pub fn handle_mv(source: &str, destination: &str) -> Result<()> {
+    let source_path = Path::new(source);
+    let destination_path = Path::new(destination);
+
+    // ファイル->ディレクトリの時はディレクトリ内にファイルを移動
+    let destination_path = if source_path.is_file() && destination_path.is_dir() {
+        destination_path.join(source_path.file_name().unwrap())
+    } else {
+        destination_path.to_path_buf()
+    };
+
+    fs::rename(source_path, destination_path)?;
     Ok(())
 }
 
