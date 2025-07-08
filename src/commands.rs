@@ -44,6 +44,8 @@ pub enum Command {
         path: Option<String>, // 検索開始ディレクトリ(何もなければホームポジション)
         name: String,         // 検索するふぃあるめい
     },
+    /// ファイル内のテキスト検索
+    Grep { pattern: String, files: Vec<String> },
     /// プログラムを終了
     Exit,
 }
@@ -162,6 +164,14 @@ pub const COMMANDS: &[CommandInfo] = &[
         min_args: 1,
         max_args: Some(2),
     },
+    // CommandInfo に追加
+    CommandInfo {
+        name: "grep",
+        description: "Search for pattern in files",
+        usage: "grep <pattern> <file...>",
+        min_args: 2,
+        max_args: None, // 複数ファイル対応
+    },
     CommandInfo {
         name: "find",
         description: "Find files by name",
@@ -215,6 +225,7 @@ pub fn execute_command(command: Command) -> Result<()> {
             destination,
         } => handle_mv(&source, &destination),
         Command::Find { path, name } => handle_find(path.as_deref(), &name),
+        Command::Grep { pattern, files } => handle_grep(&pattern, &files),
         Command::Exit => {
             handle_exit();
             Ok(())

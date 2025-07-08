@@ -2,9 +2,9 @@
 
 🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
 
-## Progress: 39/100 PRs
+## Progress: 40/100 PRs
 
-[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
 
 ## Current Phase: Basic Features (26-45)
 
@@ -46,14 +46,15 @@ Implementing file operations and search capabilities.
 - [x] PR #37: PR numbering adjustment
 - [x] PR #38: find command basic implementation
 - [x] PR #39: find command with wildcard support
+- [x] PR #40: grep command basic implementation
 
-## Latest Changes (PR #39)
+## Latest Changes (PR #40)
 
-- Added wildcard pattern matching to find command
-- Support for `*` (matches 0 or more characters)
-- Support for `?` (matches exactly 1 character)
-- Recursive pattern matching algorithm with backtracking
-- Proper handling of edge cases and boundary conditions
+- Implemented grep command for text search in files
+- Search for string patterns in one or multiple files
+- Display matching lines with line numbers (1-indexed)
+- Memory-efficient implementation using BufReader
+- Different output formats for single vs multiple file search
 
 ## Usage
 
@@ -82,6 +83,7 @@ Available commands:
   cp -r <source> <destination>  - Copy directories recursively
   mv <source> <destination>     - Move/rename files or directories
   find [directory] <pattern>    - Find files by name (wildcards: *, ?)
+  grep <pattern> <file...>      - Search for pattern in files
   repeat <count> <message...>   - Repeat message count times
   exit                          - Exit the program
   quit                          - Exit the program
@@ -89,49 +91,43 @@ Available commands:
 Options:
   --debug                       - Enable debug mode with detailed logging
 
-# Find examples with wildcards
-> find "*.txt"
-./README.txt
-./docs/guide.txt
-./test.txt
+# Grep examples
+> write test.txt Hello world!\nThis is a test\nHello again!
+File written successfully: test.txt
 
-> find "test*"
-./test.txt
-./test.rs
-./tests/
+> grep Hello test.txt
+1: Hello world!
+3: Hello again!
 
-> find "???.rs"
-./src/lib.rs
-./src/app.rs
+> grep test test.txt
+2: This is a test
 
-> find "*test*.rs"
-./tests/test_basic.rs
-./tests/test_advanced.rs
-./src/test_utils.rs
+# Multiple file search
+> write file1.txt foo bar\ntest line
+File written successfully: file1.txt
+> write file2.txt another test\nfoo baz
+File written successfully: file2.txt
 
-# Complex patterns
-> find "src/*.rs"
-src/main.rs
-src/lib.rs
-src/error.rs
-src/parser.rs
-src/commands.rs
-src/handlers.rs
+> grep foo file1.txt file2.txt
+file1.txt:1: foo bar
+file2.txt:2: foo baz
 
-# Multiple wildcards
-> find "*.*"
-./README.md
-./Cargo.toml
-./test.txt
-... (all files with extensions)
+> grep test file1.txt file2.txt
+file1.txt:2: test line
+file2.txt:1: another test
+
+# No matches (silent)
+> grep xyz test.txt
+>
 ```
 
-### Wildcard Patterns
+### Text Search Features
 
-- `*` - Matches zero or more characters
-- `?` - Matches exactly one character
-- Patterns can contain multiple wildcards
-- Case-sensitive matching
+- Case-sensitive pattern matching
+- Line-by-line search with line numbers
+- Efficient memory usage for large files
+- Support for multiple file search
+- Clean output format
 
 ### Debug Mode
 
@@ -139,19 +135,20 @@ src/handlers.rs
 # Run with debug logging enabled
 $ cargo run -- --debug
 
-# Debug output for find command includes:
-# - Pattern matching steps
-# - Backtracking decisions
-# - Directory traversal
-# - Match results
+# Debug output for grep command includes:
+# - File being searched
+# - Pattern being searched
+# - Number of matches found
+# - Processing time
 
 # Example debug output:
-> find "t*.txt"
-[DEBUG] Searching for pattern: t*.txt
-[DEBUG] Checking: test.txt
-[DEBUG] Pattern match successful
-[DEBUG] Found match: ./test.txt
-[DEBUG] 処理時間: 2.5ms
+> grep TODO src/main.rs
+[DEBUG] Searching for pattern: TODO
+[DEBUG] Opening file: src/main.rs
+[INFO] Found 2 matches in src/main.rs
+5: // TODO: Add error handling
+12: // TODO: Implement feature
+[DEBUG] 処理時間: 1.5ms
 ```
 
 ## Project Structure
@@ -179,6 +176,7 @@ The codebase follows Rust best practices:
 - Thorough test coverage
 - Atomic file operations where possible
 - Efficient pattern matching algorithms
+- Memory-efficient file processing
 
 ## Error Handling
 
@@ -209,8 +207,8 @@ RUST_LOG=rucli::handlers=debug cargo run  # Debug for handlers only
 ### Log Categories:
 - **ERROR**: Command execution failures
 - **WARN**: Invalid operations (e.g., cat on directory)
-- **INFO**: Important operations (file writes, reads, copies, moves, program start/exit)
-- **DEBUG**: Command parsing, validation, operation details, pattern matching steps
+- **INFO**: Important operations (file writes, reads, copies, moves, grep matches, program start/exit)
+- **DEBUG**: Command parsing, validation, operation details, search operations
 - **TRACE**: Detailed command lookup and parsing steps
 
 ## Testing
@@ -271,7 +269,8 @@ cargo test -- --nocapture
 - [x] PR #37: PR numbering adjustment
 - [x] PR #38: find command basic implementation
 - [x] PR #39: find command with wildcard support
-- [ ] PR #40-41: grep command implementation
+- [x] PR #40: grep command basic implementation
+- [ ] PR #41: grep with regex support
 - [ ] PR #42: Command aliases
 - [ ] PR #43-44: Third refactoring
 - [ ] PR #45: Phase 2 completion

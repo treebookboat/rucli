@@ -2,6 +2,7 @@
 
 use crate::error::{Result, RucliError};
 use log::{debug, info, warn};
+use std::io::{BufRead, BufReader};
 use std::{env, fs, io, os::unix::fs::PermissionsExt, path::Path, process};
 
 use crate::commands::COMMANDS;
@@ -434,6 +435,54 @@ fn match_helper(filename: &[u8], pattern: &[u8], fi: usize, pi: usize) -> bool {
             }
         }
     }
+}
+
+/// ファイル内でパターンを検索する
+///
+/// # Arguments
+///
+/// * `pattern` - 検索する文字列パターン
+/// * `files` - 検索対象のファイルパス一覧
+///
+/// # Errors
+///
+/// - ファイルが存在しない場合
+/// - ファイルの読み取り権限がない場合
+pub fn handle_grep(pattern: &str, files: &[String]) -> Result<()> {
+    for file in files {
+        let results = grep_file(pattern, file)?;
+
+        if results.is_empty() {
+            continue;
+        }
+
+        for (line_num, content) in results {
+            if files.len() > 1 {
+                println!("{}:{}: {}", file, line_num + 1, content);
+            } else {
+                println!("{}: {}", line_num + 1, content);
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// 単一ファイルを検索
+fn grep_file(pattern: &str, filepath: &str) -> Result<Vec<(usize, String)>> {
+    let file = fs::File::open(filepath)?;
+    let reader = BufReader::new(file);
+
+    let mut results = Vec::new();
+
+    for (line_num, line) in reader.lines().enumerate() {
+        let line = line?;
+        if line.contains(pattern) {
+            results.push((line_num, line));
+        }
+    }
+
+    Ok(results)
 }
 
 /// プログラムを終了する

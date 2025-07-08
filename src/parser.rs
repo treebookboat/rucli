@@ -169,6 +169,10 @@ pub fn parse_command(input: &str) -> Result<Command> {
             path: None,
             name: (*name).to_string(),
         }),
+        ["grep", pattern, files @ ..] => Ok(Command::Grep {
+            pattern: (*pattern).to_string(),
+            files: files.iter().map(|f| (*f).to_string()).collect(),
+        }),
         ["exit" | "quit"] => Ok(Command::Exit),
         commands => Err(RucliError::UnknownCommand(commands.join(" ").to_string())),
     }
