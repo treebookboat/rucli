@@ -19,6 +19,9 @@ pub enum RucliError {
 
     /// 存在しないコマンドが入力された場合のエラー
     UnknownCommand(String),
+
+    /// 無効な正規表現パターン
+    InvalidRegex(String),
     // その他のエラー
     // Other(String),
 }
@@ -30,6 +33,7 @@ impl fmt::Display for RucliError {
             RucliError::IoError(err) => write!(f, "IO error: {err}"),
             RucliError::InvalidArgument(msg) => write!(f, "argument error: {msg}"),
             RucliError::UnknownCommand(msg) => write!(f, "unknown command error: {msg}"),
+            RucliError::InvalidRegex(msg) => write!(f, "Invalid syntax error: {msg}"),
             // RucliError::Other(msg) => write!(f, "Other error: {}", msg),
         }
     }

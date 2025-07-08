@@ -2,9 +2,9 @@
 
 🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
 
-## Progress: 40/100 PRs
+## Progress: 41/100 PRs
 
-[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
 
 ## Current Phase: Basic Features (26-45)
 
@@ -47,14 +47,15 @@ Implementing file operations and search capabilities.
 - [x] PR #38: find command basic implementation
 - [x] PR #39: find command with wildcard support
 - [x] PR #40: grep command basic implementation
+- [x] PR #41: grep with regex support
 
-## Latest Changes (PR #40)
+## Latest Changes (PR #41)
 
-- Implemented grep command for text search in files
-- Search for string patterns in one or multiple files
-- Display matching lines with line numbers (1-indexed)
-- Memory-efficient implementation using BufReader
-- Different output formats for single vs multiple file search
+- Added regular expression support to grep command
+- Integrated regex crate for pattern matching
+- Support for common regex patterns: ^, $, ., *, +, [], etc.
+- Efficient regex compilation (once per file)
+- Proper error handling for invalid regex patterns
 
 ## Usage
 
@@ -83,7 +84,7 @@ Available commands:
   cp -r <source> <destination>  - Copy directories recursively
   mv <source> <destination>     - Move/rename files or directories
   find [directory] <pattern>    - Find files by name (wildcards: *, ?)
-  grep <pattern> <file...>      - Search for pattern in files
+  grep <pattern> <file...>      - Search for pattern in files (regex)
   repeat <count> <message...>   - Repeat message count times
   exit                          - Exit the program
   quit                          - Exit the program
@@ -91,43 +92,53 @@ Available commands:
 Options:
   --debug                       - Enable debug mode with detailed logging
 
-# Grep examples
-> write test.txt Hello world!\nThis is a test\nHello again!
-File written successfully: test.txt
+# Regex grep examples
+> write code.rs fn main() {\n    println!(\"Hello\");\n}\nfn test() {}
+File written successfully: code.rs
 
-> grep Hello test.txt
-1: Hello world!
-3: Hello again!
+# Basic regex patterns
+> grep ^fn code.rs
+1: fn main() {
+4: fn test() {}
 
-> grep test test.txt
-2: This is a test
+> grep main.* code.rs
+1: fn main() {
 
-# Multiple file search
-> write file1.txt foo bar\ntest line
-File written successfully: file1.txt
-> write file2.txt another test\nfoo baz
-File written successfully: file2.txt
+> grep [0-9]+ numbers.txt
+3: Version 1.2.3
+5: Count: 42
 
-> grep foo file1.txt file2.txt
-file1.txt:1: foo bar
-file2.txt:2: foo baz
+# Character classes
+> grep [a-z]+ file.txt
+# Matches lowercase words
 
-> grep test file1.txt file2.txt
-file1.txt:2: test line
-file2.txt:1: another test
+# Anchors
+> grep ^# README.md
+# Matches lines starting with #
 
-# No matches (silent)
-> grep xyz test.txt
->
+# Repetition
+> grep lo+ test.txt
+# Matches "lo", "loo", "looo", etc.
+
+# Note: Currently quotes must be omitted in patterns
+# Use: grep ^test file.txt
+# Not: grep "^test" file.txt
 ```
 
-### Text Search Features
+### Regular Expression Support
 
-- Case-sensitive pattern matching
-- Line-by-line search with line numbers
-- Efficient memory usage for large files
-- Support for multiple file search
-- Clean output format
+Common regex patterns:
+- `.` - Any character
+- `*` - Zero or more of preceding
+- `+` - One or more of preceding
+- `?` - Zero or one of preceding
+- `^` - Start of line
+- `$` - End of line
+- `[abc]` - Character class
+- `[a-z]` - Character range
+- `\d` - Digit
+- `\w` - Word character
+- `|` - Alternation (OR)
 
 ### Debug Mode
 
@@ -135,20 +146,33 @@ file2.txt:1: another test
 # Run with debug logging enabled
 $ cargo run -- --debug
 
-# Debug output for grep command includes:
-# - File being searched
+# Debug output for grep includes:
+# - Regex compilation status
 # - Pattern being searched
-# - Number of matches found
-# - Processing time
+# - Match results per line
 
 # Example debug output:
-> grep TODO src/main.rs
-[DEBUG] Searching for pattern: TODO
-[DEBUG] Opening file: src/main.rs
-[INFO] Found 2 matches in src/main.rs
-5: // TODO: Add error handling
-12: // TODO: Implement feature
-[DEBUG] 処理時間: 1.5ms
+> grep [0-9]+ test.txt
+[DEBUG] Regex compiled: '[0-9]+'
+[DEBUG] Searching in file: test.txt
+[DEBUG] Line 5 matches pattern
+5: Count: 123
+[DEBUG] 処理時間: 2.1ms
+```
+
+## Known Limitations
+
+- Quote handling in the parser needs improvement
+- Currently, regex patterns should be entered without quotes
+- Complex patterns with spaces require parser updates (future PR)
+
+## Dependencies
+
+```toml
+[dependencies]
+env_logger = "0.11"
+log = "0.4"
+regex = "1.11"
 ```
 
 ## Project Structure
@@ -177,6 +201,7 @@ The codebase follows Rust best practices:
 - Atomic file operations where possible
 - Efficient pattern matching algorithms
 - Memory-efficient file processing
+- Optimized regex compilation
 
 ## Error Handling
 
@@ -186,6 +211,7 @@ The project now uses a custom `RucliError` type with complete Result-based error
 - Automatic conversion from `io::Error`
 - Consistent error messages
 - All commands return Result<()> for consistency
+- InvalidRegex error type for pattern compilation failures
 
 ## Logging
 
@@ -205,10 +231,10 @@ RUST_LOG=rucli::handlers=debug cargo run  # Debug for handlers only
 ```
 
 ### Log Categories:
-- **ERROR**: Command execution failures
+- **ERROR**: Command execution failures, invalid regex patterns
 - **WARN**: Invalid operations (e.g., cat on directory)
 - **INFO**: Important operations (file writes, reads, copies, moves, grep matches, program start/exit)
-- **DEBUG**: Command parsing, validation, operation details, search operations
+- **DEBUG**: Command parsing, validation, operation details, regex compilation
 - **TRACE**: Detailed command lookup and parsing steps
 
 ## Testing
@@ -270,7 +296,7 @@ cargo test -- --nocapture
 - [x] PR #38: find command basic implementation
 - [x] PR #39: find command with wildcard support
 - [x] PR #40: grep command basic implementation
-- [ ] PR #41: grep with regex support
+- [x] PR #41: grep with regex support
 - [ ] PR #42: Command aliases
 - [ ] PR #43-44: Third refactoring
 - [ ] PR #45: Phase 2 completion

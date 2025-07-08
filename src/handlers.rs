@@ -2,6 +2,7 @@
 
 use crate::error::{Result, RucliError};
 use log::{debug, info, warn};
+use regex::Regex;
 use std::io::{BufRead, BufReader};
 use std::{env, fs, io, os::unix::fs::PermissionsExt, path::Path, process};
 
@@ -470,6 +471,12 @@ pub fn handle_grep(pattern: &str, files: &[String]) -> Result<()> {
 
 /// 単一ファイルを検索
 fn grep_file(pattern: &str, filepath: &str) -> Result<Vec<(usize, String)>> {
+    // 1. 最初に一度だけ正規表現をコンパイル
+    let re = match Regex::new(pattern) {
+        Ok(r) => r,
+        Err(e) => return Err(RucliError::InvalidRegex(e.to_string())),
+    };
+
     let file = fs::File::open(filepath)?;
     let reader = BufReader::new(file);
 
@@ -477,7 +484,7 @@ fn grep_file(pattern: &str, filepath: &str) -> Result<Vec<(usize, String)>> {
 
     for (line_num, line) in reader.lines().enumerate() {
         let line = line?;
-        if line.contains(pattern) {
+        if re.is_match(&line) {
             results.push((line_num, line));
         }
     }
