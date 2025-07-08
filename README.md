@@ -2,62 +2,44 @@
 
 🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
 
-## Progress: 44/100 PRs
+## Progress: 45/100 PRs
 
-[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
 
-## Current Phase: Basic Features (26-45)
+## Current Phase: Phase 2 Complete! 🎉
 
-Implementing file operations and search capabilities.
+Basic file operations and search capabilities successfully implemented.
 
 ## Completed Features ✅
 
-- [x] PR #1-2: Basic REPL with help, echo, repeat commands
-- [x] PR #3-4: Command structure and prompt
-- [x] PR #5-7: File operations (cat, write, ls)
-- [x] PR #8: Command metadata and auto-generated help
-- [x] PR #9-10: Module organization
-- [x] PR #11: Argument validation automation
-- [x] PR #12: Unit tests for parser module
-- [x] PR #13: Unit tests for commands module
-- [x] PR #14: Integration test framework
-- [x] PR #15: Complete integration test suite
-- [x] PR #16: Custom error type (RucliError)
-- [x] PR #17: Apply custom error type throughout
-- [x] PR #18: Result type in handlers (Part 1)
-- [x] PR #19: Complete Result type implementation
-- [x] PR #20: Logging framework introduction
-- [x] PR #21: Implement comprehensive logging
-- [x] PR #22: Add --debug flag
-- [x] PR #23: Debug information features
-- [x] PR #24: First refactoring (Part 1)
-- [x] PR #25: First refactoring (Part 2) - Documentation
-- [x] PR #26: Working directory management foundation
-- [x] PR #27: pwd command implementation
-- [x] PR #28: cd command basic implementation
-- [x] PR #29: cd advanced features (-, ~, ..)
-- [x] PR #30: mkdir command basic implementation
-- [x] PR #31: mkdir -p option (recursive)
-- [x] PR #32: rm command basic implementation (files only)
-- [x] PR #33: rm extended options (-r, -f, -rf)
-- [x] PR #34: cp command basic implementation
-- [x] PR #35: cp command with directory support
-- [x] PR #36: mv command implementation
-- [x] PR #37: PR numbering adjustment
-- [x] PR #38: find command basic implementation
-- [x] PR #39: find command with wildcard support
-- [x] PR #40: grep command basic implementation
-- [x] PR #41: grep with regex support
-- [x] PR #42: Command aliases
-- [x] PR #43: Version command
-- [x] PR #44: Parser refactoring
+### Phase 1: Foundation (PR 1-25) ✅
+- [x] Basic REPL with help, echo, repeat commands
+- [x] Command structure and prompt
+- [x] File operations (cat, write, ls)
+- [x] Command metadata and auto-generated help
+- [x] Module organization
+- [x] Comprehensive error handling (RucliError)
+- [x] Logging framework with --debug flag
+- [x] Complete test suite (unit + integration)
 
-## Latest Changes (PR #44)
+### Phase 2: Basic Features (PR 26-45) ✅
+- [x] Working directory management (pwd, cd with ~, -, ..)
+- [x] Directory operations (mkdir with -p option)
+- [x] File operations (rm with -r, -f, -rf options)
+- [x] Copy operations (cp with -r for directories)
+- [x] Move/rename operations (mv)
+- [x] Search operations (find with wildcards, grep with regex)
+- [x] Command aliases system
+- [x] Version command
+- [x] Parser refactoring for maintainability
+- [x] Phase 2 integration tests
 
-- Refactored parser module for better maintainability
-- Split command parsing logic into dedicated functions
-- Improved code readability and future extensibility
-- Prepared structure for upcoming pipe and redirection features
+## Latest Changes (PR #45)
+
+- Added comprehensive integration tests for Phase 2 features
+- Created CHANGELOG.md for version tracking
+- Added example scripts demonstrating practical usage
+- Completed Phase 2 milestone with full test coverage
 
 ## Usage
 
@@ -96,32 +78,15 @@ Available commands:
 Options:
   --debug                       - Enable debug mode with detailed logging
 
-# Version command
-> version
-rucli v0.1.0
-
-# All basic features
-> write test.txt Hello, World!
-File written successfully: test.txt
-
-> cat test.txt
-Hello, World!
-
-> cp test.txt backup.txt
-> mv backup.txt archive.txt
-> find "*.txt"
-./test.txt
-./archive.txt
-
-> grep Hello test.txt
-1: Hello, World!
-
-> alias ll=ls
-> ll
-test.txt
-archive.txt
-src/
-Cargo.toml
+# Example workflow
+> mkdir -p project/src
+> cd project/src
+> write main.rs fn main() { println!("Hello, rucli!"); }
+> cd ..
+> find *.rs
+./src/main.rs
+> grep println src/main.rs
+1: fn main() { println!("Hello, rucli!"); }
 ```
 
 ## Command Summary
@@ -151,6 +116,17 @@ Cargo.toml
 - `help` - Show available commands
 - `exit`/`quit` - Exit the program
 
+## Example Scripts
+
+Check out the `examples/` directory for practical usage examples:
+- `file_organizer.rucli` - Organize files by extension
+- `backup_script.rucli` - Backup project files
+
+Run examples with:
+```bash
+rucli < examples/file_organizer.rucli
+```
+
 ## Debug Mode
 
 ```bash
@@ -168,8 +144,8 @@ $ cargo run -- --debug
 > version
 [DEBUG] Parsing input: 'version'
 [DEBUG] Recognized command: 'version' with 0 args
-[INFO] Displaying version: rucli v0.1.0
 [DEBUG] 処理時間: 0.2ms
+rucli v0.2.0
 ```
 
 ## Dependencies
@@ -180,6 +156,11 @@ env_logger = "0.11"
 log = "0.4"
 regex = "1.11"
 once_cell = "1.19"
+
+[dev-dependencies]
+assert_cmd = "2.0"
+predicates = "3.0"
+tempfile = "3.8"
 ```
 
 ## Project Structure
@@ -195,7 +176,12 @@ src/
 └── alias.rs      # Alias management module
 
 tests/
-└── cli_tests.rs  # Integration tests (11 tests)
+├── cli_tests.rs         # Basic integration tests
+└── integration_tests.rs # Comprehensive workflow tests
+
+examples/
+├── file_organizer.rucli # File organization example
+└── backup_script.rucli  # Backup automation example
 ```
 
 ## Code Quality
@@ -205,7 +191,7 @@ The codebase follows Rust best practices:
 - Comprehensive error handling with custom types
 - Modular architecture with clear separation of concerns
 - Extensive logging for debugging
-- Thorough test coverage
+- Thorough test coverage (unit + integration)
 - Atomic file operations where possible
 - Efficient pattern matching algorithms
 - Memory-efficient file processing
@@ -222,6 +208,33 @@ The project uses a custom `RucliError` type with complete Result-based error han
 - Consistent error messages
 - All commands return Result<()> for consistency
 - InvalidRegex error type for pattern compilation failures
+
+## Testing
+
+```bash
+# Run all tests
+cargo test
+
+# Run unit tests only
+cargo test --lib
+
+# Run integration tests only
+cargo test --test cli_tests
+cargo test --test integration_tests
+
+# Run specific test
+cargo test test_file_operations_workflow
+
+# Run with output
+cargo test -- --nocapture
+```
+
+## Test Coverage Summary
+
+- **Unit tests**: 10 tests (parser: 8, commands: 2)
+- **Basic integration tests**: 11 tests
+- **Workflow integration tests**: 7 comprehensive tests
+- **Total**: 28 tests ensuring reliability
 
 ## Logging
 
@@ -247,82 +260,46 @@ RUST_LOG=rucli::handlers=debug cargo run  # Debug for handlers only
 - **DEBUG**: Command parsing, validation, operation details, alias expansion
 - **TRACE**: Detailed command lookup and parsing steps
 
-## Testing
-
-```bash
-# Run all tests
-cargo test
-
-# Run unit tests only
-cargo test --lib
-
-# Run integration tests only
-cargo test --test cli_tests
-
-# Run with output
-cargo test -- --nocapture
-```
-
-## Test Coverage Summary
-
-- **Unit tests**: 10 tests (parser: 8, commands: 2)
-- **Integration tests**: 11 tests (all commands + edge cases)
-- **Total**: 21 tests ensuring reliability
-
 ## Roadmap 🗺️
 
-### Phase 1: Foundation (PR 11-25) - 15 PRs ✅ COMPLETED!
+### Phase 1: Foundation (PR 1-25) ✅ COMPLETED!
 
-- [x] PR #11: Argument validation
-- [x] PR #12: Unit tests for parser
-- [x] PR #13: Unit tests for commands
-- [x] PR #14: Integration test framework
-- [x] PR #15: Complete integration tests
-- [x] PR #16: Custom error type introduction
-- [x] PR #17: Apply custom error type
-- [x] PR #18: Result type in handlers (Part 1)
-- [x] PR #19: Complete Result type implementation
-- [x] PR #20: Logging framework introduction
-- [x] PR #21: Implement comprehensive logging
-- [x] PR #22: Add --debug flag
-- [x] PR #23: Debug information features
-- [x] PR #24: First refactoring (Part 1)
-- [x] PR #25: First refactoring (Part 2) - Documentation
+Established core infrastructure, error handling, logging, and testing framework.
 
-### Phase 2: Basic Features (PR 26-45) - 20 PRs
+### Phase 2: Basic Features (PR 26-45) ✅ COMPLETED!
 
-- [x] PR #26: Working directory management foundation
-- [x] PR #27: pwd command implementation
-- [x] PR #28: cd command basic implementation
-- [x] PR #29: cd advanced features (-, ~, ..)
-- [x] PR #30: mkdir command basic implementation
-- [x] PR #31: mkdir -p option (recursive)
-- [x] PR #32: rm command basic implementation (files only)
-- [x] PR #33: rm extended options (-r, -f, -rf)
-- [x] PR #34: cp command basic implementation
-- [x] PR #35: cp command with directory support
-- [x] PR #36: mv command implementation
-- [x] PR #37: PR numbering adjustment
-- [x] PR #38: find command basic implementation
-- [x] PR #39: find command with wildcard support
-- [x] PR #40: grep command basic implementation
-- [x] PR #41: grep with regex support
-- [x] PR #42: Command aliases
-- [x] PR #43: Version command
-- [x] PR #44: Parser refactoring
-- [ ] PR #45: Phase 2 completion
+Implemented essential file and directory operations, search capabilities, and command aliases.
 
-### Phase 3: Advanced Features (PR 46-65) - 20 PRs
+### Phase 3: Advanced Features (PR 46-65) - 20 PRs 🚀 NEXT!
 
-Pipes, redirection, scripting support
+Pipes, redirection, scripting support:
+- Pipe operations (`|`)
+- Output redirection (`>`, `>>`)
+- Input redirection (`<`)
+- Background execution (`&`)
+- Job management
+- Environment variables
+- Basic scripting support
 
 ### Phase 4: Interactive Features (PR 66-85) - 20 PRs
 
-History, completion, visual enhancements
+History, completion, visual enhancements:
+- Command history
+- Tab completion
+- Syntax highlighting
+- Multi-line editing
+- Custom prompts
+- Git integration
 
 ### Phase 5: Extensions (PR 86-100) - 15 PRs
 
-Plugins, themes, configuration system
+Plugins, themes, configuration system:
+- Plugin architecture
+- Theme support
+- Configuration files
+- Import/export functionality
+- Performance optimization
+- Final polish
 
 ## Building
 
@@ -341,3 +318,7 @@ cargo test
 ## Contributing
 
 This is a learning project following the 100 PR Challenge. Each PR focuses on a single, well-defined improvement.
+
+---
+
+**Phase 2 Complete!** 🎉 On to Phase 3: Advanced Features!
