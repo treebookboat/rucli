@@ -2,9 +2,9 @@
 
 🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
 
-## Progress: 37/100 PRs
+## Progress: 38/100 PRs
 
-[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
 
 ## Current Phase: Basic Features (26-45)
 
@@ -44,11 +44,15 @@ Implementing file operations and search capabilities.
 - [x] PR #35: cp command with directory support
 - [x] PR #36: mv command implementation
 - [x] PR #37: PR numbering adjustment
+- [x] PR #38: find command basic implementation
 
-## Latest Changes (PR #37)
+## Latest Changes (PR #38)
 
-- Adjusted PR numbering to match actual progress
-- No functional changes
+- Implemented find command for recursive file search
+- Search by exact filename match
+- Optional directory argument (defaults to current directory)
+- Recursive traversal through subdirectories
+- Clean path display using display() method
 
 ## Usage
 
@@ -76,6 +80,7 @@ Available commands:
   cp <source> <destination>     - Copy files
   cp -r <source> <destination>  - Copy directories recursively
   mv <source> <destination>     - Move/rename files or directories
+  find [directory] <filename>   - Find files by name
   repeat <count> <message...>   - Repeat message count times
   exit                          - Exit the program
   quit                          - Exit the program
@@ -83,31 +88,28 @@ Available commands:
 Options:
   --debug                       - Enable debug mode with detailed logging
 
-# File operations
-> write test.txt Hello, World!
+# File search examples
+> find README.md
+./README.md
+
+> find src main.rs
+src/main.rs
+
+> write test.txt Hello
 File written successfully: test.txt
+> mkdir -p deep/nested/dir
+> cp test.txt deep/nested/dir/
+> find test.txt
+./test.txt
+./deep/nested/dir/test.txt
 
-# Rename file
-> mv test.txt renamed.txt
-> cat renamed.txt
-Hello, World!
+# Search in specific directory
+> find src lib.rs
+src/lib.rs
 
-# Move file to directory
-> mkdir docs
-> mv renamed.txt docs/
-> ls docs/
-renamed.txt
-
-# Rename directory
-> mv docs documentation
-> ls
-documentation/
-
-# Move directory
-> mkdir archive
-> mv documentation archive/
-> ls archive/
-documentation/
+# No results (silent)
+> find nonexistent.txt
+>
 ```
 
 ### Debug Mode
@@ -116,17 +118,19 @@ documentation/
 # Run with debug logging enabled
 $ cargo run -- --debug
 
-# Debug output for mv command includes:
-# - Source and destination paths
-# - Final destination path calculation
-# - Operation success/failure status
+# Debug output for find command includes:
+# - Search start directory
+# - Each directory traversed
+# - Match detection
+# - Error handling for inaccessible directories
 
 # Example debug output:
-> mv file.txt docs/
-[DEBUG] Moving file.txt to docs/
-[DEBUG] Final destination: docs/file.txt
-[INFO] Successfully moved file.txt to docs/file.txt
-[DEBUG] 処理時間: 0.5ms
+> find test.txt
+[DEBUG] Searching for test.txt starting from .
+[DEBUG] Checking ./test.txt
+[DEBUG] Found match: ./test.txt
+[DEBUG] Entering directory: ./src
+[DEBUG] 処理時間: 1.2ms
 ```
 
 ## Project Structure
@@ -184,7 +188,7 @@ RUST_LOG=rucli::handlers=debug cargo run  # Debug for handlers only
 - **ERROR**: Command execution failures
 - **WARN**: Invalid operations (e.g., cat on directory)
 - **INFO**: Important operations (file writes, reads, copies, moves, program start/exit)
-- **DEBUG**: Command parsing, validation, operation details, path calculations
+- **DEBUG**: Command parsing, validation, operation details, directory traversal
 - **TRACE**: Detailed command lookup and parsing steps
 
 ## Testing
@@ -243,7 +247,9 @@ cargo test -- --nocapture
 - [x] PR #35: cp command with directory support
 - [x] PR #36: mv command implementation
 - [x] PR #37: PR numbering adjustment
-- [ ] PR #38-41: find and grep commands
+- [x] PR #38: find command basic implementation
+- [ ] PR #39: find command with wildcards
+- [ ] PR #40-41: grep command implementation
 - [ ] PR #42: Command aliases
 - [ ] PR #43-44: Third refactoring
 - [ ] PR #45: Phase 2 completion

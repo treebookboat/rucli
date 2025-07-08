@@ -31,7 +31,7 @@ pub enum Command {
         recursive: bool,
         force: bool,
     },
-    // ファイル/ディレクトリをコピー
+    /// ファイル/ディレクトリをコピー
     Cp {
         source: String,
         destination: String,
@@ -39,6 +39,11 @@ pub enum Command {
     },
     /// ファイル/ディレクトリの移動
     Mv { source: String, destination: String },
+    /// ファイルの検索
+    Find {
+        path: Option<String>, // 検索開始ディレクトリ(何もなければホームポジション)
+        name: String,         // 検索するふぃあるめい
+    },
     /// プログラムを終了
     Exit,
 }
@@ -157,6 +162,13 @@ pub const COMMANDS: &[CommandInfo] = &[
         min_args: 1,
         max_args: Some(2),
     },
+    CommandInfo {
+        name: "find",
+        description: "Find files by name",
+        usage: "find [directory] <filename>",
+        min_args: 1,
+        max_args: Some(2),
+    },
 ];
 
 /// コマンドを実行する
@@ -202,6 +214,7 @@ pub fn execute_command(command: Command) -> Result<()> {
             source,
             destination,
         } => handle_mv(&source, &destination),
+        Command::Find { path, name } => handle_find(path.as_deref(), &name),
         Command::Exit => {
             handle_exit();
             Ok(())

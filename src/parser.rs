@@ -161,6 +161,14 @@ pub fn parse_command(input: &str) -> Result<Command> {
             source: (*source).to_string(),
             destination: (*destination).to_string(),
         }),
+        ["find", path, name] => Ok(Command::Find {
+            path: Some((*path).to_string()),
+            name: (*name).to_string(),
+        }),
+        ["find", name] => Ok(Command::Find {
+            path: None,
+            name: (*name).to_string(),
+        }),
         ["exit" | "quit"] => Ok(Command::Exit),
         commands => Err(RucliError::UnknownCommand(commands.join(" ").to_string())),
     }

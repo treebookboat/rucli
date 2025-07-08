@@ -350,6 +350,40 @@ pub fn handle_mv(source: &str, destination: &str) -> Result<()> {
     Ok(())
 }
 
+/// ファイルを名前で検索する
+///
+/// # Arguments
+///
+/// * `path` - 検索を開始するディレクトリ（Noneの場合はカレントディレクトリ）
+/// * `name` - 検索するファイル名
+///
+/// # Errors
+///
+/// - 検索開始ディレクトリが存在しない場合
+/// - ディレクトリの読み取り権限がない場合
+pub fn handle_find(path: Option<&str>, name: &str) -> Result<()> {
+    let search_path = path.unwrap_or(".");
+
+    let entries = fs::read_dir(search_path)?;
+
+    for entry in entries {
+        let entry = entry?;
+        let entry_path = entry.path();
+
+        // ファイル名が一致すればパスを出力
+        if entry_path.file_name().and_then(|n| n.to_str()) == Some(name) {
+            println!("{}", entry_path.display());
+        }
+
+        // ディレクトリであれば再帰的に探索
+        if entry_path.is_dir() {
+            handle_find(entry_path.to_str(), name)?;
+        }
+    }
+
+    Ok(())
+}
+
 /// プログラムを終了する
 pub fn handle_exit() {
     info!("Exiting rucli");
