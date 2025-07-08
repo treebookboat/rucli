@@ -101,198 +101,173 @@ pub fn parse_command(input: &str) -> Result<Command> {
     );
 
     match cmd_name {
-        "help" if args.is_empty() => Ok(Command::Help),
+        "help" => Ok(Command::Help),
+        "version" => Ok(Command::Version),
+        "pwd" => Ok(Command::Pwd),
+        "ls" => Ok(Command::Ls),
+        "exit" | "quit" => Ok(Command::Exit),
 
-        "echo" => Ok(Command::Echo {
-            message: args.join(" "),
-        }),
-
-        "cat" => match args {
-            [filename] => Ok(Command::Cat {
-                filename: filename.to_string(),
-            }),
-            _ => Err(RucliError::InvalidArgument(
-                "cat requires exactly 1 argument".to_string(),
-            )),
-        },
-
-        "write" => match args {
-            [filename, content @ ..] => Ok(Command::Write {
-                filename: filename.to_string(),
-                content: content.join(" "),
-            }),
-            _ => Err(RucliError::InvalidArgument(
-                "write requires at least 2 arguments".to_string(),
-            )),
-        },
-
-        "ls" if args.is_empty() => Ok(Command::Ls),
-
-        "repeat" => match args {
-            [count, message @ ..] => match count.parse::<i32>() {
-                Ok(count) if count > 0 => Ok(Command::Repeat {
-                    count,
-                    message: message.join(" "),
-                }),
-                Ok(_) => Err(RucliError::ParseError("count must be positive".to_string())),
-                Err(_) => Err(RucliError::ParseError(format!(
-                    "{count} isn't a valid number"
-                ))),
-            },
-            _ => Err(RucliError::InvalidArgument(
-                "repeat requires at least 2 arguments".to_string(),
-            )),
-        },
-
-        "cd" => match args {
-            [] => Ok(Command::Cd {
-                path: DEFAULT_HOME_INDICATOR.to_string(),
-            }),
-            [path] => Ok(Command::Cd {
-                path: path.to_string(),
-            }),
-            _ => Err(RucliError::InvalidArgument(
-                "cd accepts at most 1 argument".to_string(),
-            )),
-        },
-
-        "pwd" if args.is_empty() => Ok(Command::Pwd),
-
-        "mkdir" => match args {
-            ["-p", path] => Ok(Command::Mkdir {
-                path: path.to_string(),
-                parents: true,
-            }),
-            [path] => Ok(Command::Mkdir {
-                path: path.to_string(),
-                parents: false,
-            }),
-            _ => Err(RucliError::InvalidArgument(
-                "mkdir requires 1 or 2 arguments".to_string(),
-            )),
-        },
-
-        "rm" => match args {
-            ["-r", path] => Ok(Command::Rm {
-                path: path.to_string(),
-                recursive: true,
-                force: false,
-            }),
-            ["-f", path] => Ok(Command::Rm {
-                path: path.to_string(),
-                recursive: false,
-                force: true,
-            }),
-            ["-rf", path] | ["-fr", path] => Ok(Command::Rm {
-                path: path.to_string(),
-                recursive: true,
-                force: true,
-            }),
-            [path] => Ok(Command::Rm {
-                path: path.to_string(),
-                recursive: false,
-                force: false,
-            }),
-            _ => Err(RucliError::InvalidArgument(
-                "rm requires 1 or 2 arguments".to_string(),
-            )),
-        },
-
-        "cp" => match args {
-            [source, destination] => Ok(Command::Cp {
-                source: source.to_string(),
-                destination: destination.to_string(),
-                recursive: false,
-            }),
-            ["-r", source, destination] => Ok(Command::Cp {
-                source: source.to_string(),
-                destination: destination.to_string(),
-                recursive: true,
-            }),
-            _ => Err(RucliError::InvalidArgument(
-                "cp requires 2 or 3 arguments".to_string(),
-            )),
-        },
-
-        "mv" => match args {
-            [source, destination] => Ok(Command::Mv {
-                source: source.to_string(),
-                destination: destination.to_string(),
-            }),
-            _ => Err(RucliError::InvalidArgument(
-                "mv requires exactly 2 arguments".to_string(),
-            )),
-        },
-
-        "find" => match args {
-            [path, name] => Ok(Command::Find {
-                path: Some(path.to_string()),
-                name: name.to_string(),
-            }),
-            [name] => Ok(Command::Find {
-                path: None,
-                name: name.to_string(),
-            }),
-            _ => Err(RucliError::InvalidArgument(
-                "find requires 1 or 2 arguments".to_string(),
-            )),
-        },
-
-        "grep" => match args {
-            [pattern, files @ ..] if !files.is_empty() => Ok(Command::Grep {
-                pattern: pattern.to_string(),
-                files: files.iter().map(|f| f.to_string()).collect(),
-            }),
-            _ => Err(RucliError::InvalidArgument(
-                "grep requires at least 2 arguments".to_string(),
-            )),
-        },
-
-        "alias" => match args {
-            [] => Ok(Command::Alias {
-                name: None,
-                command: None,
-            }),
-            [setting] => {
-                if let Some((name, cmd)) = setting.split_once("=") {
-                    Ok(Command::Alias {
-                        name: Some(name.to_string()),
-                        command: Some(cmd.to_string()),
-                    })
-                } else {
-                    Err(RucliError::ParseError("alias needs =".to_string()))
-                }
-            }
-            _ => Err(RucliError::InvalidArgument(
-                "alias accepts at most 1 argument".to_string(),
-            )),
-        },
-
-        "exit" | "quit" => {
-            if args.is_empty() {
-                Ok(Command::Exit)
-            } else {
-                Err(RucliError::InvalidArgument(
-                    "exit/quit accepts no arguments".to_string(),
-                ))
-            }
-        }
-
-        "version" => {
-            if args.is_empty() {
-                Ok(Command::Version)
-            } else {
-                Err(RucliError::InvalidArgument(
-                    "version accepts no arguments".to_string(),
-                ))
-            }
-        }
+        "echo" => parse_echo(args),
+        "cat" => parse_cat(args),
+        "write" => parse_write(args),
+        "repeat" => parse_repeat(args),
+        "cd" => parse_cd(args),
+        "mkdir" => parse_mkdir(args),
+        "rm" => parse_rm(args),
+        "cp" => parse_cp(args),
+        "mv" => parse_mv(args),
+        "find" => parse_find(args),
+        "grep" => parse_grep(args),
+        "alias" => parse_alias(args),
 
         _ => Err(RucliError::UnknownCommand(format!(
             "{} {}",
             cmd_name,
             args.join(" ")
         ))),
+    }
+}
+
+fn parse_echo(args: &[&str]) -> Result<Command> {
+    Ok(Command::Echo {
+        message: args.join(" "),
+    })
+}
+
+fn parse_cat(args: &[&str]) -> Result<Command> {
+    Ok(Command::Cat {
+        filename: args[0].to_string(),
+    })
+}
+
+fn parse_write(args: &[&str]) -> Result<Command> {
+    Ok(Command::Write {
+        filename: args[0].to_string(),
+        content: args[1..].join(" "),
+    })
+}
+
+fn parse_repeat(args: &[&str]) -> Result<Command> {
+    match args[0].parse::<i32>() {
+        Ok(count) if count > 0 => Ok(Command::Repeat {
+            count,
+            message: args[1..].join(" "),
+        }),
+        Ok(_) => Err(RucliError::ParseError("count must be positive".to_string())),
+        Err(_) => Err(RucliError::ParseError(format!(
+            "{} isn't a valid number",
+            args[0]
+        ))),
+    }
+}
+
+fn parse_cd(args: &[&str]) -> Result<Command> {
+    Ok(Command::Cd {
+        path: args
+            .first()
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| DEFAULT_HOME_INDICATOR.to_string()),
+    })
+}
+
+fn parse_mkdir(args: &[&str]) -> Result<Command> {
+    match args {
+        ["-p", path] => Ok(Command::Mkdir {
+            path: path.to_string(),
+            parents: true,
+        }),
+        [path] => Ok(Command::Mkdir {
+            path: path.to_string(),
+            parents: false,
+        }),
+        _ => unreachable!(),
+    }
+}
+
+fn parse_rm(args: &[&str]) -> Result<Command> {
+    match args {
+        ["-r", path] => Ok(Command::Rm {
+            path: path.to_string(),
+            recursive: true,
+            force: false,
+        }),
+        ["-f", path] => Ok(Command::Rm {
+            path: path.to_string(),
+            recursive: false,
+            force: true,
+        }),
+        ["-rf", path] | ["-fr", path] => Ok(Command::Rm {
+            path: path.to_string(),
+            recursive: true,
+            force: true,
+        }),
+        [path] => Ok(Command::Rm {
+            path: path.to_string(),
+            recursive: false,
+            force: false,
+        }),
+        _ => unreachable!(),
+    }
+}
+
+fn parse_cp(args: &[&str]) -> Result<Command> {
+    match args {
+        ["-r", src, dst] => Ok(Command::Cp {
+            source: src.to_string(),
+            destination: dst.to_string(),
+            recursive: true,
+        }),
+        [src, dst] => Ok(Command::Cp {
+            source: src.to_string(),
+            destination: dst.to_string(),
+            recursive: false,
+        }),
+        _ => unreachable!(),
+    }
+}
+
+fn parse_mv(args: &[&str]) -> Result<Command> {
+    Ok(Command::Mv {
+        source: args[0].to_string(),
+        destination: args[1].to_string(),
+    })
+}
+
+fn parse_find(args: &[&str]) -> Result<Command> {
+    match args.len() {
+        1 => Ok(Command::Find {
+            path: None,
+            name: args[0].to_string(),
+        }),
+        2 => Ok(Command::Find {
+            path: Some(args[0].to_string()),
+            name: args[1].to_string(),
+        }),
+        _ => unreachable!(),
+    }
+}
+
+fn parse_grep(args: &[&str]) -> Result<Command> {
+    Ok(Command::Grep {
+        pattern: args[0].to_string(),
+        files: args[1..].iter().map(|f| f.to_string()).collect(),
+    })
+}
+
+fn parse_alias(args: &[&str]) -> Result<Command> {
+    match args {
+        [] => Ok(Command::Alias {
+            name: None,
+            command: None,
+        }),
+        [setting] => match setting.split_once("=") {
+            Some((name, cmd)) => Ok(Command::Alias {
+                name: Some(name.to_string()),
+                command: Some(cmd.to_string()),
+            }),
+            None => Err(RucliError::ParseError("alias needs =".to_string())),
+        },
+        _ => unreachable!(),
     }
 }
 
