@@ -524,6 +524,12 @@ pub fn handle_alias(name: Option<&str>, command: Option<&str>) -> Result<()> {
     Ok(())
 }
 
+/// バージョン情報を表示する
+pub fn handle_version() -> Result<()> {
+    println!("rucli v{}", env!("CARGO_PKG_VERSION"));
+    Ok(())
+}
+
 /// プログラムを終了する
 pub fn handle_exit() {
     info!("Exiting rucli");

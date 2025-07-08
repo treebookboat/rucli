@@ -2,9 +2,9 @@
 
 🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
 
-## Progress: 42/100 PRs
+## Progress: 43/100 PRs
 
-[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
 
 ## Current Phase: Basic Features (26-45)
 
@@ -49,14 +49,13 @@ Implementing file operations and search capabilities.
 - [x] PR #40: grep command basic implementation
 - [x] PR #41: grep with regex support
 - [x] PR #42: Command aliases
+- [x] PR #43: Version command
 
-## Latest Changes (PR #42)
+## Latest Changes (PR #43)
 
-- Implemented command alias functionality
-- Set aliases with `alias name=command` syntax
-- List all aliases with `alias` command
-- Automatic alias expansion during command parsing
-- Thread-safe global alias storage using once_cell
+- Added version command to display rucli version
+- Uses Cargo package version from manifest
+- Simple implementation marking Phase 2 milestone
 
 ## Usage
 
@@ -87,6 +86,7 @@ Available commands:
   find [directory] <pattern>    - Find files by name (wildcards: *, ?)
   grep <pattern> <file...>      - Search for pattern in files (regex)
   alias [name=command]          - Set or show command aliases
+  version                       - Show version information
   repeat <count> <message...>   - Repeat message count times
   exit                          - Exit the program
   quit                          - Exit the program
@@ -94,46 +94,62 @@ Available commands:
 Options:
   --debug                       - Enable debug mode with detailed logging
 
-# Alias examples
+# Version command
+> version
+rucli v0.1.0
+
+# All basic features
+> write test.txt Hello, World!
+File written successfully: test.txt
+
+> cat test.txt
+Hello, World!
+
+> cp test.txt backup.txt
+> mv backup.txt archive.txt
+> find "*.txt"
+./test.txt
+./archive.txt
+
+> grep Hello test.txt
+1: Hello, World!
+
 > alias ll=ls
 Alias 'll' set to 'ls'
 
-> alias la=ls
-Alias 'la' set to 'ls'
-
 > ll
-main.rs
-lib.rs
-commands.rs
-handlers.rs
-
-# List all aliases
-> alias
-ll = ls
-la = ls
-
-# Using aliases with arguments
-> alias g=grep
-Alias 'g' set to 'grep'
-
-> g TODO src/*.rs
-src/main.rs:5: // TODO: Add configuration file support
-src/handlers.rs:12: // TODO: Implement streaming for large files
-
-# Aliases work everywhere except in alias command itself
-> alias ll
-ll = ls  # Would show if individual lookup was supported
-
-# Note: Aliases are not persistent (lost on exit)
+test.txt
+archive.txt
+src/
+Cargo.toml
 ```
 
-### Alias Features
+### Command Summary
 
-- Simple command shortcuts
-- One-level expansion (no recursive aliases)
-- Protected keywords (cannot alias 'alias' command)
-- In-memory storage (not persistent)
-- Thread-safe implementation
+**File Operations:**
+- `cat` - Display file contents
+- `write` - Write content to file
+- `cp` - Copy files (with `-r` for directories)
+- `mv` - Move/rename files and directories
+- `rm` - Remove files (with `-r`, `-f`, `-rf` options)
+
+**Directory Operations:**
+- `ls` - List directory contents
+- `cd` - Change directory (supports `~`, `-`)
+- `pwd` - Print working directory
+- `mkdir` - Make directory (with `-p` for parents)
+
+**Search Operations:**
+- `find` - Find files by name pattern (wildcards: *, ?)
+- `grep` - Search text in files (regex support)
+
+**Utility Commands:**
+- `echo` - Display message
+- `repeat` - Repeat message multiple times
+- `alias` - Manage command shortcuts
+- `version` - Show version information
+- `help` - Show available commands
+- `exit`/`quit` - Exit the program
 
 ### Debug Mode
 
@@ -141,20 +157,19 @@ ll = ls  # Would show if individual lookup was supported
 # Run with debug logging enabled
 $ cargo run -- --debug
 
-# Debug output for alias includes:
-# - Alias expansion attempts
-# - Storage operations
-# - Command transformation
+# Debug output includes:
+# - Command parsing steps
+# - Alias expansion
+# - File operations details
+# - Search pattern matching
+# - Execution timing
 
 # Example debug output:
-> alias ll=ls
-[DEBUG] Setting alias: ll = ls
-[INFO] Alias 'll' set to 'ls'
-
-> ll
-[DEBUG] Looking up alias for: ll
-[DEBUG] Alias found: ll -> ls
-[DEBUG] Executing command: ls
+> version
+[DEBUG] Parsing input: 'version'
+[DEBUG] Recognized command: 'version' with 0 args
+[INFO] Displaying version: rucli v0.1.0
+[DEBUG] 処理時間: 0.2ms
 ```
 
 ## Dependencies
@@ -292,7 +307,8 @@ cargo test -- --nocapture
 - [x] PR #40: grep command basic implementation
 - [x] PR #41: grep with regex support
 - [x] PR #42: Command aliases
-- [ ] PR #43-44: Third refactoring
+- [x] PR #43: Version command
+- [ ] PR #44: Third refactoring
 - [ ] PR #45: Phase 2 completion
 
 ### Phase 3: Advanced Features (PR 46-65) - 20 PRs

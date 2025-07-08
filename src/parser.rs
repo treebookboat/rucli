@@ -278,6 +278,16 @@ pub fn parse_command(input: &str) -> Result<Command> {
             }
         }
 
+        "version" => {
+            if args.is_empty() {
+                Ok(Command::Version)
+            } else {
+                Err(RucliError::InvalidArgument(
+                    "version accepts no arguments".to_string(),
+                ))
+            }
+        }
+
         _ => Err(RucliError::UnknownCommand(format!(
             "{} {}",
             cmd_name,

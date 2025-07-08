@@ -51,6 +51,8 @@ pub enum Command {
         name: Option<String>,
         command: Option<String>,
     },
+    /// バージョン表示
+    Version,
     /// プログラムを終了
     Exit,
 }
@@ -190,6 +192,13 @@ pub const COMMANDS: &[CommandInfo] = &[
         min_args: 1,
         max_args: Some(2),
     },
+    CommandInfo {
+        name: "version",
+        description: "Show version information",
+        usage: "version",
+        min_args: 0,
+        max_args: Some(0),
+    },
 ];
 
 /// コマンドを実行する
@@ -238,6 +247,7 @@ pub fn execute_command(command: Command) -> Result<()> {
         Command::Find { path, name } => handle_find(path.as_deref(), &name),
         Command::Grep { pattern, files } => handle_grep(&pattern, &files),
         Command::Alias { name, command } => handle_alias(name.as_deref(), command.as_deref()),
+        Command::Version => handle_version(),
         Command::Exit => {
             handle_exit();
             Ok(())
