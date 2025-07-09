@@ -2,9 +2,9 @@
 
 🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
 
-## Progress: 47/100 PRs
+## Progress: 48/100 PRs
 
-[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
 
 ## Current Phase: Phase 3 - Advanced Features (46-65)
 
@@ -37,14 +37,15 @@ Implementing pipes, redirection, and scripting support.
 ### Phase 3: Advanced Features (PR 46-65) 🚀
 - [x] PR #46: Pipeline infrastructure foundation
 - [x] PR #47: Basic pipe implementation (|)
+- [x] PR #48: Multiple pipe support
 
-## Latest Changes (PR #47)
+## Latest Changes (PR #48)
 
-- Implemented basic pipe functionality for connecting two commands
-- Modified handlers to return strings instead of printing directly
-- Added support for grep to read from standard input
-- Fixed find command recursive search bug
-- Proper handling of empty output in pipelines
+- Enhanced pipeline support for chaining 3+ commands
+- Modified grep output format for UNIX compatibility
+  - Pipe input: no line numbers (matching UNIX behavior)
+  - File input: with line numbers
+- Improved pipeline execution flow
 
 ## Usage
 
@@ -83,27 +84,31 @@ Available commands:
 Options:
   --debug                       - Enable debug mode with detailed logging
 
-# NEW: Pipe support!
-> echo hello world | grep hello
-1: hello world
+# NEW: Multiple pipe support!
+> echo "hello world" | grep hello | grep world
+hello world
 
-> cat file.txt | grep pattern
-1: line containing pattern
+> ls | grep .txt | grep test
+test.txt
 
-> ls | grep .txt
-1: file1.txt
-2: file2.txt
+> cat file.txt | grep ERROR | grep -v DEBUG
+ERROR: Connection failed
+ERROR: Timeout occurred
 
-> help | grep echo
-3:   echo <message...>             - Display message
+# Pipe chains can be as long as needed
+> repeat 10 "test line" | grep test | grep line | grep t
+test line
+test line
+... (10 times)
 
-# Example workflow
-> mkdir -p project/src
-> write project/src/main.rs fn main() { println!("Hello!"); }
-> find project *.rs
-./project/src/main.rs
-> cat project/src/main.rs | grep println
-1: fn main() { println!("Hello!"); }
+# UNIX-compatible output formats
+> grep pattern file.txt          # With line numbers
+1: line with pattern
+5: another pattern match
+
+> cat file.txt | grep pattern    # Without line numbers (pipe mode)
+line with pattern
+another pattern match
 ```
 
 ## Command Summary
@@ -124,6 +129,8 @@ Options:
 **Search Operations:**
 - `find` - Find files by name pattern (wildcards: *, ?)
 - `grep` - Search text in files (regex support)
+  - File input: outputs with line numbers
+  - Pipe input: outputs without line numbers (UNIX-compatible)
 
 **Utility Commands:**
 - `echo` - Display message
@@ -135,33 +142,37 @@ Options:
 
 **Pipeline Support:**
 - `|` - Pipe output of one command to another
-- Currently supports connecting two commands
-- Commands that support input from pipe: `grep`
+- Supports unlimited command chaining
+- Commands that accept pipe input: `grep`
 
 ## Pipe Examples
 
 ```bash
-# Filter output of any command
-> echo "line1\nline2\nline3" | grep 2
-1: line2
+# Basic two-command pipe
+> echo hello | grep h
+hello
 
-> repeat 5 hello | grep hello
-1: hello
-2: hello
-3: hello
-4: hello
-5: hello
+# Three-command pipe
+> echo "hello\nworld\nhello world" | grep hello | grep world
+hello world
 
-# Search in files and filter results
-> cat large_file.txt | grep ERROR
+# Complex filtering
+> ls | grep .rs | grep main
+main.rs
 
-# Filter directory listings
-> ls | grep .rs
-> find . *.txt | grep test
+# File processing pipeline
+> cat large_log.txt | grep ERROR | grep "2024"
+ERROR [2024-01-15]: Database connection failed
 
-# No output when no match
-> echo hello | grep xyz
->
+# Multiple filters on directory listing
+> find . *.txt | grep test | grep -v temp
+./test.txt
+./test_data.txt
+
+# Counting matches (future feature with wc)
+> cat file.txt | grep pattern
+matching line 1
+matching line 2
 ```
 
 ## Example Scripts
@@ -184,19 +195,23 @@ $ cargo run -- --debug
 # Debug output includes:
 # - Command parsing steps
 # - Pipeline detection and splitting
-# - Command execution flow
+# - Command execution flow in pipelines
+# - Input/output handling between pipes
 # - Alias expansion
 # - File operations details
 # - Search pattern matching
 # - Execution timing
 
 # Example debug output:
-> echo hello | grep h
-[DEBUG] Parsing input: 'echo hello | grep h'
-[DEBUG] Pipeline detected in input
-[DEBUG] Executing command: Pipeline { commands: ["echo hello", "grep h"] }
-[DEBUG] 処理時間: 1.2ms
-1: hello
+> echo hello | grep h | grep e
+[DEBUG] Parsing input: 'echo hello | grep h | grep e'
+[DEBUG] Pipeline detected with 3 commands
+[DEBUG] Executing: echo hello
+[DEBUG] Output: "hello"
+[DEBUG] Executing: grep h with input
+[DEBUG] Output: "hello"
+[DEBUG] Executing: grep e with input
+[DEBUG] Final output: "hello"
 ```
 
 ## Dependencies
@@ -222,7 +237,7 @@ src/
 ├── lib.rs        # Library root (exposes public API)
 ├── commands.rs   # Command definitions and execution
 ├── parser.rs     # Command parsing with pipeline support
-├── handlers.rs   # Command implementation handlers (now return strings)
+├── handlers.rs   # Command implementation handlers (output-based)
 ├── error.rs      # Custom error types
 ├── alias.rs      # Alias management module
 └── pipeline.rs   # Pipeline execution logic
@@ -252,6 +267,7 @@ The codebase follows Rust best practices:
 - Well-structured parser with dedicated parsing functions
 - Clean separation between data structures and execution logic
 - Output-based command handlers for pipeline support
+- UNIX-compatible output formatting
 
 ## Error Handling
 
@@ -331,7 +347,7 @@ Implemented essential file and directory operations, search capabilities, and co
 
 - [x] PR #46: Pipeline infrastructure foundation
 - [x] PR #47: Basic pipe implementation
-- [ ] PR #48: Multiple pipe support
+- [x] PR #48: Multiple pipe support
 - [ ] PR #49: Output redirection (>)
 - [ ] PR #50: Append redirection (>>)
 - [ ] PR #51: Input redirection (<)
@@ -382,4 +398,4 @@ This is a learning project following the 100 PR Challenge. Each PR focuses on a 
 
 ---
 
-**Next**: Implementing multiple pipe support (cmd1 | cmd2 | cmd3) in PR #48! 🚀
+**Next**: Implementing output redirection (>) in PR #49! 🚀

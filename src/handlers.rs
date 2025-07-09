@@ -484,7 +484,11 @@ pub fn handle_grep(pattern: &str, files: &[String], input: Option<&str>) -> Resu
         let results = grep_from_string(pattern, input_text)?;
 
         for (line_num, content) in results {
-            lines.push(format!("{}: {}", line_num + 1, content));
+            if input.is_some() {
+                lines.push(content);
+            } else {
+                lines.push(format!("{}: {}", line_num + 1, content));
+            }
         }
     } else {
         // 既存のファイル処理
