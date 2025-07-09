@@ -2,13 +2,13 @@
 
 🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
 
-## Progress: 45/100 PRs
+## Progress: 46/100 PRs
 
-[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
 
-## Current Phase: Phase 2 Complete! 🎉
+## Current Phase: Phase 3 - Advanced Features (46-65)
 
-Basic file operations and search capabilities successfully implemented.
+Implementing pipes, redirection, and scripting support.
 
 ## Completed Features ✅
 
@@ -34,12 +34,15 @@ Basic file operations and search capabilities successfully implemented.
 - [x] Parser refactoring for maintainability
 - [x] Phase 2 integration tests
 
-## Latest Changes (PR #45)
+### Phase 3: Advanced Features (PR 46-65) 🚀
+- [x] PR #46: Pipeline infrastructure foundation
 
-- Added comprehensive integration tests for Phase 2 features
-- Created CHANGELOG.md for version tracking
-- Added example scripts demonstrating practical usage
-- Completed Phase 2 milestone with full test coverage
+## Latest Changes (PR #46)
+
+- Added pipeline module with `PipelineCommand` and `PipelineExecutor` structures
+- Implemented pipeline detection and command splitting logic
+- Parser now recognizes pipe symbols and prepares for pipeline execution
+- Added comprehensive tests for pipeline parsing
 
 ## Usage
 
@@ -77,6 +80,10 @@ Available commands:
 
 Options:
   --debug                       - Enable debug mode with detailed logging
+
+# Pipeline support (coming soon!)
+> echo hello | grep h
+Parse error: Pipeline commands not yet implemented
 
 # Example workflow
 > mkdir -p project/src
@@ -116,6 +123,11 @@ Options:
 - `help` - Show available commands
 - `exit`/`quit` - Exit the program
 
+**Pipeline Support (In Progress):**
+- Pipe symbol (`|`) detection implemented
+- Command splitting logic ready
+- Execution coming in next PR
+
 ## Example Scripts
 
 Check out the `examples/` directory for practical usage examples:
@@ -135,17 +147,17 @@ $ cargo run -- --debug
 
 # Debug output includes:
 # - Command parsing steps
+# - Pipeline detection
 # - Alias expansion
 # - File operations details
 # - Search pattern matching
 # - Execution timing
 
 # Example debug output:
-> version
-[DEBUG] Parsing input: 'version'
-[DEBUG] Recognized command: 'version' with 0 args
-[DEBUG] 処理時間: 0.2ms
-rucli v0.2.0
+> echo hello | grep h
+[DEBUG] Parsing input: 'echo hello | grep h'
+[DEBUG] Pipeline detected in input
+[ERROR] Parse error: Pipeline commands not yet implemented
 ```
 
 ## Dependencies
@@ -170,10 +182,11 @@ src/
 ├── main.rs       # Entry point and REPL loop
 ├── lib.rs        # Library root (exposes public API)
 ├── commands.rs   # Command definitions and execution
-├── parser.rs     # Command parsing with improved structure
+├── parser.rs     # Command parsing with pipeline support
 ├── handlers.rs   # Command implementation handlers
 ├── error.rs      # Custom error types
-└── alias.rs      # Alias management module
+├── alias.rs      # Alias management module
+└── pipeline.rs   # Pipeline infrastructure (NEW)
 
 tests/
 ├── cli_tests.rs         # Basic integration tests
@@ -198,6 +211,7 @@ The codebase follows Rust best practices:
 - Optimized regex compilation
 - Thread-safe global state management
 - Well-structured parser with dedicated parsing functions
+- Clean separation between data structures and execution logic
 
 ## Error Handling
 
@@ -222,8 +236,8 @@ cargo test --lib
 cargo test --test cli_tests
 cargo test --test integration_tests
 
-# Run specific test
-cargo test test_file_operations_workflow
+# Run pipeline tests specifically
+cargo test pipeline
 
 # Run with output
 cargo test -- --nocapture
@@ -231,10 +245,11 @@ cargo test -- --nocapture
 
 ## Test Coverage Summary
 
-- **Unit tests**: 10 tests (parser: 8, commands: 2)
+- **Unit tests**: 13 tests (parser: 11, commands: 2)
 - **Basic integration tests**: 11 tests
 - **Workflow integration tests**: 7 comprehensive tests
-- **Total**: 28 tests ensuring reliability
+- **Pipeline tests**: 4 tests (NEW)
+- **Total**: 35 tests ensuring reliability
 
 ## Logging
 
@@ -251,13 +266,14 @@ RUST_LOG=trace cargo run    # Everything (very verbose)
 # Module-specific logging
 RUST_LOG=rucli::parser=trace cargo run    # Trace for parser only
 RUST_LOG=rucli::handlers=debug cargo run  # Debug for handlers only
+RUST_LOG=rucli::pipeline=debug cargo run  # Debug for pipeline module
 ```
 
 ### Log Categories:
 - **ERROR**: Command execution failures, invalid regex patterns
 - **WARN**: Invalid operations (e.g., cat on directory)
 - **INFO**: Important operations (file writes, reads, copies, moves, grep matches, alias operations, program start/exit)
-- **DEBUG**: Command parsing, validation, operation details, alias expansion
+- **DEBUG**: Command parsing, validation, operation details, alias expansion, pipeline detection
 - **TRACE**: Detailed command lookup and parsing steps
 
 ## Roadmap 🗺️
@@ -270,16 +286,20 @@ Established core infrastructure, error handling, logging, and testing framework.
 
 Implemented essential file and directory operations, search capabilities, and command aliases.
 
-### Phase 3: Advanced Features (PR 46-65) - 20 PRs 🚀 NEXT!
+### Phase 3: Advanced Features (PR 46-65) 🚀 IN PROGRESS!
 
-Pipes, redirection, scripting support:
-- Pipe operations (`|`)
-- Output redirection (`>`, `>>`)
-- Input redirection (`<`)
-- Background execution (`&`)
-- Job management
-- Environment variables
-- Basic scripting support
+- [x] PR #46: Pipeline infrastructure foundation
+- [ ] PR #47: Basic pipe implementation
+- [ ] PR #48: Multiple pipe support
+- [ ] PR #49: Output redirection (>)
+- [ ] PR #50: Append redirection (>>)
+- [ ] PR #51: Input redirection (<)
+- [ ] PR #52: Background execution (&)
+- [ ] PR #53: Job management
+- [ ] PR #54: Environment variables (env)
+- [ ] PR #55: Export command
+- [ ] PR #56-57: Refactoring
+- [ ] PR #58-65: Scripting support
 
 ### Phase 4: Interactive Features (PR 66-85) - 20 PRs
 
@@ -321,4 +341,4 @@ This is a learning project following the 100 PR Challenge. Each PR focuses on a 
 
 ---
 
-**Phase 2 Complete!** 🎉 On to Phase 3: Advanced Features!
+**Next**: Implementing actual pipe execution in PR #47! 🚀

@@ -88,6 +88,14 @@ pub fn parse_command(input: &str) -> Result<Command> {
         cmd_name
     };
 
+    // パイプラインチェックを追加
+    if contains_pipeline(input) {
+        // 今はエラーを返す（次のPRで実装）
+        return Err(RucliError::ParseError(
+            "Pipeline commands not yet implemented".to_string(),
+        ));
+    }
+
     // 引数の数チェック
     if let Some(cmd_info) = find_command(cmd_name) {
         validate_args(cmd_info, args)?;
@@ -271,11 +279,26 @@ fn parse_alias(args: &[&str]) -> Result<Command> {
     }
 }
 
+/// 入力をパイプで分割する
+/// 例: "echo hello | grep h" → ["echo hello", "grep h"]
+pub fn split_by_pipe(input: &str) -> Vec<&str> {
+    input
+        .split('|')
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .collect()
+}
+
+/// パイプラインを含むかチェック
+pub fn contains_pipeline(input: &str) -> bool {
+    input.contains('|')
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
         commands::{Command, CommandInfo},
-        parser::{find_command, parse_command, validate_args},
+        parser::{contains_pipeline, find_command, parse_command, split_by_pipe, validate_args},
     };
 
     #[test]
@@ -380,5 +403,25 @@ mod tests {
         let result = parse_command("abc input");
 
         assert!(result.is_err())
+    }
+
+    #[test]
+    fn test_split_by_pipe() {
+        let input = "echo hello | grep h | wc -l";
+        let parts = split_by_pipe(input);
+        assert_eq!(parts, vec!["echo hello", "grep h", "wc -l"]);
+    }
+
+    #[test]
+    fn test_split_by_pipe_with_spaces() {
+        let input = "  echo hello  |  grep h  ";
+        let parts = split_by_pipe(input);
+        assert_eq!(parts, vec!["echo hello", "grep h"]);
+    }
+
+    #[test]
+    fn test_contains_pipeline() {
+        assert!(contains_pipeline("echo | grep"));
+        assert!(!contains_pipeline("echo hello"));
     }
 }

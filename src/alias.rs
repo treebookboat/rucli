@@ -1,4 +1,5 @@
-// src/alias.rs（新規ファイル）
+//! エイリアスに関連する関数を提供するモジュール
+
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use std::sync::Mutex;
