@@ -88,6 +88,17 @@ pub fn parse_command(input: &str) -> Result<Command> {
         cmd_name
     };
 
+    // "&"があるかチェック
+    if contains_background(input) {
+        // "&"を除いた部分をパース
+        let cmd_without_bg = input.trim_end().trim_end_matches('&').trim(); // "echo hello"
+        let inner_cmd = parse_command(&cmd_without_bg)?;
+
+        return Ok(Command::Background {
+            command: Box::new(inner_cmd),
+        });
+    }
+
     // まずパイプで分割
     let pipe_parts = split_by_pipe(input);
 
@@ -178,6 +189,7 @@ pub fn parse_command(input: &str) -> Result<Command> {
         "find" => parse_find(args),
         "grep" => parse_grep(args),
         "alias" => parse_alias(args),
+        "sleep" => parse_sleep(args),
 
         _ => Err(RucliError::UnknownCommand(format!(
             "{} {}",
@@ -338,6 +350,16 @@ fn parse_alias(args: &[&str]) -> Result<Command> {
     }
 }
 
+fn parse_sleep(args: &[&str]) -> Result<Command> {
+    match args[0].parse::<u64>() {
+        Ok(seconds) => Ok(Command::Sleep { seconds }),
+        Err(_) => Err(RucliError::ParseError(format!(
+            "'{}' is not a valid number",
+            args[0]
+        ))),
+    }
+}
+
 /// 入力をパイプで分割する
 /// 例: "echo hello | grep h" → ["echo hello", "grep h"]
 pub fn split_by_pipe(input: &str) -> Vec<&str> {
@@ -390,6 +412,11 @@ fn find_redirect_position(input: &str) -> Option<(usize, &str)> {
 /// リダイレクトを含むかチェック
 pub fn contains_redirect(input: &str) -> bool {
     input.contains(">>") || input.contains(">") || input.contains("<")
+}
+
+// バックグラウンドを含むかチェック
+pub fn contains_background(input: &str) -> bool {
+    input.contains("&")
 }
 
 #[cfg(test)]
@@ -584,5 +611,40 @@ mod tests {
         assert!(contains_redirect("cat < file"));
         assert!(contains_redirect("cmd > file"));
         assert!(contains_redirect("cmd >> file"));
+    }
+
+    #[test]
+    fn test_parse_background_command() {
+        // 基本的なバックグラウンドコマンド
+        let result = parse_command("echo hello &");
+        assert!(matches!(result, Ok(Command::Background { .. })));
+    }
+
+    #[test]
+    fn test_parse_background_with_spaces() {
+        // 前後に空白があるケース
+        let result = parse_command("  echo hello & ");
+        assert!(matches!(result, Ok(Command::Background { .. })));
+    }
+
+    #[test]
+    fn test_parse_background_pipeline() {
+        // パイプラインのバックグラウンド実行
+        let result = parse_command("cat file.txt | grep pattern &");
+        assert!(matches!(result, Ok(Command::Background { .. })));
+    }
+
+    #[test]
+    fn test_parse_sleep_command() {
+        // sleepコマンドのパース
+        let result = parse_command("sleep 5");
+        assert!(matches!(result, Ok(Command::Sleep { seconds: 5 })));
+    }
+
+    #[test]
+    fn test_parse_sleep_invalid_arg() {
+        // 無効な引数
+        let result = parse_command("sleep abc");
+        assert!(result.is_err());
     }
 }

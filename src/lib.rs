@@ -7,6 +7,7 @@ pub mod alias;
 pub mod commands;
 pub mod error;
 pub mod handlers;
+pub mod job;
 pub mod parser;
 pub mod pipeline;
 pub mod redirect;

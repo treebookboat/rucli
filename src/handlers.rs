@@ -2,12 +2,15 @@
 
 use crate::alias::{list_aliases, set_alias};
 use crate::error::{Result, RucliError};
+use crate::job;
 use log::{debug, info, warn};
 use regex::Regex;
 use std::io::{BufRead, BufReader};
+use std::thread;
+use std::time::Duration;
 use std::{env, fs, io, os::unix::fs::PermissionsExt, path::Path, process};
 
-use crate::commands::COMMANDS;
+use crate::commands::{COMMANDS, Command, execute_command, execute_command_get_output};
 use crate::parser::{DEFAULT_HOME_INDICATOR, PREVIOUS_DIR_INDICATOR};
 
 /// ファイルパーミッションのマスク値
@@ -588,9 +591,38 @@ pub fn handle_alias(name: Option<&str>, command: Option<&str>) -> Result<()> {
     Ok(())
 }
 
+/// バックグラウンド実行
+pub fn handle_background_execution(command: Box<Command>) -> Result<String> {
+    // 表示用のコマンド文字列
+    let cmd_str = format!("{command:?}");
+
+    // スレッドを起動
+    let handle = thread::spawn(move || {
+        // ここで実際にコマンドが実行される（遅延）
+        if let Err(e) = execute_command(*command) {
+            eprintln!("Background job failed: {e}");
+        }
+    });
+
+    // スレッドIDを取得
+    let thread_id = handle.thread().id();
+
+    // ジョブ作成
+    let job_id = job::create_job(cmd_str, thread_id);
+
+    // ユーザーに通知
+    Ok(format!("[{job_id}] {thread_id:?}"))
+}
+
 /// バージョン情報を表示する
 pub fn handle_version() -> String {
     format!("rucli v{}", env!("CARGO_PKG_VERSION"))
+}
+
+/// 一定秒数スリープ
+pub fn handle_sleep(seconds: u64) -> Result<()> {
+    thread::sleep(Duration::from_secs(seconds));
+    Ok(())
 }
 
 /// プログラムを終了する

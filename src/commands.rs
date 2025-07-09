@@ -63,6 +63,10 @@ pub enum Command {
         redirect_type: String, // ">", ">>", "<"
         target: String,        // ファイル名
     },
+    /// バックグラウンド実行
+    Background { command: Box<Command> },
+    /// スリープ
+    Sleep { seconds: u64 },
     /// プログラムを終了
     Exit,
 }
@@ -203,6 +207,13 @@ pub const COMMANDS: &[CommandInfo] = &[
         max_args: Some(2),
     },
     CommandInfo {
+        name: "sleep",
+        description: "Sleep for specified seconds",
+        usage: "sleep <seconds>",
+        min_args: 1,
+        max_args: Some(1),
+    },
+    CommandInfo {
         name: "version",
         description: "Show version information",
         usage: "version",
@@ -308,6 +319,11 @@ pub fn execute_command_get_output(command: Command, input: Option<&str>) -> Resu
             redirect_type,
             target,
         } => execute_redirect(*command, &redirect_type, &target),
+        Command::Background { command } => handle_background_execution(command),
+        Command::Sleep { seconds } => {
+            handle_sleep(seconds)?;
+            Ok(String::new())
+        }
         Command::Exit => {
             handle_exit();
             Ok(String::new())

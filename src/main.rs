@@ -4,6 +4,7 @@ mod alias;
 mod commands;
 mod error;
 mod handlers;
+mod job;
 mod parser;
 mod pipeline;
 mod redirect;

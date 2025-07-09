@@ -490,3 +490,96 @@ fn test_input_redirect_with_pipeline() {
         .success()
         .stdout(predicate::str::contains("hello world"));
 }
+
+#[test]
+fn test_background_execution_immediate_return() {
+    let mut cmd = Command::cargo_bin("rucli").unwrap();
+    let start = std::time::Instant::now();
+
+    // 3秒のsleepをバックグラウンドで実行
+    cmd.write_stdin("sleep 3 &\nexit\n")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("[1]"));
+
+    // 1秒以内に終了することを確認（バックグラウンドなので待たない）
+    let duration = start.elapsed();
+    assert!(duration.as_secs() < 2);
+}
+
+#[test]
+fn test_background_with_output() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file_path = temp_dir.path().join("bg_test.txt");
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(format!(
+            "write {} background content &\n\
+             sleep 1\n\
+             cat {}\n\
+             exit\n",
+            file_path.display(),
+            file_path.display()
+        ))
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("[1]"))
+        .stdout(predicate::str::contains("background content"));
+}
+
+#[test]
+fn test_multiple_background_jobs() {
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .write_stdin(
+            "echo first &\n\
+             echo second &\n\
+             echo third &\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("[1]"))
+        .stdout(predicate::str::contains("[2]"))
+        .stdout(predicate::str::contains("[3]"));
+}
+
+#[test]
+fn test_background_with_pipeline() {
+    let temp_dir = tempfile::tempdir().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "echo hello world | grep hello &\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("[1]"));
+}
+
+#[test]
+fn test_background_with_redirect() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file_path = temp_dir.path().join("output.txt");
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(format!(
+            "echo background test > {} &\n\
+             sleep 1\n\
+             cat {}\n\
+             exit\n",
+            file_path.display(),
+            file_path.display()
+        ))
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("[1]"))
+        .stdout(predicate::str::contains("background test"));
+}
