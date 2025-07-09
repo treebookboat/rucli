@@ -409,3 +409,84 @@ fn test_redirect_overwrite_vs_append() {
         .stdout(predicate::str::contains("Line 1").not())
         .stdout(predicate::str::contains("Line 2").not());
 }
+
+#[test]
+fn test_input_redirect_basic() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file_path = temp_dir.path().join("input.txt");
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(format!(
+            "echo Hello, Input Redirect! > {}\n\
+             cat < {}\n\
+             exit\n",
+            file_path.display(),
+            file_path.display()
+        ))
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Hello, Input Redirect!"));
+}
+
+#[test]
+fn test_input_redirect_with_grep() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file_path = temp_dir.path().join("data.txt");
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(format!(
+            "echo apple > {}\n\
+             echo banana >> {}\n\
+             echo apricot >> {}\n\
+             grep a < {}\n\
+             exit\n",
+            file_path.display(),
+            file_path.display(),
+            file_path.display(),
+            file_path.display()
+        ))
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("apple"))
+        .stdout(predicate::str::contains("banana"))
+        .stdout(predicate::str::contains("apricot"));
+}
+
+#[test]
+fn test_input_redirect_nonexistent_file() {
+    let temp_dir = tempfile::tempdir().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin("cat < nonexistent.txt\nexit\n")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("No such file or directory"));
+}
+
+#[test]
+fn test_input_redirect_with_pipeline() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file_path = temp_dir.path().join("pipeline_test.txt");
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(format!(
+            "echo hello world > {}\n\
+             echo hello rust >> {}\n\
+             grep hello < {} | grep world\n\
+             exit\n",
+            file_path.display(),
+            file_path.display(),
+            file_path.display()
+        ))
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("hello world"));
+}

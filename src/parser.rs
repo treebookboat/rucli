@@ -194,9 +194,17 @@ fn parse_echo(args: &[&str]) -> Result<Command> {
 }
 
 fn parse_cat(args: &[&str]) -> Result<Command> {
-    Ok(Command::Cat {
-        filename: args[0].to_string(),
-    })
+    if args.is_empty() {
+        // 引数なしの場合は、標準入力から読むことを想定
+        // ダミーのファイル名を使う（実際には使われない）
+        Ok(Command::Cat {
+            filename: String::new(),
+        })
+    } else {
+        Ok(Command::Cat {
+            filename: args[0].to_string(),
+        })
+    }
 }
 
 fn parse_write(args: &[&str]) -> Result<Command> {
@@ -372,12 +380,16 @@ fn find_redirect_position(input: &str) -> Option<(usize, &str)> {
     if let Some(pos) = input.find('>') {
         return Some((pos, ">"));
     }
+    // 最後に "<" をチェック
+    if let Some(pos) = input.find('<') {
+        return Some((pos, "<"));
+    }
     None
 }
 
 /// リダイレクトを含むかチェック
 pub fn contains_redirect(input: &str) -> bool {
-    input.contains(">>") || input.contains(">")
+    input.contains(">>") || input.contains(">") || input.contains("<")
 }
 
 #[cfg(test)]
@@ -551,5 +563,26 @@ mod tests {
         assert!(contains_redirect("echo >> file"));
         assert!(contains_redirect("echo > file"));
         assert!(!contains_redirect("echo file"));
+    }
+
+    #[test]
+    fn test_split_redirect_input() {
+        let (cmd, redirect) = split_redirect("cat < file.txt");
+        assert_eq!(cmd, "cat");
+        assert_eq!(redirect, Some(("<".to_string(), "file.txt".to_string())));
+    }
+
+    #[test]
+    fn test_find_redirect_position_input() {
+        assert_eq!(find_redirect_position("cat < file"), Some((4, "<")));
+        // >> が優先されることを確認
+        assert_eq!(find_redirect_position("cmd >> file"), Some((4, ">>")));
+    }
+
+    #[test]
+    fn test_contains_redirect_input() {
+        assert!(contains_redirect("cat < file"));
+        assert!(contains_redirect("cmd > file"));
+        assert!(contains_redirect("cmd >> file"));
     }
 }

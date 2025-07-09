@@ -1,58 +1,59 @@
-# rucli - Rust CLI Tool
+rucli - Rust CLI Tool
 
-🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
+🎯 100 PR Challenge: Building a feature-rich CLI tool in 100 PRs
+Progress: 51/100 PRs 🎉
 
-## Progress: 50/100 PRs 🎉
-
-[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
-
-## Current Phase: Phase 3 - Advanced Features (46-65)
+[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+Current Phase: Phase 3 - Advanced Features (46-65)
 
 Implementing pipes, redirection, and scripting support.
+Completed Features ✅
+Phase 1: Foundation (PR 1-25) ✅
 
-## Completed Features ✅
+    Basic REPL with help, echo, repeat commands
+    Command structure and prompt
+    File operations (cat, write, ls)
+    Command metadata and auto-generated help
+    Module organization
+    Comprehensive error handling (RucliError)
+    Logging framework with --debug flag
+    Complete test suite (unit + integration)
 
-### Phase 1: Foundation (PR 1-25) ✅
-- [x] Basic REPL with help, echo, repeat commands
-- [x] Command structure and prompt
-- [x] File operations (cat, write, ls)
-- [x] Command metadata and auto-generated help
-- [x] Module organization
-- [x] Comprehensive error handling (RucliError)
-- [x] Logging framework with --debug flag
-- [x] Complete test suite (unit + integration)
+Phase 2: Basic Features (PR 26-45) ✅
 
-### Phase 2: Basic Features (PR 26-45) ✅
-- [x] Working directory management (pwd, cd with ~, -, ..)
-- [x] Directory operations (mkdir with -p option)
-- [x] File operations (rm with -r, -f, -rf options)
-- [x] Copy operations (cp with -r for directories)
-- [x] Move/rename operations (mv)
-- [x] Search operations (find with wildcards, grep with regex)
-- [x] Command aliases system
-- [x] Version command
-- [x] Parser refactoring for maintainability
-- [x] Phase 2 integration tests
+    Working directory management (pwd, cd with ~, -, ..)
+    Directory operations (mkdir with -p option)
+    File operations (rm with -r, -f, -rf options)
+    Copy operations (cp with -r for directories)
+    Move/rename operations (mv)
+    Search operations (find with wildcards, grep with regex)
+    Command aliases system
+    Version command
+    Parser refactoring for maintainability
+    Phase 2 integration tests
 
-### Phase 3: Advanced Features (PR 46-65) 🚀
-- [x] PR #46: Pipeline infrastructure foundation
-- [x] PR #47: Basic pipe implementation (|)
-- [x] PR #48: Multiple pipe support
-- [x] PR #49: Output redirection (>)
-- [x] PR #50: Append redirection (>>)
+Phase 3: Advanced Features (PR 46-65) 🚀
 
-## Latest Changes (PR #50)
+    PR #46: Pipeline infrastructure foundation
+    PR #47: Basic pipe implementation (|)
+    PR #48: Multiple pipe support
+    PR #49: Output redirection (>)
+    PR #50: Append redirection (>>)
+    PR #51: Input redirection (<)
 
-- Implemented append redirection with `>>` operator
-- Files can be appended to instead of overwritten
-- Creates new file if it doesn't exist
-- Support for combining pipes and append redirection
-- Added `execute_get_output` method for pipeline string output
-- Fixed command execution to handle all command types
+Latest Changes (PR #51)
 
-## Usage
+    Implemented input redirection with < operator
+    Commands can read input from files instead of arguments
+    Modified execute_redirect to return String for pipeline integration
+    Updated handle_cat to support input parameter for stdin
+    Fixed execute_command_get_output to properly handle all redirect types
+    Full support for combining input redirection with pipelines
 
-```bash
+Usage
+
+bash
+
 $ cargo run
 Hello, rucli!
 > help
@@ -87,155 +88,150 @@ Available commands:
 Options:
   --debug                       - Enable debug mode with detailed logging
 
-# NEW: Append redirection support!
-> echo "First line" > log.txt
-> echo "Second line" >> log.txt
-> echo "Third line" >> log.txt
-> cat log.txt
-First line
-Second line
-Third line
+# NEW: Input redirection support!
+> cat < input.txt
+Contents of input.txt displayed here
 
-# Create new file with append
-> echo "New file content" >> new.txt
-> cat new.txt
-New file content
+> grep pattern < data.txt
+Lines matching pattern from data.txt
 
-# Combine pipes and append redirection
-> cat data.txt | grep ERROR >> errors.log
-> find . *.log | grep 2024 >> logs_2024.txt
-```
+# Combine with pipelines
+> grep error < log.txt | grep -v warning
+> cat < config.txt | grep setting
 
-## Command Summary
+Command Summary
 
-**File Operations:**
-- `cat` - Display file contents
-- `write` - Write content to file
-- `cp` - Copy files (with `-r` for directories)
-- `mv` - Move/rename files and directories
-- `rm` - Remove files (with `-r`, `-f`, `-rf` options)
+File Operations:
 
-**Directory Operations:**
-- `ls` - List directory contents
-- `cd` - Change directory (supports `~`, `-`)
-- `pwd` - Print working directory
-- `mkdir` - Make directory (with `-p` for parents)
+    cat - Display file contents
+    write - Write content to file
+    cp - Copy files (with -r for directories)
+    mv - Move/rename files and directories
+    rm - Remove files (with -r, -f, -rf options)
 
-**Search Operations:**
-- `find` - Find files by name pattern (wildcards: *, ?)
-- `grep` - Search text in files (regex support)
-  - File input: outputs with line numbers
-  - Pipe input: outputs without line numbers (UNIX-compatible)
+Directory Operations:
 
-**Utility Commands:**
-- `echo` - Display message
-- `repeat` - Repeat message multiple times
-- `alias` - Manage command shortcuts
-- `version` - Show version information
-- `help` - Show available commands
-- `exit`/`quit` - Exit the program
+    ls - List directory contents
+    cd - Change directory (supports ~, -)
+    pwd - Print working directory
+    mkdir - Make directory (with -p for parents)
 
-**Pipeline & Redirection Support:**
-- `|` - Pipe output of one command to another
-- `>` - Redirect output to file (overwrites existing file)
-- `>>` - Redirect output to file (appends to existing file)
-- Combine pipes and redirection: `cmd1 | cmd2 > file` or `cmd1 | cmd2 >> file`
+Search Operations:
 
-## Redirection Examples
+    find - Find files by name pattern (wildcards: *, ?)
+    grep - Search text in files (regex support)
+        File input: outputs with line numbers
+        Pipe input: outputs without line numbers (UNIX-compatible)
 
-```bash
+Utility Commands:
+
+    echo - Display message
+    repeat - Repeat message multiple times
+    alias - Manage command shortcuts
+    version - Show version information
+    help - Show available commands
+    exit/quit - Exit the program
+
+Pipeline & Redirection Support:
+
+    | - Pipe output of one command to another
+    > - Redirect output to file (overwrites existing file)
+    >> - Redirect output to file (appends to existing file)
+    < - Redirect input from file (reads file as input)
+    Combine operations: cmd1 | cmd2 > file, cmd < input.txt | cmd2, etc.
+
+Redirection Examples
+
+bash
+
 # Basic output redirection (overwrite)
 > echo "Hello, World!" > greeting.txt
 > cat greeting.txt
 Hello, World!
 
-# Append redirection (NEW!)
+# Append redirection
 > echo "First entry" >> diary.txt
 > echo "Second entry" >> diary.txt
 > cat diary.txt
 First entry
 Second entry
 
-# Create new file with append
-> echo "Log started" >> new_log.txt
-> ls
-new_log.txt
+# Input redirection (NEW!)
+> cat < file.txt                    # Same as cat file.txt but via stdin
+> grep "error" < server.log         # Search in file via stdin
+> grep "TODO" < main.rs | grep -v "DONE"  # Combine with pipeline
 
-# Accumulate search results
-> grep ERROR app.log >> all_errors.txt
-> grep ERROR system.log >> all_errors.txt
-> grep ERROR database.log >> all_errors.txt
+# Traditional usage vs input redirection
+> grep pattern file.txt             # File as argument (shows filename in output)
+> grep pattern < file.txt           # File as stdin (no filename in output)
 
-# Pipeline with append redirection
-> cat server.log | grep "404" >> not_found_errors.txt
-> find . *.txt | grep readme >> readme_files.txt
+# Complex pipeline with input redirection
+> cat < input.txt | grep keyword | sort > output.txt
 
-# Build a file incrementally
-> echo "# Daily Report" > report.txt
-> echo "" >> report.txt
-> echo "## Morning Tasks" >> report.txt
-> ls | grep -v "test" >> report.txt
-> echo "" >> report.txt
-> echo "## Afternoon Tasks" >> report.txt
-> find . *.rs | grep main >> report.txt
-```
+All Redirection Types
 
-## Append vs Overwrite
+bash
 
-```bash
-# Overwrite (>) - replaces entire file
-> echo "Line 1" > file.txt
-> echo "Line 2" > file.txt
-> cat file.txt
-Line 2
+# Output redirection (>) - overwrites file
+> echo "new content" > file.txt
+> ls > directory_list.txt
 
-# Append (>>) - adds to end of file
-> echo "Line 1" > file.txt
-> echo "Line 2" >> file.txt
-> cat file.txt
-Line 1
-Line 2
-```
+# Append redirection (>>) - adds to file
+> echo "line 1" >> log.txt
+> echo "line 2" >> log.txt
 
-## Example Scripts
+# Input redirection (<) - reads from file
+> cat < input.txt
+> grep pattern < data.txt
 
-Check out the `examples/` directory for practical usage examples:
-- `file_organizer.rucli` - Organize files by extension
-- `backup_script.rucli` - Backup project files
-- `log_analyzer.rucli` - Analyze and aggregate log files (NEW!)
+# Combining redirections with pipelines
+> cat < input.txt | grep pattern > output.txt
+> grep error < log.txt | grep -v debug >> filtered_errors.txt
+> find . *.txt < /dev/null | sort > sorted_files.txt
+
+Example Scripts
+
+Check out the examples/ directory for practical usage examples:
+
+    file_organizer.rucli - Organize files by extension
+    backup_script.rucli - Backup project files
+    log_analyzer.rucli - Analyze and aggregate log files
+    data_processor.rucli - Process data with input redirection (NEW!)
 
 Run examples with:
-```bash
-rucli < examples/log_analyzer.rucli
-```
 
-## Debug Mode
+bash
 
-```bash
+rucli < examples/data_processor.rucli
+
+Debug Mode
+
+bash
+
 # Run with debug logging enabled
 $ cargo run -- --debug
 
 # Debug output includes:
 # - Command parsing steps
 # - Pipeline detection and splitting
-# - Redirection parsing (> vs >>)
-# - File append operations
+# - Redirection parsing (>, >>, <)
+# - File read/write operations
 # - Command execution flow
 # - Alias expansion
 # - Execution timing
 
 # Example debug output:
-> echo "test" >> output.txt
-[DEBUG] Parsing input: 'echo "test" >> output.txt'
-[DEBUG] Redirect detected: >> output.txt (append mode)
-[DEBUG] Executing command: Echo { message: "test" }
-[DEBUG] Appending output to file: output.txt
-[DEBUG] 処理時間: 0.8ms
-```
+> cat < input.txt
+[DEBUG] Parsing input: 'cat < input.txt'
+[DEBUG] Redirect detected: < input.txt (input mode)
+[DEBUG] Input redirect from file: 'input.txt'
+[DEBUG] Executing command: Cat { filename: "" }
+[DEBUG] 処理時間: 0.5ms
 
-## Dependencies
+Dependencies
 
-```toml
+toml
+
 [dependencies]
 env_logger = "0.11"
 log = "0.4"
@@ -246,68 +242,72 @@ once_cell = "1.19"
 assert_cmd = "2.0"
 predicates = "3.0"
 tempfile = "3.8"
-```
 
-## Project Structure
+Project Structure
 
-```
 src/
 ├── main.rs       # Entry point and REPL loop
 ├── lib.rs        # Library root (exposes public API)
 ├── commands.rs   # Command definitions and execution
-├── parser.rs     # Command parsing with pipeline & redirect support
-├── handlers.rs   # Command implementation handlers (output-based)
+├── parser.rs     # Command parsing with pipeline & all redirect support
+├── handlers.rs   # Command implementation handlers (input-aware)
 ├── error.rs      # Custom error types
 ├── alias.rs      # Alias management module
 ├── pipeline.rs   # Pipeline execution logic (with execute_get_output)
-└── redirect.rs   # Redirection handling (> and >>)
+└── redirect.rs   # Redirection handling (>, >>, <)
 
 tests/
 ├── cli_tests.rs         # Basic integration tests
 └── integration_tests.rs # Comprehensive workflow tests
 
 examples/
-├── file_organizer.rucli # File organization example
-├── backup_script.rucli  # Backup automation example
-└── log_analyzer.rucli   # Log aggregation example (NEW!)
-```
+├── file_organizer.rucli  # File organization example
+├── backup_script.rucli   # Backup automation example
+├── log_analyzer.rucli    # Log aggregation example
+└── data_processor.rucli  # Input redirection example (NEW!)
 
-## Code Quality
+Code Quality
 
 The codebase follows Rust best practices:
-- Named constants instead of magic strings
-- Comprehensive error handling with custom types
-- Modular architecture with clear separation of concerns
-- Extensive logging for debugging
-- Thorough test coverage (unit + integration)
-- Atomic file operations where possible
-- Efficient pattern matching algorithms
-- Memory-efficient file processing
-- Optimized regex compilation
-- Thread-safe global state management
-- Well-structured parser with dedicated parsing functions
-- Clean separation between data structures and execution logic
-- Output-based command handlers for pipeline support
-- UNIX-compatible output formatting
-- Proper handling of complex command structures (pipes + redirects)
-- Consistent file operation behavior (> vs >>)
 
-## Error Handling
+    Named constants instead of magic strings
+    Comprehensive error handling with custom types
+    Modular architecture with clear separation of concerns
+    Extensive logging for debugging
+    Thorough test coverage (unit + integration)
+    Atomic file operations where possible
+    Efficient pattern matching algorithms
+    Memory-efficient file processing
+    Optimized regex compilation
+    Thread-safe global state management
+    Well-structured parser with dedicated parsing functions
+    Clean separation between data structures and execution logic
+    Output-based command handlers for pipeline support
+    Input-aware command handlers for stdin support
+    UNIX-compatible output formatting
+    Proper handling of complex command structures (pipes + all redirects)
+    Consistent file operation behavior (>, >>, <)
+    String-returning redirect operations for pipeline integration
 
-The project uses a custom `RucliError` type with complete Result-based error handling:
-- Type-safe error propagation throughout the application
-- Unified error handling in main loop
-- Automatic conversion from `io::Error`
-- Consistent error messages
-- All commands return Result<()> or Result<String> for consistency
-- InvalidRegex error type for pattern compilation failures
-- Pipeline-specific error handling
-- File operation error handling for redirects
-- Graceful handling of append to non-existent files
+Error Handling
 
-## Testing
+The project uses a custom RucliError type with complete Result-based error handling:
 
-```bash
+    Type-safe error propagation throughout the application
+    Unified error handling in main loop
+    Automatic conversion from io::Error
+    Consistent error messages
+    All commands return Result<()> or Result<String> for consistency
+    InvalidRegex error type for pattern compilation failures
+    Pipeline-specific error handling
+    File operation error handling for all redirect types
+    Graceful handling of non-existent input files
+    Proper error propagation in complex pipelines
+
+Testing
+
+bash
+
 # Run all tests
 cargo test
 
@@ -318,27 +318,30 @@ cargo test --lib
 cargo test --test cli_tests
 cargo test --test integration_tests
 
-# Run append redirect tests specifically
-cargo test append_redirect
+# Run input redirect tests specifically
+cargo test input_redirect
+
+# Run all redirect tests
+cargo test redirect
 
 # Run with output
 cargo test -- --nocapture
-```
 
-## Test Coverage Summary
+Test Coverage Summary
 
-- **Unit tests**: 17 tests (parser: 15, commands: 2)
-- **Basic integration tests**: 11 tests
-- **Workflow integration tests**: 12 comprehensive tests
-- **Pipeline tests**: 4 tests
-- **Redirect tests**: 8 tests (including append tests)
-- **Total**: 52 tests ensuring reliability
+    Unit tests: 20 tests (parser: 18, commands: 2)
+    Basic integration tests: 11 tests
+    Workflow integration tests: 16 comprehensive tests
+    Pipeline tests: 4 tests
+    Redirect tests: 12 tests (all redirect types)
+    Total: 63 tests ensuring reliability
 
-## Logging
+Logging
 
-The project uses `env_logger` for configurable logging:
+The project uses env_logger for configurable logging:
 
-```bash
+bash
+
 # Log levels
 RUST_LOG=error cargo run    # Only errors
 RUST_LOG=warn cargo run     # Warnings and errors
@@ -350,64 +353,64 @@ RUST_LOG=trace cargo run    # Everything (very verbose)
 RUST_LOG=rucli::parser=trace cargo run    # Trace for parser only
 RUST_LOG=rucli::handlers=debug cargo run  # Debug for handlers only
 RUST_LOG=rucli::pipeline=debug cargo run  # Debug for pipeline module
-RUST_LOG=rucli::redirect=debug cargo run  # Debug for redirect module
-```
+RUST_LOG=rucli::redirect=debug cargo run  # Debug for all redirect operations
 
-### Log Categories:
-- **ERROR**: Command execution failures, invalid regex patterns, file write errors
-- **WARN**: Invalid operations (e.g., cat on directory)
-- **INFO**: Important operations (file writes, reads, copies, moves, grep matches, alias operations, program start/exit)
-- **DEBUG**: Command parsing, validation, operation details, alias expansion, pipeline detection, redirect execution, append operations
-- **TRACE**: Detailed command lookup and parsing steps
+Log Categories:
 
-## Roadmap 🗺️
+    ERROR: Command execution failures, invalid regex patterns, file read/write errors
+    WARN: Invalid operations (e.g., cat on directory)
+    INFO: Important operations (file reads, writes, copies, moves, grep matches, alias operations, program start/exit)
+    DEBUG: Command parsing, validation, operation details, alias expansion, pipeline detection, redirect execution (all types)
+    TRACE: Detailed command lookup and parsing steps
 
-### Phase 1: Foundation (PR 1-25) ✅ COMPLETED!
+Roadmap 🗺️
+Phase 1: Foundation (PR 1-25) ✅ COMPLETED!
 
 Established core infrastructure, error handling, logging, and testing framework.
-
-### Phase 2: Basic Features (PR 26-45) ✅ COMPLETED!
+Phase 2: Basic Features (PR 26-45) ✅ COMPLETED!
 
 Implemented essential file and directory operations, search capabilities, and command aliases.
+Phase 3: Advanced Features (PR 46-65) 🚀 IN PROGRESS!
 
-### Phase 3: Advanced Features (PR 46-65) 🚀 IN PROGRESS!
+    PR #46: Pipeline infrastructure foundation
+    PR #47: Basic pipe implementation
+    PR #48: Multiple pipe support
+    PR #49: Output redirection (>)
+    PR #50: Append redirection (>>)
+    PR #51: Input redirection (<)
+    PR #52: Background execution (&)
+    PR #53: Job management
+    PR #54: Environment variables (env)
+    PR #55: Export command
+    PR #56-57: Refactoring
+    PR #58-65: Scripting support
 
-- [x] PR #46: Pipeline infrastructure foundation
-- [x] PR #47: Basic pipe implementation
-- [x] PR #48: Multiple pipe support
-- [x] PR #49: Output redirection (>)
-- [x] PR #50: Append redirection (>>)
-- [ ] PR #51: Input redirection (<)
-- [ ] PR #52: Background execution (&)
-- [ ] PR #53: Job management
-- [ ] PR #54: Environment variables (env)
-- [ ] PR #55: Export command
-- [ ] PR #56-57: Refactoring
-- [ ] PR #58-65: Scripting support
-
-### Phase 4: Interactive Features (PR 66-85) - 20 PRs
+Phase 4: Interactive Features (PR 66-85) - 20 PRs
 
 History, completion, visual enhancements:
-- Command history
-- Tab completion
-- Syntax highlighting
-- Multi-line editing
-- Custom prompts
-- Git integration
 
-### Phase 5: Extensions (PR 86-100) - 15 PRs
+    Command history
+    Tab completion
+    Syntax highlighting
+    Multi-line editing
+    Custom prompts
+    Git integration
+
+Phase 5: Extensions (PR 86-100) - 15 PRs
 
 Plugins, themes, configuration system:
-- Plugin architecture
-- Theme support
-- Configuration files
-- Import/export functionality
-- Performance optimization
-- Final polish
 
-## Building
+    Plugin architecture
+    Theme support
+    Configuration files
+    Import/export functionality
+    Performance optimization
+    Final polish
 
-```bash
+Building
+
+bash
+
 # Development
 cargo build
 cargo run
@@ -417,12 +420,9 @@ cargo build --release
 
 # Run tests
 cargo test
-```
 
-## Contributing
+Contributing
 
 This is a learning project following the 100 PR Challenge. Each PR focuses on a single, well-defined improvement.
 
----
-
-**Next**: Implementing input redirection (<) in PR #51! 🚀
+Next: Implementing background execution (&) in PR #52! 🚀

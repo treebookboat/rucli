@@ -101,7 +101,7 @@ pub const COMMANDS: &[CommandInfo] = &[
         name: "cat",
         description: "Display file contents",
         usage: "cat <filename>",
-        min_args: 1,
+        min_args: 0,
         max_args: Some(1),
     },
     CommandInfo {
@@ -228,7 +228,13 @@ pub fn execute_command(command: Command) -> Result<()> {
             command,
             redirect_type,
             target,
-        } => execute_redirect(*command, &redirect_type, &target),
+        } => {
+            let output = execute_redirect(*command, &redirect_type, &target)?;
+            if !output.is_empty() {
+                println!("{output}");
+            }
+            Ok(())
+        }
         _ => {
             let output = execute_command_get_output(command, None)?;
             if !output.is_empty() {
@@ -246,7 +252,7 @@ pub fn execute_command_get_output(command: Command, input: Option<&str>) -> Resu
 
     match command {
         Command::Help => Ok(handle_help()),
-        Command::Cat { filename } => handle_cat(&filename),
+        Command::Cat { filename } => handle_cat(&filename, input),
         Command::Echo { message } => Ok(handle_echo(&message)),
         Command::Write { filename, content } => {
             handle_write(&filename, &content)?;
@@ -297,10 +303,11 @@ pub fn execute_command_get_output(command: Command, input: Option<&str>) -> Resu
             let pipeline = PipelineCommand::new(commands);
             PipelineExecutor::execute_get_output(&pipeline)
         }
-        Command::Redirect { .. } => {
-            // リダイレクトは出力なし（ファイルに書くため）
-            Ok(String::new())
-        }
+        Command::Redirect {
+            command,
+            redirect_type,
+            target,
+        } => execute_redirect(*command, &redirect_type, &target),
         Command::Exit => {
             handle_exit();
             Ok(String::new())

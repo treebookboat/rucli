@@ -80,7 +80,12 @@ pub fn handle_repeat(count: i32, message: &str) -> String {
 /// - ファイルが存在しない場合
 /// - ディレクトリを指定した場合
 /// - 読み取り権限がない場合
-pub fn handle_cat(filename: &str) -> Result<String> {
+pub fn handle_cat(filename: &str, input: Option<&str>) -> Result<String> {
+    // inputがある場合は標準入力として扱う
+    if let Some(input_content) = input {
+        return Ok(input_content.to_string());
+    }
+
     debug!("Attempting to read file: {filename}");
 
     if Path::new(filename).is_dir() {
