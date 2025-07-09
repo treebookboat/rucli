@@ -22,9 +22,24 @@ fn debug_file_metadata(metadata: &fs::Metadata) {
     );
 }
 
+/// メッセージを文字列として返す
+///
+/// # Arguments
+///
+/// * `message` - 表示するメッセージ
+///
+/// # Returns
+///
+/// メッセージの文字列
+pub fn handle_echo(message: &str) -> String {
+    message.to_string()
+}
+
 /// ヘルプメッセージを表示する
-pub fn handle_help() {
-    println!("Available commands:");
+pub fn handle_help() -> String {
+    let mut lines = Vec::new();
+
+    lines.push("Available commands:".to_string());
 
     // 左寄せでそろえるために最長のusageを計算
     let max_width = COMMANDS
@@ -35,23 +50,27 @@ pub fn handle_help() {
 
     for cmd in COMMANDS {
         // cmd.usage と cmd.description を表示
-        println!(
+        lines.push(format!(
             "  {:<width$} - {}",
             cmd.usage,
             cmd.description,
             width = max_width
-        );
+        ))
     }
 
-    println!("\nOptions:");
-    println!("  --debug    Enable debug mode with detailed logging");
+    lines.push("Options:".to_string());
+    lines.push("  --debug    Enable debug mode with detailed logging".to_string());
+
+    lines.join("\n")
 }
 
 /// 文字列をcount回表示
-pub fn handle_repeat(count: i32, message: &str) {
+pub fn handle_repeat(count: i32, message: &str) -> String {
+    let mut lines = Vec::new();
     for _ in 0..count {
-        println!("{message}");
+        lines.push(message);
     }
+    lines.join("\n")
 }
 
 /// ファイルの内容を表示する
@@ -61,7 +80,7 @@ pub fn handle_repeat(count: i32, message: &str) {
 /// - ファイルが存在しない場合
 /// - ディレクトリを指定した場合
 /// - 読み取り権限がない場合
-pub fn handle_cat(filename: &str) -> Result<()> {
+pub fn handle_cat(filename: &str) -> Result<String> {
     debug!("Attempting to read file: {filename}");
 
     if Path::new(filename).is_dir() {
@@ -79,12 +98,11 @@ pub fn handle_cat(filename: &str) -> Result<()> {
     }
 
     let contents = fs::read_to_string(filename)?;
-    println!("{contents}");
 
     // ファイル読み込み成功時
     info!("Successfully read file: {filename}");
 
-    Ok(())
+    Ok(contents)
 }
 
 /// ファイルに内容を書き込む
@@ -113,11 +131,14 @@ pub fn handle_write(filename: &str, content: &str) -> Result<()> {
 /// # Errors
 ///
 /// - ディレクトリの読み取り権限がない場合
-pub fn handle_ls() -> Result<()> {
+pub fn handle_ls() -> Result<String> {
     debug!("Listing current directory contents");
 
     let current_dir = env::current_dir()?;
     debug!("Listing directory: {current_dir:?}");
+
+    // 出力する文字列の集合
+    let mut lines = Vec::new();
 
     let entries = fs::read_dir(current_dir)?;
     for entry in entries {
@@ -127,9 +148,9 @@ pub fn handle_ls() -> Result<()> {
         let file_name = entry.file_name();
         let name = file_name.to_str().unwrap_or("???");
         if path.is_dir() {
-            println!("{name}/");
+            lines.push(format!("{name}/"));
         } else {
-            println!("{name}");
+            lines.push(format!("{name}"));
         }
 
         // ファイル情報表示
@@ -139,7 +160,7 @@ pub fn handle_ls() -> Result<()> {
         }
     }
 
-    Ok(())
+    Ok(lines.join("\n"))
 }
 
 /// 現在のディレクトリの内容を一覧表示する
@@ -189,12 +210,11 @@ pub fn handle_cd(path: &str) -> Result<()> {
 ///
 /// - 現在のディレクトリが削除されている場合
 /// - アクセス権限がない場合
-pub fn handle_pwd() -> Result<()> {
+pub fn handle_pwd() -> Result<String> {
     debug!("output the current working directory");
 
     let current_dir = env::current_dir()?;
-    println!("{}", current_dir.display());
-    Ok(())
+    Ok(format!("{}", current_dir.display()))
 }
 
 /// ディレクトリを作成する
@@ -364,7 +384,9 @@ pub fn handle_mv(source: &str, destination: &str) -> Result<()> {
 ///
 /// - 検索開始ディレクトリが存在しない場合
 /// - ディレクトリの読み取り権限がない場合
-pub fn handle_find(path: Option<&str>, name: &str) -> Result<()> {
+pub fn handle_find(path: Option<&str>, name: &str) -> Result<String> {
+    let mut lines = Vec::new();
+
     let search_path = path.unwrap_or(".");
 
     let entries = fs::read_dir(search_path)?;
@@ -376,17 +398,20 @@ pub fn handle_find(path: Option<&str>, name: &str) -> Result<()> {
         // ファイル名が一致すればパスを出力
         if let Some(filename) = entry_path.file_name().and_then(|n| n.to_str()) {
             if matches_pattern(filename, name) {
-                println!("{}", entry_path.display());
+                lines.push(format!("{}", entry_path.display()));
             }
         }
 
         // ディレクトリであれば再帰的に探索
         if entry_path.is_dir() {
-            handle_find(entry_path.to_str(), name)?;
+            let sub_results = handle_find(entry_path.to_str(), name)?;
+            if !sub_results.is_empty() {
+                lines.push(sub_results);
+            }
         }
     }
 
-    Ok(())
+    Ok(lines.join("\n"))
 }
 
 /// パターンがファイル名にマッチするかチェック
@@ -450,24 +475,37 @@ fn match_helper(filename: &[u8], pattern: &[u8], fi: usize, pi: usize) -> bool {
 ///
 /// - ファイルが存在しない場合
 /// - ファイルの読み取り権限がない場合
-pub fn handle_grep(pattern: &str, files: &[String]) -> Result<()> {
-    for file in files {
-        let results = grep_file(pattern, file)?;
+pub fn handle_grep(pattern: &str, files: &[String], input: Option<&str>) -> Result<String> {
+    let mut lines = Vec::new();
 
-        if results.is_empty() {
-            continue;
-        }
+    if files.is_empty() && input.is_some() {
+        // パイプラインからの入力を処理
+        let input_text = input.unwrap();
+        let results = grep_from_string(pattern, input_text)?;
 
         for (line_num, content) in results {
-            if files.len() > 1 {
-                println!("{}:{}: {}", file, line_num + 1, content);
-            } else {
-                println!("{}: {}", line_num + 1, content);
+            lines.push(format!("{}: {}", line_num + 1, content));
+        }
+    } else {
+        // 既存のファイル処理
+        for file in files {
+            let results = grep_file(pattern, file)?;
+
+            if results.is_empty() {
+                continue;
+            }
+
+            for (line_num, content) in results {
+                if files.len() > 1 {
+                    lines.push(format!("{}:{}: {}", file, line_num + 1, content));
+                } else {
+                    lines.push(format!("{}: {}", line_num + 1, content));
+                }
             }
         }
     }
 
-    Ok(())
+    Ok(lines.join("\n"))
 }
 
 /// 単一ファイルを検索
@@ -487,6 +525,23 @@ fn grep_file(pattern: &str, filepath: &str) -> Result<Vec<(usize, String)>> {
         let line = line?;
         if re.is_match(&line) {
             results.push((line_num, line));
+        }
+    }
+
+    Ok(results)
+}
+
+fn grep_from_string(pattern: &str, text: &str) -> Result<Vec<(usize, String)>> {
+    let re = match Regex::new(pattern) {
+        Ok(r) => r,
+        Err(e) => return Err(RucliError::InvalidRegex(e.to_string())),
+    };
+
+    let mut results = Vec::new();
+
+    for (line_num, line) in text.lines().enumerate() {
+        if re.is_match(line) {
+            results.push((line_num, line.to_string()));
         }
     }
 
@@ -525,9 +580,8 @@ pub fn handle_alias(name: Option<&str>, command: Option<&str>) -> Result<()> {
 }
 
 /// バージョン情報を表示する
-pub fn handle_version() -> Result<()> {
-    println!("rucli v{}", env!("CARGO_PKG_VERSION"));
-    Ok(())
+pub fn handle_version() -> String {
+    format!("rucli v{}", env!("CARGO_PKG_VERSION"))
 }
 
 /// プログラムを終了する

@@ -83,7 +83,7 @@ fn test_directory_operations_workflow() {
     Command::cargo_bin("rucli")
         .unwrap()
         .current_dir(&temp_dir)
-        .write_stdin("cd project/src\nwrite main.rs fn main() {}\ncat main.rs\nexit\n")
+        .write_stdin("write project/src/main.rs fn main() {}\ncat project/src/main.rs\nexit\n")
         .assert()
         .success()
         .stdout(predicate::str::contains("fn main() {}"));

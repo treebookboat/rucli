@@ -1,6 +1,6 @@
 //! パイプラインに関連する関数を提供するモジュール
 
-use crate::error::Result;
+use crate::{commands::execute_command_get_output, error::Result, parser::parse_command};
 
 /// パイプラインで繋がれた複数のコマンドを表現
 pub struct PipelineCommand {
@@ -22,14 +22,40 @@ impl PipelineCommand {
     pub fn is_empty(&self) -> bool {
         self.commands.len() == 0
     }
+
+    // コマンド群取得
+    pub fn commands(&self) -> &[String] {
+        &self.commands
+    }
 }
 
 /// パイプラインを実行する構造体
 pub struct PipelineExecutor;
 
 impl PipelineExecutor {
-    pub fn execute(_pipeline: &PipelineCommand) -> Result<()> {
-        todo!("Pipeline execution not implemented yet");
+    pub fn execute(pipeline: &PipelineCommand) -> Result<()> {
+        let commands = pipeline.commands();
+
+        if commands.is_empty() {
+            return Ok(());
+        }
+
+        let mut previous_output = String::new();
+
+        for (i, cmd_str) in commands.iter().enumerate() {
+            let cmd = parse_command(cmd_str)?;
+            let input = if i == 0 {
+                None
+            } else {
+                Some(previous_output.as_str())
+            };
+            previous_output = execute_command_get_output(cmd, input)?;
+        }
+        if !previous_output.is_empty() {
+            println!("{previous_output}");
+        }
+
+        Ok(())
     }
 }
 

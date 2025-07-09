@@ -2,9 +2,9 @@
 
 🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
 
-## Progress: 46/100 PRs
+## Progress: 47/100 PRs
 
-[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
 
 ## Current Phase: Phase 3 - Advanced Features (46-65)
 
@@ -36,13 +36,15 @@ Implementing pipes, redirection, and scripting support.
 
 ### Phase 3: Advanced Features (PR 46-65) 🚀
 - [x] PR #46: Pipeline infrastructure foundation
+- [x] PR #47: Basic pipe implementation (|)
 
-## Latest Changes (PR #46)
+## Latest Changes (PR #47)
 
-- Added pipeline module with `PipelineCommand` and `PipelineExecutor` structures
-- Implemented pipeline detection and command splitting logic
-- Parser now recognizes pipe symbols and prepares for pipeline execution
-- Added comprehensive tests for pipeline parsing
+- Implemented basic pipe functionality for connecting two commands
+- Modified handlers to return strings instead of printing directly
+- Added support for grep to read from standard input
+- Fixed find command recursive search bug
+- Proper handling of empty output in pipelines
 
 ## Usage
 
@@ -81,19 +83,27 @@ Available commands:
 Options:
   --debug                       - Enable debug mode with detailed logging
 
-# Pipeline support (coming soon!)
-> echo hello | grep h
-Parse error: Pipeline commands not yet implemented
+# NEW: Pipe support!
+> echo hello world | grep hello
+1: hello world
+
+> cat file.txt | grep pattern
+1: line containing pattern
+
+> ls | grep .txt
+1: file1.txt
+2: file2.txt
+
+> help | grep echo
+3:   echo <message...>             - Display message
 
 # Example workflow
 > mkdir -p project/src
-> cd project/src
-> write main.rs fn main() { println!("Hello, rucli!"); }
-> cd ..
-> find *.rs
-./src/main.rs
-> grep println src/main.rs
-1: fn main() { println!("Hello, rucli!"); }
+> write project/src/main.rs fn main() { println!("Hello!"); }
+> find project *.rs
+./project/src/main.rs
+> cat project/src/main.rs | grep println
+1: fn main() { println!("Hello!"); }
 ```
 
 ## Command Summary
@@ -123,10 +133,36 @@ Parse error: Pipeline commands not yet implemented
 - `help` - Show available commands
 - `exit`/`quit` - Exit the program
 
-**Pipeline Support (In Progress):**
-- Pipe symbol (`|`) detection implemented
-- Command splitting logic ready
-- Execution coming in next PR
+**Pipeline Support:**
+- `|` - Pipe output of one command to another
+- Currently supports connecting two commands
+- Commands that support input from pipe: `grep`
+
+## Pipe Examples
+
+```bash
+# Filter output of any command
+> echo "line1\nline2\nline3" | grep 2
+1: line2
+
+> repeat 5 hello | grep hello
+1: hello
+2: hello
+3: hello
+4: hello
+5: hello
+
+# Search in files and filter results
+> cat large_file.txt | grep ERROR
+
+# Filter directory listings
+> ls | grep .rs
+> find . *.txt | grep test
+
+# No output when no match
+> echo hello | grep xyz
+>
+```
 
 ## Example Scripts
 
@@ -147,7 +183,8 @@ $ cargo run -- --debug
 
 # Debug output includes:
 # - Command parsing steps
-# - Pipeline detection
+# - Pipeline detection and splitting
+# - Command execution flow
 # - Alias expansion
 # - File operations details
 # - Search pattern matching
@@ -157,7 +194,9 @@ $ cargo run -- --debug
 > echo hello | grep h
 [DEBUG] Parsing input: 'echo hello | grep h'
 [DEBUG] Pipeline detected in input
-[ERROR] Parse error: Pipeline commands not yet implemented
+[DEBUG] Executing command: Pipeline { commands: ["echo hello", "grep h"] }
+[DEBUG] 処理時間: 1.2ms
+1: hello
 ```
 
 ## Dependencies
@@ -183,10 +222,10 @@ src/
 ├── lib.rs        # Library root (exposes public API)
 ├── commands.rs   # Command definitions and execution
 ├── parser.rs     # Command parsing with pipeline support
-├── handlers.rs   # Command implementation handlers
+├── handlers.rs   # Command implementation handlers (now return strings)
 ├── error.rs      # Custom error types
 ├── alias.rs      # Alias management module
-└── pipeline.rs   # Pipeline infrastructure (NEW)
+└── pipeline.rs   # Pipeline execution logic
 
 tests/
 ├── cli_tests.rs         # Basic integration tests
@@ -212,6 +251,7 @@ The codebase follows Rust best practices:
 - Thread-safe global state management
 - Well-structured parser with dedicated parsing functions
 - Clean separation between data structures and execution logic
+- Output-based command handlers for pipeline support
 
 ## Error Handling
 
@@ -220,8 +260,9 @@ The project uses a custom `RucliError` type with complete Result-based error han
 - Unified error handling in main loop
 - Automatic conversion from `io::Error`
 - Consistent error messages
-- All commands return Result<()> for consistency
+- All commands return Result<()> or Result<String> for consistency
 - InvalidRegex error type for pattern compilation failures
+- Pipeline-specific error handling
 
 ## Testing
 
@@ -248,7 +289,7 @@ cargo test -- --nocapture
 - **Unit tests**: 13 tests (parser: 11, commands: 2)
 - **Basic integration tests**: 11 tests
 - **Workflow integration tests**: 7 comprehensive tests
-- **Pipeline tests**: 4 tests (NEW)
+- **Pipeline tests**: 4 tests
 - **Total**: 35 tests ensuring reliability
 
 ## Logging
@@ -273,7 +314,7 @@ RUST_LOG=rucli::pipeline=debug cargo run  # Debug for pipeline module
 - **ERROR**: Command execution failures, invalid regex patterns
 - **WARN**: Invalid operations (e.g., cat on directory)
 - **INFO**: Important operations (file writes, reads, copies, moves, grep matches, alias operations, program start/exit)
-- **DEBUG**: Command parsing, validation, operation details, alias expansion, pipeline detection
+- **DEBUG**: Command parsing, validation, operation details, alias expansion, pipeline detection and execution
 - **TRACE**: Detailed command lookup and parsing steps
 
 ## Roadmap 🗺️
@@ -289,7 +330,7 @@ Implemented essential file and directory operations, search capabilities, and co
 ### Phase 3: Advanced Features (PR 46-65) 🚀 IN PROGRESS!
 
 - [x] PR #46: Pipeline infrastructure foundation
-- [ ] PR #47: Basic pipe implementation
+- [x] PR #47: Basic pipe implementation
 - [ ] PR #48: Multiple pipe support
 - [ ] PR #49: Output redirection (>)
 - [ ] PR #50: Append redirection (>>)
@@ -341,4 +382,4 @@ This is a learning project following the 100 PR Challenge. Each PR focuses on a 
 
 ---
 
-**Next**: Implementing actual pipe execution in PR #47! 🚀
+**Next**: Implementing multiple pipe support (cmd1 | cmd2 | cmd3) in PR #48! 🚀

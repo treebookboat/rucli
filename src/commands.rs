@@ -2,6 +2,7 @@
 
 use crate::error::Result;
 use crate::handlers::*;
+use crate::pipeline::{PipelineCommand, PipelineExecutor};
 use log::debug;
 
 /// 実行可能なコマンドを表す列挙型
@@ -51,6 +52,8 @@ pub enum Command {
         name: Option<String>,
         command: Option<String>,
     },
+    /// パイプラインコマンド
+    Pipeline { commands: Vec<String> },
     /// バージョン表示
     Version,
     /// プログラムを終了
@@ -175,7 +178,7 @@ pub const COMMANDS: &[CommandInfo] = &[
         name: "grep",
         description: "Search for pattern in files",
         usage: "grep <pattern> <file...>",
-        min_args: 2,
+        min_args: 1,
         max_args: None, // 複数ファイル対応
     },
     CommandInfo {
@@ -201,56 +204,92 @@ pub const COMMANDS: &[CommandInfo] = &[
     },
 ];
 
-/// コマンドを実行する
+/// コマンドの実行
 ///
 /// # Errors
 ///
 /// - ファイル操作系コマンドでI/Oエラーが発生した場合
 /// - ファイルが存在しない、権限がない等
+// 通常実行用（変更なし）
 pub fn execute_command(command: Command) -> Result<()> {
+    match command {
+        Command::Pipeline { commands } => {
+            let pipeline = PipelineCommand::new(commands);
+            PipelineExecutor::execute(&pipeline)
+        }
+        _ => {
+            let output = execute_command_get_output(command, None)?;
+            if !output.is_empty() {
+                println!("{output}");
+            }
+            Ok(())
+        }
+    }
+}
+
+/// コマンドの実行後、文字列を返す
+pub fn execute_command_get_output(command: Command, input: Option<&str>) -> Result<String> {
     // コマンド実行開始を記録
     debug!("Executing command: {command:?}");
 
     match command {
-        Command::Help => {
-            handle_help();
-            Ok(())
-        }
+        Command::Help => Ok(handle_help()),
         Command::Cat { filename } => handle_cat(&filename),
-        Command::Echo { message } => {
-            println!("{message}");
-            Ok(())
+        Command::Echo { message } => Ok(handle_echo(&message)),
+        Command::Write { filename, content } => {
+            handle_write(&filename, &content)?;
+            Ok(String::new())
         }
-        Command::Write { filename, content } => handle_write(&filename, &content),
-        Command::Repeat { count, message } => {
-            handle_repeat(count, &message);
-            Ok(())
-        }
+        Command::Repeat { count, message } => Ok(handle_repeat(count, &message)),
         Command::Ls => handle_ls(),
-        Command::Cd { path } => handle_cd(&path),
+        Command::Cd { path } => {
+            handle_cd(&path)?;
+            Ok(String::new())
+        }
         Command::Pwd => handle_pwd(),
-        Command::Mkdir { path, parents } => handle_mkdir(&path, parents),
+        Command::Mkdir { path, parents } => {
+            handle_mkdir(&path, parents)?;
+            Ok(String::new())
+        }
         Command::Rm {
             path,
             recursive,
             force,
-        } => handle_rm(&path, recursive, force),
+        } => {
+            handle_rm(&path, recursive, force)?;
+            Ok(String::new())
+        }
         Command::Cp {
             source,
             destination,
             recursive,
-        } => handle_cp(&source, &destination, recursive),
+        } => {
+            handle_cp(&source, &destination, recursive)?;
+            Ok(String::new())
+        }
         Command::Mv {
             source,
             destination,
-        } => handle_mv(&source, &destination),
+        } => {
+            handle_mv(&source, &destination)?;
+            Ok(String::new())
+        }
         Command::Find { path, name } => handle_find(path.as_deref(), &name),
-        Command::Grep { pattern, files } => handle_grep(&pattern, &files),
-        Command::Alias { name, command } => handle_alias(name.as_deref(), command.as_deref()),
-        Command::Version => handle_version(),
+        Command::Grep { pattern, files } => handle_grep(&pattern, &files, input),
+        Command::Alias { name, command } => {
+            handle_alias(name.as_deref(), command.as_deref())?;
+            Ok(String::new())
+        }
+        Command::Version => Ok(handle_version()),
+        Command::Pipeline { commands: _ } => {
+            // すでにパイプライン処理は通っているのでここには来ないはず
+            Err(crate::error::RucliError::ParseError(
+                "The pipe processing is not parsing correctly.".to_string(),
+            ))
+        }
         Command::Exit => {
             handle_exit();
-            Ok(())
+            Ok(String::new())
         }
     }
 }

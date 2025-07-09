@@ -90,10 +90,9 @@ pub fn parse_command(input: &str) -> Result<Command> {
 
     // パイプラインチェックを追加
     if contains_pipeline(input) {
-        // 今はエラーを返す（次のPRで実装）
-        return Err(RucliError::ParseError(
-            "Pipeline commands not yet implemented".to_string(),
-        ));
+        let commands = split_by_pipe(input).iter().map(|s| s.to_string()).collect();
+
+        return Ok(Command::Pipeline { commands });
     }
 
     // 引数の数チェック
