@@ -2,9 +2,9 @@
 
 🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
 
-## Progress: 48/100 PRs
+## Progress: 49/100 PRs
 
-[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
 
 ## Current Phase: Phase 3 - Advanced Features (46-65)
 
@@ -38,14 +38,15 @@ Implementing pipes, redirection, and scripting support.
 - [x] PR #46: Pipeline infrastructure foundation
 - [x] PR #47: Basic pipe implementation (|)
 - [x] PR #48: Multiple pipe support
+- [x] PR #49: Output redirection (>)
 
-## Latest Changes (PR #48)
+## Latest Changes (PR #49)
 
-- Enhanced pipeline support for chaining 3+ commands
-- Modified grep output format for UNIX compatibility
-  - Pipe input: no line numbers (matching UNIX behavior)
-  - File input: with line numbers
-- Improved pipeline execution flow
+- Implemented output redirection with `>` operator
+- Commands can now write output to files instead of terminal
+- Support for combining pipes and redirection
+- File overwrite behavior (standard `>` behavior)
+- Added redirect module for handling file output
 
 ## Usage
 
@@ -84,31 +85,25 @@ Available commands:
 Options:
   --debug                       - Enable debug mode with detailed logging
 
-# NEW: Multiple pipe support!
-> echo "hello world" | grep hello | grep world
+# NEW: Output redirection support!
+> echo hello world > output.txt
+> cat output.txt
 hello world
 
-> ls | grep .txt | grep test
-test.txt
+> ls > files.txt
+> cat files.txt
+Cargo.toml
+src/
+README.md
+...
 
-> cat file.txt | grep ERROR | grep -v DEBUG
-ERROR: Connection failed
-ERROR: Timeout occurred
+# Combine pipes and redirection
+> echo "hello\nworld\nhello world" | grep hello > matches.txt
+> cat matches.txt
+hello
+hello world
 
-# Pipe chains can be as long as needed
-> repeat 10 "test line" | grep test | grep line | grep t
-test line
-test line
-... (10 times)
-
-# UNIX-compatible output formats
-> grep pattern file.txt          # With line numbers
-1: line with pattern
-5: another pattern match
-
-> cat file.txt | grep pattern    # Without line numbers (pipe mode)
-line with pattern
-another pattern match
+> find . *.rs | grep main > rust_mains.txt
 ```
 
 ## Command Summary
@@ -140,39 +135,37 @@ another pattern match
 - `help` - Show available commands
 - `exit`/`quit` - Exit the program
 
-**Pipeline Support:**
+**Pipeline & Redirection Support:**
 - `|` - Pipe output of one command to another
-- Supports unlimited command chaining
-- Commands that accept pipe input: `grep`
+- `>` - Redirect output to file (overwrites existing file)
+- Combine pipes and redirection: `cmd1 | cmd2 > file`
 
-## Pipe Examples
+## Redirection Examples
 
 ```bash
-# Basic two-command pipe
-> echo hello | grep h
-hello
+# Basic output redirection
+> echo "Hello, World!" > greeting.txt
+> cat greeting.txt
+Hello, World!
 
-# Three-command pipe
-> echo "hello\nworld\nhello world" | grep hello | grep world
-hello world
+# Overwrite existing files
+> echo "First line" > file.txt
+> echo "Second line" > file.txt  # Overwrites!
+> cat file.txt
+Second line
 
-# Complex filtering
-> ls | grep .rs | grep main
-main.rs
+# Save command output
+> ls > directory_list.txt
+> pwd > current_path.txt
+> help > commands_help.txt
 
-# File processing pipeline
-> cat large_log.txt | grep ERROR | grep "2024"
-ERROR [2024-01-15]: Database connection failed
+# Combine with pipes
+> cat large_file.txt | grep ERROR > errors.txt
+> ls | grep .txt > text_files.txt
+> find . *.log | grep 2024 > logs_2024.txt
 
-# Multiple filters on directory listing
-> find . *.txt | grep test | grep -v temp
-./test.txt
-./test_data.txt
-
-# Counting matches (future feature with wc)
-> cat file.txt | grep pattern
-matching line 1
-matching line 2
+# Multi-stage pipeline with redirection
+> cat data.txt | grep pattern | grep -v exclude > filtered.txt
 ```
 
 ## Example Scripts
@@ -195,23 +188,19 @@ $ cargo run -- --debug
 # Debug output includes:
 # - Command parsing steps
 # - Pipeline detection and splitting
-# - Command execution flow in pipelines
-# - Input/output handling between pipes
+# - Redirection parsing and execution
+# - File write operations
+# - Command execution flow
 # - Alias expansion
-# - File operations details
-# - Search pattern matching
 # - Execution timing
 
 # Example debug output:
-> echo hello | grep h | grep e
-[DEBUG] Parsing input: 'echo hello | grep h | grep e'
-[DEBUG] Pipeline detected with 3 commands
-[DEBUG] Executing: echo hello
-[DEBUG] Output: "hello"
-[DEBUG] Executing: grep h with input
-[DEBUG] Output: "hello"
-[DEBUG] Executing: grep e with input
-[DEBUG] Final output: "hello"
+> echo hello > output.txt
+[DEBUG] Parsing input: 'echo hello > output.txt'
+[DEBUG] Redirect detected: > output.txt
+[DEBUG] Executing command: Echo { message: "hello" }
+[DEBUG] Writing output to file: output.txt
+[DEBUG] 処理時間: 0.8ms
 ```
 
 ## Dependencies
@@ -236,11 +225,12 @@ src/
 ├── main.rs       # Entry point and REPL loop
 ├── lib.rs        # Library root (exposes public API)
 ├── commands.rs   # Command definitions and execution
-├── parser.rs     # Command parsing with pipeline support
+├── parser.rs     # Command parsing with pipeline & redirect support
 ├── handlers.rs   # Command implementation handlers (output-based)
 ├── error.rs      # Custom error types
 ├── alias.rs      # Alias management module
-└── pipeline.rs   # Pipeline execution logic
+├── pipeline.rs   # Pipeline execution logic
+└── redirect.rs   # Redirection handling (NEW)
 
 tests/
 ├── cli_tests.rs         # Basic integration tests
@@ -268,6 +258,7 @@ The codebase follows Rust best practices:
 - Clean separation between data structures and execution logic
 - Output-based command handlers for pipeline support
 - UNIX-compatible output formatting
+- Proper handling of complex command structures (pipes + redirects)
 
 ## Error Handling
 
@@ -279,6 +270,7 @@ The project uses a custom `RucliError` type with complete Result-based error han
 - All commands return Result<()> or Result<String> for consistency
 - InvalidRegex error type for pattern compilation failures
 - Pipeline-specific error handling
+- File operation error handling for redirects
 
 ## Testing
 
@@ -293,8 +285,8 @@ cargo test --lib
 cargo test --test cli_tests
 cargo test --test integration_tests
 
-# Run pipeline tests specifically
-cargo test pipeline
+# Run redirect tests specifically
+cargo test redirect
 
 # Run with output
 cargo test -- --nocapture
@@ -306,7 +298,8 @@ cargo test -- --nocapture
 - **Basic integration tests**: 11 tests
 - **Workflow integration tests**: 7 comprehensive tests
 - **Pipeline tests**: 4 tests
-- **Total**: 35 tests ensuring reliability
+- **Redirect tests**: 3 tests (NEW)
+- **Total**: 38 tests ensuring reliability
 
 ## Logging
 
@@ -324,13 +317,14 @@ RUST_LOG=trace cargo run    # Everything (very verbose)
 RUST_LOG=rucli::parser=trace cargo run    # Trace for parser only
 RUST_LOG=rucli::handlers=debug cargo run  # Debug for handlers only
 RUST_LOG=rucli::pipeline=debug cargo run  # Debug for pipeline module
+RUST_LOG=rucli::redirect=debug cargo run  # Debug for redirect module
 ```
 
 ### Log Categories:
-- **ERROR**: Command execution failures, invalid regex patterns
+- **ERROR**: Command execution failures, invalid regex patterns, file write errors
 - **WARN**: Invalid operations (e.g., cat on directory)
 - **INFO**: Important operations (file writes, reads, copies, moves, grep matches, alias operations, program start/exit)
-- **DEBUG**: Command parsing, validation, operation details, alias expansion, pipeline detection and execution
+- **DEBUG**: Command parsing, validation, operation details, alias expansion, pipeline detection, redirect execution
 - **TRACE**: Detailed command lookup and parsing steps
 
 ## Roadmap 🗺️
@@ -348,7 +342,7 @@ Implemented essential file and directory operations, search capabilities, and co
 - [x] PR #46: Pipeline infrastructure foundation
 - [x] PR #47: Basic pipe implementation
 - [x] PR #48: Multiple pipe support
-- [ ] PR #49: Output redirection (>)
+- [x] PR #49: Output redirection (>)
 - [ ] PR #50: Append redirection (>>)
 - [ ] PR #51: Input redirection (<)
 - [ ] PR #52: Background execution (&)
@@ -398,4 +392,4 @@ This is a learning project following the 100 PR Challenge. Each PR focuses on a 
 
 ---
 
-**Next**: Implementing output redirection (>) in PR #49! 🚀
+**Next**: Implementing append redirection (>>) in PR #50! 🚀

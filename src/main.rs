@@ -6,6 +6,7 @@ mod error;
 mod handlers;
 mod parser;
 mod pipeline;
+mod redirect;
 
 use commands::execute_command;
 use log::{debug, error, info};

@@ -1,1 +1,11 @@
-content
+Cargo.toml
+src/
+README.md
+tests/
+test2.txt
+target/
+Cargo.lock
+.gitignore
+.git/
+.DS_Store
+test.txt

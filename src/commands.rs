@@ -3,6 +3,7 @@
 use crate::error::Result;
 use crate::handlers::*;
 use crate::pipeline::{PipelineCommand, PipelineExecutor};
+use crate::redirect::execute_redirect;
 use log::debug;
 
 /// 実行可能なコマンドを表す列挙型
@@ -56,6 +57,12 @@ pub enum Command {
     Pipeline { commands: Vec<String> },
     /// バージョン表示
     Version,
+    /// リダイレクト付きコマンド
+    Redirect {
+        command: Box<Command>, // 実行するコマンド
+        redirect_type: String, // ">", ">>", "<"
+        target: String,        // ファイル名
+    },
     /// プログラムを終了
     Exit,
 }
@@ -217,6 +224,11 @@ pub fn execute_command(command: Command) -> Result<()> {
             let pipeline = PipelineCommand::new(commands);
             PipelineExecutor::execute(&pipeline)
         }
+        Command::Redirect {
+            command,
+            redirect_type,
+            target,
+        } => execute_redirect(*command, &redirect_type, &target),
         _ => {
             let output = execute_command_get_output(command, None)?;
             if !output.is_empty() {
@@ -281,16 +293,13 @@ pub fn execute_command_get_output(command: Command, input: Option<&str>) -> Resu
             Ok(String::new())
         }
         Command::Version => Ok(handle_version()),
-        Command::Pipeline { commands: _ } => {
-            // すでにパイプライン処理は通っているのでここには来ないはず
-            Err(crate::error::RucliError::ParseError(
-                "The pipe processing is not parsing correctly.".to_string(),
-            ))
-        }
         Command::Exit => {
             handle_exit();
             Ok(String::new())
         }
+        _ => Err(crate::error::RucliError::ParseError(
+            "no command enum.".to_string(),
+        )),
     }
 }
 

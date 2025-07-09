@@ -88,6 +88,58 @@ pub fn parse_command(input: &str) -> Result<Command> {
         cmd_name
     };
 
+    // まずパイプで分割
+    let pipe_parts = split_by_pipe(input);
+
+    if pipe_parts.len() > 1 {
+        let mut commands = Vec::new();
+        let last_index = pipe_parts.len() - 1;
+
+        // 最後のコマンドを特別処理
+        let last_part = pipe_parts[last_index];
+        if contains_redirect(last_part) {
+            let (cmd_str, redirect_opt) = split_redirect(last_part);
+
+            // 最後以外のコマンドを追加
+            for i in 0..last_index {
+                commands.push(pipe_parts[i].to_string());
+            }
+            // 最後のコマンド（リダイレクトなし）を追加
+            commands.push(cmd_str);
+
+            if let Some((redirect_type, target)) = redirect_opt {
+                // パイプライン全体をリダイレクト
+                return Ok(Command::Redirect {
+                    command: Box::new(Command::Pipeline { commands }),
+                    redirect_type,
+                    target,
+                });
+            }
+        } else {
+            // リダイレクトなしの通常のパイプライン
+            for part in pipe_parts {
+                commands.push(part.to_string());
+            }
+        }
+
+        return Ok(Command::Pipeline { commands });
+    }
+
+    // リダイレクトのみ
+    if contains_redirect(input) {
+        let (cmd_str, redirect_opt) = split_redirect(input);
+
+        if let Some((redirect_type, target)) = redirect_opt {
+            let inner_command = parse_command(&cmd_str)?;
+
+            return Ok(Command::Redirect {
+                command: Box::new(inner_command),
+                redirect_type,
+                target,
+            });
+        }
+    }
+
     // パイプラインチェックを追加
     if contains_pipeline(input) {
         let commands = split_by_pipe(input).iter().map(|s| s.to_string()).collect();
@@ -291,6 +343,28 @@ pub fn split_by_pipe(input: &str) -> Vec<&str> {
 /// パイプラインを含むかチェック
 pub fn contains_pipeline(input: &str) -> bool {
     input.contains('|')
+}
+
+// リダイレクトでコマンドを分割
+/// 例: "echo hello > file.txt" → ("echo hello", Some((">", "file.txt")))
+pub fn split_redirect(input: &str) -> (String, Option<(String, String)>) {
+    if let Some(pos) = input.find('>') {
+        let command = input[..pos].trim().to_string();
+        let target = input[pos + 1..].trim().to_string();
+
+        if target.is_empty() {
+            (input.to_string(), None)
+        } else {
+            (command, Some((">".to_string(), target)))
+        }
+    } else {
+        (input.to_string(), None)
+    }
+}
+
+/// リダイレクトを含むかチェック
+pub fn contains_redirect(input: &str) -> bool {
+    input.contains(">")
 }
 
 #[cfg(test)]
