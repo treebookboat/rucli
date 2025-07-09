@@ -293,13 +293,18 @@ pub fn execute_command_get_output(command: Command, input: Option<&str>) -> Resu
             Ok(String::new())
         }
         Command::Version => Ok(handle_version()),
+        Command::Pipeline { commands } => {
+            let pipeline = PipelineCommand::new(commands);
+            PipelineExecutor::execute_get_output(&pipeline)
+        }
+        Command::Redirect { .. } => {
+            // リダイレクトは出力なし（ファイルに書くため）
+            Ok(String::new())
+        }
         Command::Exit => {
             handle_exit();
             Ok(String::new())
         }
-        _ => Err(crate::error::RucliError::ParseError(
-            "no command enum.".to_string(),
-        )),
     }
 }
 

@@ -266,3 +266,146 @@ fn test_version_command() {
         .success()
         .stdout(predicate::str::contains("rucli v"));
 }
+
+#[test]
+fn test_append_redirect_basic() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file_path = temp_dir.path().join("append_test.txt");
+
+    // 一つのセッションで全て実行
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(format!(
+            "echo First line > {}\n\
+             echo Second line >> {}\n\
+             echo Third line >> {}\n\
+             cat {}\n\
+             exit\n",
+            file_path.display(),
+            file_path.display(),
+            file_path.display(),
+            file_path.display()
+        ))
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("First line"))
+        .stdout(predicate::str::contains("Second line"))
+        .stdout(predicate::str::contains("Third line"));
+}
+
+#[test]
+fn test_append_redirect_new_file() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file_path = temp_dir.path().join("new_append.txt");
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(format!(
+            "echo Hello new file >> {}\n\
+             cat {}\n\
+             exit\n",
+            file_path.display(),
+            file_path.display()
+        ))
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Hello new file"));
+}
+
+#[test]
+fn test_append_redirect_with_pipeline() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file_path = temp_dir.path().join("pipeline_append.txt");
+    let data_file = temp_dir.path().join("data.txt");
+
+    // writeコマンドで複数行は書けないので、echoで複数回書く
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(format!(
+            "echo apple > {}\n\
+             echo banana >> {}\n\
+             echo apricot >> {}\n\
+             echo blueberry >> {}\n\
+             exit\n",
+            data_file.display(),
+            data_file.display(),
+            data_file.display(),
+            data_file.display()
+        ))
+        .assert()
+        .success();
+
+    // パイプラインとリダイレクトのテスト
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(format!(
+            "cat {} | grep a >> {}\n\
+             cat {} | grep b >> {}\n\
+             cat {}\n\
+             exit\n",
+            data_file.display(),
+            file_path.display(),
+            data_file.display(),
+            file_path.display(),
+            file_path.display()
+        ))
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("apple"))
+        .stdout(predicate::str::contains("banana"))
+        .stdout(predicate::str::contains("apricot"))
+        .stdout(predicate::str::contains("blueberry"));
+}
+
+#[test]
+fn test_append_redirect_empty_output() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file_path = temp_dir.path().join("empty_append.txt");
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(format!(
+            "echo Initial content > {}\n\
+             echo hello | grep xyz >> {}\n\
+             cat {}\n\
+             exit\n",
+            file_path.display(),
+            file_path.display(),
+            file_path.display()
+        ))
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Initial content"))
+        .stdout(predicate::str::contains("hello").not());
+}
+
+#[test]
+fn test_redirect_overwrite_vs_append() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file_path = temp_dir.path().join("compare.txt");
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(format!(
+            "echo Line 1 > {}\n\
+             echo Line 2 >> {}\n\
+             echo Line 3 > {}\n\
+             cat {}\n\
+             exit\n",
+            file_path.display(),
+            file_path.display(),
+            file_path.display(),
+            file_path.display()
+        ))
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Line 3"))
+        .stdout(predicate::str::contains("Line 1").not())
+        .stdout(predicate::str::contains("Line 2").not());
+}

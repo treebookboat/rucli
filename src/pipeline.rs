@@ -57,6 +57,29 @@ impl PipelineExecutor {
 
         Ok(())
     }
+
+    // 文字列として結果を返す
+    pub fn execute_get_output(pipeline: &PipelineCommand) -> Result<String> {
+        let commands = pipeline.commands();
+
+        if commands.is_empty() {
+            return Ok(String::new());
+        }
+
+        let mut previous_output = String::new();
+
+        for (i, cmd_str) in commands.iter().enumerate() {
+            let cmd = parse_command(cmd_str)?;
+            let input = if i == 0 {
+                None
+            } else {
+                Some(previous_output.as_str())
+            };
+            previous_output = execute_command_get_output(cmd, input)?;
+        }
+
+        Ok(previous_output)
+    }
 }
 
 #[cfg(test)]

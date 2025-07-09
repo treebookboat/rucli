@@ -348,30 +348,46 @@ pub fn contains_pipeline(input: &str) -> bool {
 // リダイレクトでコマンドを分割
 /// 例: "echo hello > file.txt" → ("echo hello", Some((">", "file.txt")))
 pub fn split_redirect(input: &str) -> (String, Option<(String, String)>) {
-    if let Some(pos) = input.find('>') {
+    if let Some((pos, redirect_op)) = find_redirect_position(input) {
         let command = input[..pos].trim().to_string();
-        let target = input[pos + 1..].trim().to_string();
+        let target = input[pos + redirect_op.len()..].trim().to_string();
 
         if target.is_empty() {
             (input.to_string(), None)
         } else {
-            (command, Some((">".to_string(), target)))
+            (command, Some((redirect_op.to_string(), target)))
         }
     } else {
         (input.to_string(), None)
     }
 }
 
+// リダイレクト演算子を検出する共通関数
+fn find_redirect_position(input: &str) -> Option<(usize, &str)> {
+    // ">>" を先にチェック（長い方を優先）
+    if let Some(pos) = input.find(">>") {
+        return Some((pos, ">>"));
+    }
+    // 次に ">" をチェック
+    if let Some(pos) = input.find('>') {
+        return Some((pos, ">"));
+    }
+    None
+}
+
 /// リダイレクトを含むかチェック
 pub fn contains_redirect(input: &str) -> bool {
-    input.contains(">")
+    input.contains(">>") || input.contains(">")
 }
 
 #[cfg(test)]
 mod tests {
     use crate::{
         commands::{Command, CommandInfo},
-        parser::{contains_pipeline, find_command, parse_command, split_by_pipe, validate_args},
+        parser::{
+            contains_pipeline, contains_redirect, find_command, find_redirect_position,
+            parse_command, split_by_pipe, split_redirect, validate_args,
+        },
     };
 
     #[test]
@@ -496,5 +512,44 @@ mod tests {
     fn test_contains_pipeline() {
         assert!(contains_pipeline("echo | grep"));
         assert!(!contains_pipeline("echo hello"));
+    }
+
+    #[test]
+    fn test_split_redirect_append() {
+        // 基本的な >> リダイレクト
+        let (cmd, redirect) = split_redirect("echo hello >> file.txt");
+        assert_eq!(cmd, "echo hello");
+        assert_eq!(redirect, Some((">>".to_string(), "file.txt".to_string())));
+    }
+
+    #[test]
+    fn test_split_redirect_append_with_spaces() {
+        // スペースありの >> リダイレクト
+        let (cmd, redirect) = split_redirect("echo hello world  >>  output.log");
+        assert_eq!(cmd, "echo hello world");
+        assert_eq!(redirect, Some((">>".to_string(), "output.log".to_string())));
+    }
+
+    #[test]
+    fn test_split_redirect_no_target() {
+        // ターゲットなしの >> リダイレクト
+        let (cmd, redirect) = split_redirect("echo hello >> ");
+        assert_eq!(cmd, "echo hello >> ");
+        assert_eq!(redirect, None);
+    }
+
+    #[test]
+    fn test_find_redirect_position_append() {
+        // >> が優先されることを確認
+        assert_eq!(find_redirect_position("echo >> file"), Some((5, ">>")));
+        assert_eq!(find_redirect_position("echo > file"), Some((5, ">")));
+        assert_eq!(find_redirect_position("echo file"), None);
+    }
+
+    #[test]
+    fn test_contains_redirect_append() {
+        assert!(contains_redirect("echo >> file"));
+        assert!(contains_redirect("echo > file"));
+        assert!(!contains_redirect("echo file"));
     }
 }

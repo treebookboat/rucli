@@ -2,7 +2,8 @@
 
 use crate::commands::{Command, execute_command_get_output};
 use crate::error::{Result, RucliError};
-use std::fs;
+use std::fs::{self, OpenOptions};
+use std::io::Write;
 
 /// リダイレクトを実行
 pub fn execute_redirect(command: Command, redirect_type: &str, target: &str) -> Result<()> {
@@ -17,8 +18,16 @@ pub fn execute_redirect(command: Command, redirect_type: &str, target: &str) -> 
             Ok(())
         }
         ">>" => {
-            // PR #50で実装
-            todo!("Append redirect not implemented yet")
+            // コマンドからの出力を取得
+            let output = execute_command_get_output(command, None)?;
+
+            // 追記モードでファイルを開く
+            let mut file = OpenOptions::new().append(true).create(true).open(target)?;
+
+            // 書き込み
+            write!(file, "{output}")?;
+
+            Ok(())
         }
         "<" => {
             // PR #51で実装
