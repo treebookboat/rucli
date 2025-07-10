@@ -596,19 +596,23 @@ pub fn handle_background_execution(command: Box<Command>) -> Result<String> {
     // 表示用のコマンド文字列
     let cmd_str = format!("{command:?}");
 
+    let job_id = job::get_next_job_id();
+
     // スレッドを起動
     let handle = thread::spawn(move || {
         // ここで実際にコマンドが実行される（遅延）
         if let Err(e) = execute_command(*command) {
             eprintln!("Background job failed: {e}");
         }
+        // 完了を通知
+        job::mark_completed(job_id);
     });
 
     // スレッドIDを取得
     let thread_id = handle.thread().id();
 
     // ジョブ作成
-    let job_id = job::create_job(cmd_str, thread_id);
+    job::create_job_with_id(job_id, cmd_str, thread_id);
 
     // ユーザーに通知
     Ok(format!("[{job_id}] {thread_id:?}"))
@@ -623,6 +627,81 @@ pub fn handle_version() -> String {
 pub fn handle_sleep(seconds: u64) -> Result<()> {
     thread::sleep(Duration::from_secs(seconds));
     Ok(())
+}
+
+/// ジョブ一覧表示
+pub fn handle_jobs() -> Result<String> {
+    // ジョブのリストを取得
+    let jobs = job::list_jobs();
+
+    // 何も入っていない
+    if jobs.is_empty() {
+        return Ok("No jobs".to_string());
+    }
+
+    // 3. 表示用の文字列を構築
+    let mut lines = Vec::new();
+    let last_idx = jobs.len() - 1;
+
+    // 4. 各ジョブをフォーマット
+    for (i, job) in jobs.iter().enumerate() {
+        // [1]+ Running    sleep 10
+        // [2]- Running    sleep 5
+        // [3]  Running    echo hello
+
+        let marker = if i == last_idx {
+            "+"
+        } else if i == last_idx - 1 {
+            "-"
+        } else {
+            " "
+        };
+
+        // 実際のステータスを表示
+        let status = match job.status {
+            job::JobStatus::Running => "Running",
+            job::JobStatus::Completed => "Done", // 通常は表示されないが念のため
+        };
+
+        lines.push(format!(
+            "[{}]{} {:10} {}",
+            job.id,      // [1]
+            marker,      // +
+            status,      // status   (10文字幅)
+            job.command  // sleep 10
+        ));
+    }
+
+    Ok(lines.join("\n"))
+}
+
+/// フォアグラウンド変更
+pub fn handle_fg(job_id: Option<u32>) -> Result<()> {
+    // 1. 対象ジョブの決定
+    let target_id = match job_id {
+        Some(id) => id,
+        None => {
+            // 最新のジョブIDを取得
+            let jobs = job::list_jobs();
+            if jobs.is_empty() {
+                return Err(RucliError::InvalidArgument("No jobs".to_string()));
+            }
+            jobs.last().unwrap().id
+        }
+    };
+
+    // 2. ジョブを取得
+    match job::get_job(target_id) {
+        Some(job) => {
+            // 3. 状態を表示
+            println!("Job [{}] ({}) is still running", job.id, job.command);
+            // 将来: ここで待機処理
+            Ok(())
+        }
+        None => Err(RucliError::InvalidArgument(format!(
+            "No such job: {target_id}"
+        ))),
+    }
 }
 
 /// プログラムを終了する

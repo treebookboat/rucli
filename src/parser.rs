@@ -175,6 +175,7 @@ pub fn parse_command(input: &str) -> Result<Command> {
         "version" => Ok(Command::Version),
         "pwd" => Ok(Command::Pwd),
         "ls" => Ok(Command::Ls),
+        "jobs" => Ok(Command::Jobs),
         "exit" | "quit" => Ok(Command::Exit),
 
         "echo" => parse_echo(args),
@@ -190,6 +191,7 @@ pub fn parse_command(input: &str) -> Result<Command> {
         "grep" => parse_grep(args),
         "alias" => parse_alias(args),
         "sleep" => parse_sleep(args),
+        "fg" => parse_fg(args),
 
         _ => Err(RucliError::UnknownCommand(format!(
             "{} {}",
@@ -357,6 +359,22 @@ fn parse_sleep(args: &[&str]) -> Result<Command> {
             "'{}' is not a valid number",
             args[0]
         ))),
+    }
+}
+
+fn parse_fg(args: &[&str]) -> Result<Command> {
+    match args {
+        [] => Ok(Command::Fg { job_id: None }),
+        [job_id] => match job_id.parse::<u32>() {
+            Ok(job_id) => Ok(Command::Fg {
+                job_id: Some(job_id),
+            }),
+            Err(_) => Err(RucliError::ParseError(format!(
+                "'{}' is not a valid number",
+                args[0]
+            ))),
+        },
+        _ => unreachable!(),
     }
 }
 

@@ -67,6 +67,10 @@ pub enum Command {
     Background { command: Box<Command> },
     /// スリープ
     Sleep { seconds: u64 },
+    /// ジョブ一覧表示
+    Jobs,
+    /// フォアグラウンド処理切り替え
+    Fg { job_id: Option<u32> },
     /// プログラムを終了
     Exit,
 }
@@ -220,6 +224,20 @@ pub const COMMANDS: &[CommandInfo] = &[
         min_args: 0,
         max_args: Some(0),
     },
+    CommandInfo {
+        name: "jobs",
+        description: "List background jobs",
+        usage: "jobs",
+        min_args: 0,
+        max_args: Some(0),
+    },
+    CommandInfo {
+        name: "fg",
+        description: "Show job status",
+        usage: "fg [job_id]",
+        min_args: 0,
+        max_args: Some(1),
+    },
 ];
 
 /// コマンドの実行
@@ -322,6 +340,11 @@ pub fn execute_command_get_output(command: Command, input: Option<&str>) -> Resu
         Command::Background { command } => handle_background_execution(command),
         Command::Sleep { seconds } => {
             handle_sleep(seconds)?;
+            Ok(String::new())
+        }
+        Command::Jobs => handle_jobs(),
+        Command::Fg { job_id } => {
+            handle_fg(job_id)?;
             Ok(String::new())
         }
         Command::Exit => {
