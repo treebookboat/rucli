@@ -1,6 +1,7 @@
 //! 各コマンドの実装を提供するモジュール
 
 use crate::alias::{list_aliases, set_alias};
+use crate::environment::{get_var, list_all_vars, set_var};
 use crate::error::{Result, RucliError};
 use crate::job;
 use log::{debug, info, warn};
@@ -10,7 +11,9 @@ use std::thread;
 use std::time::Duration;
 use std::{env, fs, io, os::unix::fs::PermissionsExt, path::Path, process};
 
-use crate::commands::{COMMANDS, Command, execute_command, execute_command_get_output};
+use crate::commands::{
+    COMMANDS, Command, EnvironmentAction, execute_command, execute_command_get_output,
+};
 use crate::parser::{DEFAULT_HOME_INDICATOR, PREVIOUS_DIR_INDICATOR};
 
 /// ファイルパーミッションのマスク値
@@ -701,6 +704,35 @@ pub fn handle_fg(job_id: Option<u32>) -> Result<()> {
         None => Err(RucliError::InvalidArgument(format!(
             "No such job: {target_id}"
         ))),
+    }
+}
+
+/// 環境変数コマンドのハンドラ
+pub fn handle_environment(action: EnvironmentAction) -> Result<String> {
+    let mut lines = Vec::new();
+
+    match action {
+        EnvironmentAction::List => {
+            let env_list = list_all_vars();
+            for (name, value) in env_list {
+                lines.push(format!("{name}={value}"));
+            }
+            Ok(lines.join("\n"))
+        }
+        EnvironmentAction::Show(var_name) => {
+            if let Some(value) = get_var(&var_name) {
+                Ok(value)
+            } else {
+                Err(RucliError::InvalidArgument(format!(
+                    "Environment variable '{}' not found",
+                    var_name
+                )))
+            }
+        }
+        EnvironmentAction::Set(var_name, value) => {
+            set_var(var_name.as_str(), value.as_str());
+            Ok(String::new())
+        }
     }
 }
 

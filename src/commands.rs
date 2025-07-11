@@ -71,8 +71,18 @@ pub enum Command {
     Jobs,
     /// フォアグラウンド処理切り替え
     Fg { job_id: Option<u32> },
+    /// 環境変数コマンド
+    Environment { action: EnvironmentAction },
     /// プログラムを終了
     Exit,
+}
+
+/// 環境変数のアクション
+#[derive(Debug)]
+pub enum EnvironmentAction {
+    List,                // env
+    Show(String),        // env VAR
+    Set(String, String), // env VAR=value
 }
 
 /// コマンドのメタ情報を保持する構造体
@@ -238,6 +248,13 @@ pub const COMMANDS: &[CommandInfo] = &[
         min_args: 0,
         max_args: Some(1),
     },
+    CommandInfo {
+        name: "env",
+        description: "Show or set environment variables",
+        usage: "env [VAR[=value]]",
+        min_args: 0,
+        max_args: Some(1),
+    },
 ];
 
 /// コマンドの実行
@@ -347,6 +364,7 @@ pub fn execute_command_get_output(command: Command, input: Option<&str>) -> Resu
             handle_fg(job_id)?;
             Ok(String::new())
         }
+        Command::Environment { action } => handle_environment(action),
         Command::Exit => {
             handle_exit();
             Ok(String::new())

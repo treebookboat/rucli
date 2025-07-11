@@ -2,55 +2,62 @@
 
 🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
 
-## Progress: 53/100 PRs 🎉
+## Progress: 54/100 PRs 🎉
 
-[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
 
-## Latest Changes (PR #53)
+## Latest Changes (PR #54)
 
-- Enhanced job management with comprehensive testing
-- Improved job status tracking and cleanup verification
-- Added thorough test coverage for background execution
-- Verified `jobs` command marker functionality (+/-)
-- Tested completed job auto-cleanup behavior
-- Enhanced `fg` command with better error handling
+- Added comprehensive environment variable management system
+- Implemented `env` command for listing, showing, and setting variables
+- Created session-specific variable storage (separate from system environment)
+- Added support for system environment variable access with session override
+- Environment variables persist within rucli session but don't affect system
 
 ## Usage
 
 ```bash
 $ cargo run
-> sleep 5 &
-[1] ThreadId(2)
-> echo "Can run other commands!"
-Can run other commands!
-> jobs
-[1]+  Running    sleep 5
-> fg 1
-Job [1] (sleep 5) is still running
-> jobs
-No jobs   # Job completed and auto-cleaned
+> env                    # List all environment variables
+PATH=/usr/bin:/bin
+HOME=/home/user
+...
+
+> env TEST_VAR=hello     # Set session variable
+> env TEST_VAR           # Show variable value
+hello
+
+> env PATH               # Show system variable (unchanged)
+/usr/bin:/bin
 ```
 
-## Job Management
+## Environment Variable System
 
-**Background Execution**: Add `&` to run commands in background
+**Session Variables**: Variables set within rucli using `env VAR=value`
+- Stored separately from system environment
+- Persist throughout rucli session
+- Don't affect system environment after exit
+- Take precedence over system variables with same name
+
+**System Variables**: Original environment variables from the system
+- Accessed read-only from within rucli
+- Include PATH, HOME, USER, etc.
+- Remain unchanged by rucli operations
+
+**Priority**: Session Variables > System Variables
+
 ```bash
-> find . -name "*.txt" &
-[1] ThreadId(2)
-> grep "error" log.txt &  
-[2] ThreadId(3)
-```
+# Example: Safe PATH customization
+> env PATH               # Show system PATH
+/usr/bin:/bin
 
-**Job Control**:
-- `jobs` - List running background jobs
-- `fg [job_id]` - Show job status (defaults to latest job)
-- Completed jobs are automatically cleaned up
+> env PATH=/custom/path  # Set session PATH
+> env PATH               # Show session PATH  
+/custom/path
 
-**Job Display Format**:
-```
-[1]+  Running    sleep 10    # Latest job (+ marker)
-[2]-  Running    grep pattern # Previous job (- marker)  
-[3]   Running    find /usr    # Older jobs
+> exit                   # Exit rucli
+$ echo $PATH             # System PATH unchanged
+/usr/bin:/bin
 ```
 
 ## Commands
@@ -58,6 +65,7 @@ No jobs   # Job completed and auto-cleaned
 **File Operations**: `cat`, `write`, `cp`, `mv`, `rm`  
 **Directory Operations**: `ls`, `cd`, `pwd`, `mkdir`  
 **Search Operations**: `find`, `grep`  
+**Environment**: `env` - manage environment variables
 **Job Control**: `jobs`, `fg`  
 **Utilities**: `echo`, `repeat`, `sleep`, `alias`, `version`, `help`, `exit`
 
@@ -68,27 +76,46 @@ No jobs   # Job completed and auto-cleaned
 - `<` - Input redirect from file
 - `&` - Background execution
 
+## Environment Commands
+
+```bash
+# List all variables (system + session)
+> env
+PATH=/usr/bin:/bin
+HOME=/home/user
+TEST_VAR=hello
+
+# Show specific variable
+> env HOME
+/home/user
+
+# Set session variable
+> env CUSTOM_VAR=my_value
+> env CUSTOM_VAR
+my_value
+
+# Override system variable safely
+> env USER=custom_user
+> env USER
+custom_user
+```
+
 ## Examples
 
 ```bash
-# Pipeline with background execution
-> cat large.txt | grep "ERROR" | wc -l &
-[1] ThreadId(2)
+# Environment variable management
+> env DEBUG=true
+> env LOG_LEVEL=info
+> env                    # Shows all variables including new ones
 
-# Multiple jobs
-> sleep 10 &
-[1] ThreadId(2)
-> find /usr -name "*.conf" > configs.txt &
-[2] ThreadId(3)
-> jobs
-[1]-  Running    sleep 10
-[2]+  Running    find /usr -name *.conf > configs.txt
+# Safe system variable override  
+> env PATH=/custom/bin:$PATH  # (Variable expansion coming in PR #55)
+> echo Custom environment setup complete
 
-# Job status checking
-> fg
-Job [2] (find /usr -name *.conf > configs.txt) is still running
-> fg 1  
-Job [1] (sleep 10) is still running
+# Background jobs with environment
+> env WORKER_ID=1
+> long_running_task &    # Will use WORKER_ID=1
+[1] ThreadId(2)
 ```
 
 ## Project Structure
@@ -96,15 +123,16 @@ Job [1] (sleep 10) is still running
 ```
 rucli/
 ├── src/
-│   ├── main.rs      # Entry point
-│   ├── commands.rs  # Command definitions & execution
-│   ├── parser.rs    # Input parsing & command recognition
-│   ├── handlers.rs  # Command implementations
-│   ├── pipeline.rs  # Pipeline execution logic
-│   ├── redirect.rs  # I/O redirection handling
-│   ├── job.rs       # Background job management
-│   ├── alias.rs     # Command alias system
-│   └── error.rs     # Error types & handling
+│   ├── main.rs         # Entry point
+│   ├── commands.rs     # Command definitions & execution
+│   ├── parser.rs       # Input parsing & command recognition
+│   ├── handlers.rs     # Command implementations
+│   ├── environment.rs  # Environment variable management
+│   ├── pipeline.rs     # Pipeline execution logic
+│   ├── redirect.rs     # I/O redirection handling
+│   ├── job.rs          # Background job management
+│   ├── alias.rs        # Command alias system
+│   └── error.rs        # Error types & handling
 └── tests/
     ├── cli_tests.rs
     └── integration_tests.rs
@@ -114,8 +142,8 @@ rucli/
 
 ```bash
 cargo test              # Run all tests
-cargo test job          # Test job management
-cargo test background   # Test background execution
+cargo test environment  # Test environment variables
+cargo test env          # Test env command
 cargo run -- --debug    # Run with debug logging
 ```
 
@@ -126,7 +154,8 @@ cargo run -- --debug    # Run with debug logging
 - [x] Redirections (49-51)
 - [x] Background execution (52)
 - [x] Job management (53)
-- [ ] Environment variables (54-55)
+- [x] Environment variables (54)
+- [ ] Variable expansion ($VAR) (55)
 - [ ] Command substitution (56)
 - [ ] Here documents (57)
 - [ ] Scripting support (58-65)
@@ -143,4 +172,4 @@ cargo run -- --debug    # Run with debug logging
 
 ---
 
-**Next**: Environment variables (`env` command) in PR #54! 🌍
+**Next**: Variable expansion (`$VAR` syntax) in PR #55! 🔄

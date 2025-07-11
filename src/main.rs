@@ -2,6 +2,7 @@
 
 mod alias;
 mod commands;
+mod environment;
 mod error;
 mod handlers;
 mod job;

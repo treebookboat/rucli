@@ -1,7 +1,7 @@
 //! コマンドライン入力をパースするモジュール
 
 use crate::alias::get_alias;
-use crate::commands::{COMMANDS, Command, CommandInfo};
+use crate::commands::{COMMANDS, Command, CommandInfo, EnvironmentAction};
 use crate::error::{Result, RucliError};
 use log::{debug, trace};
 
@@ -192,6 +192,7 @@ pub fn parse_command(input: &str) -> Result<Command> {
         "alias" => parse_alias(args),
         "sleep" => parse_sleep(args),
         "fg" => parse_fg(args),
+        "env" => parse_environment(args),
 
         _ => Err(RucliError::UnknownCommand(format!(
             "{} {}",
@@ -435,6 +436,32 @@ pub fn contains_redirect(input: &str) -> bool {
 // バックグラウンドを含むかチェック
 pub fn contains_background(input: &str) -> bool {
     input.contains("&")
+}
+
+/// envコマンドのパース関数
+fn parse_environment(args: &[&str]) -> Result<Command> {
+    // 処理パターン:
+    // [] => List (引数なし)
+    // ["VAR"] => Show(VAR)
+    // ["VAR=value"] => Set(VAR, value)
+
+    match args {
+        [] => Ok(Command::Environment {
+            action: EnvironmentAction::List,
+        }),
+        [var] => {
+            if let Some((name, value)) = var.split_once("=") {
+                Ok(Command::Environment {
+                    action: EnvironmentAction::Set(name.to_string(), value.to_string()),
+                })
+            } else {
+                Ok(Command::Environment {
+                    action: EnvironmentAction::Show(var.to_string()),
+                })
+            }
+        }
+        _ => unreachable!(),
+    }
 }
 
 #[cfg(test)]
