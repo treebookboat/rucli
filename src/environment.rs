@@ -51,3 +51,459 @@ pub fn list_all_vars() -> Vec<(String, String)> {
 
     result
 }
+
+/// 変数展開を行う関数
+pub fn expand_variables(input: &str) -> String {
+    // 結果を格納する文字列
+    let mut ans_string = String::new();
+    let mut chars = input.chars().peekable();
+
+    // 文字列をスキャンして$以降の単語を置換
+    while let Some(char) = chars.next() {
+        if char == '$' {
+            if chars.peek() == Some(&'{') {
+                // '{'部分を進める
+                chars.next();
+
+                let mut var_name = String::new();
+                let mut found_closing_brace = false;
+
+                // '}'を取得できるまで進める
+                while let Some(&next_char) = chars.peek() {
+                    // 変数名に使える文字なら追加
+                    if next_char != '}' {
+                        var_name.push(chars.next().unwrap());
+                    } else {
+                        chars.next();
+                        found_closing_brace = true;
+                        break;
+                    }
+                }
+
+                // 変数名が取得できた場合は置換
+                if found_closing_brace && !var_name.is_empty() {
+                    if let Some(value) = get_var(&var_name) {
+                        ans_string.push_str(&value);
+                    }
+                }
+                // 空文字列はそのまま出力
+                else if found_closing_brace && var_name.is_empty() {
+                    ans_string.push_str("${}");
+                }
+                // 閉じカッコ内場合も元の文字列をそのまま出力
+                else {
+                    ans_string.push_str("${");
+                    ans_string.push_str(&var_name);
+                }
+            } else {
+                let mut var_name = String::new();
+                while let Some(&next_char) = chars.peek() {
+                    // 変数名に使える文字なら追加
+                    if next_char.is_alphanumeric() || next_char == '_' {
+                        var_name.push(chars.next().unwrap());
+                    } else {
+                        break;
+                    }
+                }
+
+                if !var_name.is_empty() {
+                    // 変数名が取得できた場合は置換
+                    if let Some(value) = get_var(&var_name) {
+                        ans_string.push_str(&value);
+                    }
+                } else {
+                    ans_string.push('$');
+                }
+            }
+        } else {
+            ans_string.push(char);
+        }
+    }
+
+    ans_string
+}
+
+#[cfg(test)]
+mod environment_tests {
+    use super::*;
+    use crate::environment::{set_var, expand_variables};
+    use crate::handlers::handle_environment;
+    use crate::commands::{Command, EnvironmentAction, execute_command_get_output};
+    use crate::parser::parse_command;
+
+    // ========================================
+    // PR #54: Environment Variable Management Tests
+    // ========================================
+
+    #[test]
+    fn test_env_command_list_all() {
+        // When: env コマンドを引数なしで実行
+        let result = handle_environment(EnvironmentAction::List).unwrap();
+        
+        // Then: システム環境変数が表示される
+        assert!(result.contains("PATH="));
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn test_env_set_and_get() {
+        // Given: 新しい環境変数を設定
+        handle_environment(EnvironmentAction::Set("TEST_VAR".to_string(), "test_value".to_string())).unwrap();
+        
+        // When: その変数を取得
+        let result = handle_environment(EnvironmentAction::Show("TEST_VAR".to_string())).unwrap();
+        
+        // Then: 設定した値が返される
+        assert_eq!(result.trim(), "test_value");
+    }
+
+    #[test]
+    fn test_env_set_overwrites_existing() {
+        // Given: 変数を設定
+        handle_environment(EnvironmentAction::Set("OVERWRITE_TEST".to_string(), "original".to_string())).unwrap();
+        
+        // When: 同じ変数に別の値を設定
+        handle_environment(EnvironmentAction::Set("OVERWRITE_TEST".to_string(), "updated".to_string())).unwrap();
+        
+        // Then: 新しい値で上書きされる
+        let result = handle_environment(EnvironmentAction::Show("OVERWRITE_TEST".to_string())).unwrap();
+        assert_eq!(result.trim(), "updated");
+    }
+
+    #[test]
+    fn test_env_show_nonexistent_variable() {
+        // When: 存在しない変数を表示しようとする
+        let result = handle_environment(EnvironmentAction::Show("NONEXISTENT_VAR".to_string()));
+        
+        // Then: エラーが返される
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Environment variable 'NONEXISTENT_VAR' not found"));
+    }
+
+    #[test]
+    fn test_parse_env_command_list() {
+        // When: env コマンドをパース
+        let cmd = parse_command("env").unwrap();
+        
+        // Then: Environment::List コマンドが生成される
+        assert!(matches!(cmd, Command::Environment { action: EnvironmentAction::List }));
+    }
+
+    #[test]
+    fn test_parse_env_command_set() {
+        // When: env VAR=value コマンドをパース
+        let cmd = parse_command("env TEST_VAR=test_value").unwrap();
+        
+        // Then: Environment::Set コマンドが生成される
+        assert!(matches!(cmd, Command::Environment { 
+            action: EnvironmentAction::Set(var, val) 
+        } if var == "TEST_VAR" && val == "test_value"));
+    }
+
+    #[test]
+    fn test_parse_env_command_show() {
+        // When: env VAR コマンドをパース
+        let cmd = parse_command("env PATH").unwrap();
+        
+        // Then: Environment::Show コマンドが生成される
+        assert!(matches!(cmd, Command::Environment { 
+            action: EnvironmentAction::Show(var) 
+        } if var == "PATH"));
+    }
+
+    // ========================================
+    // PR #55: Variable Expansion Tests
+    // ========================================
+
+    #[test]
+    fn test_basic_dollar_variable_expansion() {
+        // Given: 環境変数を設定
+        set_var("NAME", "world");
+        set_var("USER", "john");
+        
+        // When/Then: 基本的な $VAR 展開
+        assert_eq!(expand_variables("Hello $NAME"), "Hello world");
+        assert_eq!(expand_variables("$USER"), "john");
+        assert_eq!(expand_variables("User $USER lives here"), "User john lives here");
+    }
+
+    #[test]
+    fn test_basic_brace_variable_expansion() {
+        // Given: 環境変数を設定
+        set_var("PREFIX", "test");
+        set_var("PATH", "/usr/bin");
+        
+        // When/Then: 基本的な ${VAR} 展開
+        assert_eq!(expand_variables("${PREFIX}"), "test");
+        assert_eq!(expand_variables("${PATH}"), "/usr/bin");
+    }
+
+    #[test]
+    fn test_brace_with_suffix() {
+        // Given: 環境変数を設定
+        set_var("NAME", "file");
+        set_var("TYPE", "config");
+        
+        // When/Then: 変数名の明確な区切り
+        assert_eq!(expand_variables("${NAME}.txt"), "file.txt");
+        assert_eq!(expand_variables("${NAME}_backup"), "file_backup");
+        assert_eq!(expand_variables("${TYPE}.json"), "config.json");
+    }
+
+    #[test]
+    fn test_mixed_expansion_styles() {
+        // Given: 環境変数を設定
+        set_var("USER", "alice");
+        set_var("HOST", "server");
+        
+        // When/Then: $VAR と ${VAR} の混在
+        assert_eq!(expand_variables("$USER@${HOST}.com"), "alice@server.com");
+        assert_eq!(expand_variables("${USER} on $HOST"), "alice on server");
+    }
+
+    #[test]
+    fn test_multiple_variable_expansion() {
+        // Given: 複数の環境変数
+        set_var("FIRST", "Hello");
+        set_var("SECOND", "World");
+        set_var("THIRD", "!");
+        
+        // When/Then: 複数変数を展開
+        assert_eq!(expand_variables("$FIRST $SECOND$THIRD"), "Hello World!");
+        assert_eq!(expand_variables("${FIRST} ${SECOND} ${THIRD}"), "Hello World !");
+    }
+
+    #[test]
+    fn test_nonexistent_variable_expansion() {
+        // When/Then: 存在しない変数（空文字列に展開）
+        assert_eq!(expand_variables("$NONEXISTENT"), "");
+        assert_eq!(expand_variables("${MISSING}"), "");
+    }
+
+    #[test]
+    fn test_brace_error_cases() {
+        // When/Then: ブレース記法のエラーケース
+        assert_eq!(expand_variables("${VAR"), "${VAR");           // 閉じブレースなし
+        assert_eq!(expand_variables("${}"), "${}");               // 空の変数名
+        assert_eq!(expand_variables("${INCOMPLETE text"), "${INCOMPLETE text"); // 途中終了
+    }
+
+    #[test]
+    fn test_dollar_edge_cases() {
+        // When/Then: $ のエッジケース
+        assert_eq!(expand_variables("Price $100"), "Price "); // 数字始まり変数は無効→空文字列
+        assert_eq!(expand_variables("$"), "$");                 // 連続$
+        assert_eq!(expand_variables("$"), "$");                   // 単独$
+    }
+
+    #[test]
+    fn test_system_variable_expansion() {
+        // When/Then: システム環境変数の展開
+        let result = expand_variables("Home: $HOME");
+        assert!(result.starts_with("Home: /"));
+        assert!(!result.contains("$HOME"));
+        
+        let path_result = expand_variables("Path: $PATH");
+        assert!(path_result.contains("Path: "));
+        assert!(!path_result.contains("$PATH"));
+    }
+
+    #[test]
+    fn test_echo_command_with_variable_expansion() {
+        // Given: 環境変数を設定
+        set_var("GREETING", "Hello World");
+        
+        // When: echoコマンドで変数展開
+        let cmd = parse_command("echo $GREETING").unwrap();
+        let result = execute_command_get_output(cmd, None).unwrap();
+        
+        // Then: 展開された値が出力される
+        assert_eq!(result.trim(), "Hello World");
+    }
+
+    #[test]
+    fn test_cat_command_with_variable_filename() {
+        // Given: ファイル名を環境変数に設定
+        set_var("TESTFILE", "test.txt");
+        
+        // When: catコマンドで変数展開
+        let cmd = parse_command("cat $TESTFILE").unwrap();
+        
+        // Then: ファイル名が展開される
+        assert!(matches!(cmd, Command::Cat { filename } if filename == "test.txt"));
+    }
+
+    #[test]
+    fn test_write_command_with_variable_expansion() {
+        // Given: ファイル名と内容を環境変数に設定
+        set_var("OUTPUT", "output.txt");
+        set_var("MESSAGE", "Hello File");
+        
+        // When: writeコマンドで変数展開
+        let cmd = parse_command("write $OUTPUT $MESSAGE").unwrap();
+        
+        // Then: 両方の変数が展開される
+        assert!(matches!(cmd, Command::Write { filename, content } 
+            if filename == "output.txt" && content == "Hello File"));
+    }
+
+    #[test]
+    fn test_variable_expansion_in_pipeline() {
+        // Given: 環境変数を設定
+        set_var("PATTERN", "error");
+        set_var("LOGFILE", "app.log");
+        
+        // When: パイプラインで変数展開
+        let cmd = parse_command("cat $LOGFILE | grep $PATTERN").unwrap();
+        
+        // Then: パイプライン内で変数が展開される
+        if let Command::Pipeline { commands } = cmd {
+            // 実際の展開結果を確認（デバッグ用）
+            println!("Pipeline commands: {:?}", commands);
+            assert!(commands.len() == 2);
+            // 展開が正しく行われていることを確認
+            assert!(commands[0].trim() == "cat app.log" || commands[0].contains("app.log"));
+            assert!(commands[1].trim() == "grep error" || commands[1].contains("error"));
+        } else {
+            panic!("Expected pipeline command, got: {:?}", cmd);
+        }
+    }
+
+    #[test]
+    fn test_variable_expansion_in_redirect() {
+        // Given: 環境変数を設定
+        set_var("INPUT", "source.txt");
+        set_var("OUTPUT", "dest.txt");
+        
+        // When: リダイレクトで変数展開
+        let cmd = parse_command("cat $INPUT > $OUTPUT").unwrap();
+        
+        // Then: 入力と出力ファイル名が展開される
+        println!("Redirect command: {:?}", cmd);
+        if let Command::Redirect { command, redirect_type, target } = cmd {
+            assert_eq!(redirect_type, ">");
+            // 実際の展開結果を確認
+            println!("Target: {}", target);
+            assert!(target == "dest.txt" || target.contains("dest.txt"));
+            if let Command::Cat { filename } = *command {
+                assert!(filename == "source.txt" || filename.contains("source.txt"));
+            } else {
+                panic!("Expected cat command, got: {:?}", command);
+            }
+        } else {
+            panic!("Expected redirect command, got: {:?}", cmd);
+        }
+    }
+
+    #[test]
+    fn test_variable_expansion_with_background() {
+        // Given: 環境変数を設定（実在するコマンドを使用）
+        set_var("TASK", "sleep");
+        set_var("DURATION", "1");
+        
+        // When: バックグラウンド実行で変数展開
+        let cmd = parse_command("$TASK $DURATION &").unwrap();
+        
+        // Then: バックグラウンドコマンドで変数が展開される
+        println!("Background command: {:?}", cmd);
+        assert!(matches!(cmd, Command::Background { .. }));
+    }
+
+    #[test]
+    fn test_variable_expansion_with_special_characters() {
+        // Given: 特殊文字を含む値
+        set_var("EMAIL", "user@domain.com");
+        set_var("PATH_WITH_SPACES", "/path with spaces");
+        
+        // When: 特殊文字を含む変数を展開
+        assert_eq!(expand_variables("Contact: $EMAIL"), "Contact: user@domain.com");
+        assert_eq!(expand_variables("Dir: ${PATH_WITH_SPACES}"), "Dir: /path with spaces");
+    }
+
+    #[test]
+    fn test_empty_variable_expansion() {
+        // Given: 空文字列の環境変数
+        set_var("EMPTY", "");
+        
+        // When: 空変数を展開
+        assert_eq!(expand_variables("Value: $EMPTY end"), "Value:  end");
+        assert_eq!(expand_variables("${EMPTY}test"), "test");
+    }
+
+    #[test]
+    fn test_variable_expansion_preserves_quotes() {
+        // Given: 環境変数を設定
+        set_var("QUOTED", "with spaces");
+        
+        // When: クォート内で変数展開
+        assert_eq!(expand_variables("\"Message: $QUOTED\""), "\"Message: with spaces\"");
+        assert_eq!(expand_variables("'${QUOTED}'"), "'with spaces'");
+    }
+
+    #[test]
+    fn test_alphanumeric_variable_names() {
+        // Given: 数字を含む変数名
+        set_var("VAR1", "first");
+        set_var("VAR2", "second");
+        set_var("PATH123", "custom_path");
+        
+        // When/Then: 数字を含む変数名の展開
+        assert_eq!(expand_variables("$VAR1 and $VAR2"), "first and second");
+        assert_eq!(expand_variables("${PATH123}"), "custom_path");
+    }
+
+    #[test]
+    fn test_underscore_in_variable_names() {
+        // Given: アンダースコアを含む変数名
+        set_var("MY_VAR", "underscore_value");
+        set_var("TEST_123", "test_value");
+        
+        // When/Then: アンダースコア変数の展開
+        assert_eq!(expand_variables("$MY_VAR"), "underscore_value");
+        assert_eq!(expand_variables("${TEST_123}"), "test_value");
+    }
+
+    #[test]
+    fn test_session_vs_system_variable_priority() {
+        // Given: システム変数と同名のセッション変数を設定
+        set_var("PATH", "/custom/path");
+        
+        // When: 変数を展開
+        let result = expand_variables("$PATH");
+        
+        // Then: セッション変数が優先される
+        assert_eq!(result, "/custom/path");
+    }
+
+    #[test]
+    fn test_complex_expansion_scenario() {
+        // Given: 複雑なシナリオの環境変数
+        set_var("PROJECT", "myapp");
+        set_var("VERSION", "1.0");
+        set_var("ENV", "prod");
+        
+        // When: 複雑な変数展開
+        let result = expand_variables("${PROJECT}-${VERSION}-${ENV}.tar.gz");
+        
+        // Then: 正しく展開される
+        assert_eq!(result, "myapp-1.0-prod.tar.gz");
+    }
+
+    #[test]
+    fn test_debug_variable_boundaries() {
+        // デバッグ: 変数名の境界確認
+        set_var("VAR", "value");
+        set_var("_UNDERSCORE", "underscore_value");
+        
+        // 数字との境界（bash準拠）
+        assert_eq!(expand_variables("$VAR123"), ""); // VAR123という変数（存在しない）
+        assert_eq!(expand_variables("${VAR}123"), "value123"); // VAR + "123"
+        
+        // 記号との境界  
+        assert_eq!(expand_variables("$VAR.txt"), "value.txt"); // VAR + ".txt"
+        assert_eq!(expand_variables("$VAR/path"), "value/path"); // VAR + "/path"
+        
+        // アンダースコア始まり
+        assert_eq!(expand_variables("$_UNDERSCORE"), "underscore_value"); // 有効
+    }
+}

@@ -2,33 +2,75 @@
 
 🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
 
-## Progress: 54/100 PRs 🎉
+## Progress: 55/100 PRs 🎉
 
-[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
 
-## Latest Changes (PR #54)
+## Latest Changes (PR #55)
 
-- Added comprehensive environment variable management system
-- Implemented `env` command for listing, showing, and setting variables
-- Created session-specific variable storage (separate from system environment)
-- Added support for system environment variable access with session override
-- Environment variables persist within rucli session but don't affect system
+- Added comprehensive variable expansion with `$VAR` and `${VAR}` syntax
+- Integrated variable expansion into parser for all commands
+- Support for mixed expansion styles and alphanumeric variable names
+- Robust error handling for malformed syntax and missing variables
+- Variable expansion works in pipelines, redirects, and background jobs
+- Session variables take priority over system variables
 
 ## Usage
 
 ```bash
 $ cargo run
-> env                    # List all environment variables
-PATH=/usr/bin:/bin
-HOME=/home/user
-...
+> env NAME=world
+> echo Hello $NAME           # Hello world
+> echo ${NAME}!              # world!
+> cat ${NAME}.txt            # Reads world.txt
+> env PREFIX=test
+> cp $PREFIX.txt ${PREFIX}_backup.txt  # test.txt -> test_backup.txt
+```
 
-> env TEST_VAR=hello     # Set session variable
-> env TEST_VAR           # Show variable value
-hello
+## Variable Expansion System
 
-> env PATH               # Show system variable (unchanged)
-/usr/bin:/bin
+**Basic Expansion (`$VAR`)**:
+```bash
+> env USER=alice
+> echo Welcome $USER         # Welcome alice
+> echo $USER/documents       # alice/documents
+
+# Fish-style flexible naming (numeric start allowed)
+> env 1ST_USER=bob
+> echo $1ST_USER             # bob
+> env 123=numeric
+> echo $123                  # numeric
+```
+
+**Brace Expansion (`${VAR}`)**:
+```bash
+> env PREFIX=myfile
+> echo $PREFIXname           # (empty - looks for PREFIXname variable)
+> echo ${PREFIX}name         # myfilename (PREFIX + name)
+> echo ${PREFIX}.txt         # myfile.txt
+> echo ${123}data            # numericdata (if 123=numeric)
+```
+
+**Variable Naming Rules (Fish-Inspired)**:
+- **Valid characters**: `a-z`, `A-Z`, `0-9`, `_` (underscore)
+- **No restrictions**: Numeric start allowed (`$123`, `$1ST_VAR`)
+- **Case sensitive**: `$VAR` ≠ `$var`
+- **Priority**: Session variables > System variables
+
+**Mixed Usage**:
+```bash
+> env HOST=server
+> env PORT=8080
+> env 1ST_DB=primary
+> echo Connect to $HOST:${PORT}/api/${1ST_DB}    # server:8080/api/primary
+```
+
+**Error Handling**:
+```bash
+> echo $NONEXISTENT          # (empty string)
+> echo ${MISSING}            # (empty string)
+> echo ${INCOMPLETE          # ${INCOMPLETE (preserved as-is)
+> echo ${}                   # ${} (preserved as-is)
 ```
 
 ## Environment Variable System
@@ -39,25 +81,71 @@ hello
 - Don't affect system environment after exit
 - Take precedence over system variables with same name
 
-**System Variables**: Original environment variables from the system
-- Accessed read-only from within rucli
-- Include PATH, HOME, USER, etc.
-- Remain unchanged by rucli operations
-
-**Priority**: Session Variables > System Variables
+**Variable Expansion Priority**: Session Variables > System Variables
 
 ```bash
-# Example: Safe PATH customization
-> env PATH               # Show system PATH
-/usr/bin:/bin
+# Safe PATH customization with expansion
+> env PATH=/custom/bin
+> echo Current path: $PATH   # Shows custom path
+> echo $PATH/mycommand       # /custom/bin/mycommand
+> exit                       # System PATH unchanged
+```
 
-> env PATH=/custom/path  # Set session PATH
-> env PATH               # Show session PATH  
-/custom/path
+## Advanced Usage Examples
 
-> exit                   # Exit rucli
-$ echo $PATH             # System PATH unchanged
-/usr/bin:/bin
+**Advanced Usage Examples
+
+**File Operations with Flexible Variables**:
+```bash
+> env 1ST_SOURCE=data.csv
+> env 2ND_DEST=backup
+> env 123=logs
+> cp $1ST_SOURCE ${2ND_DEST}/$1ST_SOURCE     # Copy data.csv to backup/data.csv  
+> cat ${123}/app.log | grep error > ${2ND_DEST}/errors.log
+```
+
+**Numeric Variables for Iteration-Style Operations**:
+```bash
+> env 1=first.txt
+> env 2=second.txt  
+> env 3=third.txt
+> cat $1 $2 $3 > combined.txt                # Combine all files
+> echo Processing ${1}, ${2}, ${3}           # Processing first.txt, second.txt, third.txt
+```
+
+**Pipeline Integration**:
+```bash
+> env PATTERN=ERROR
+> env LOGFILE=app.log
+> cat $LOGFILE | grep $PATTERN | wc -l    # Count errors in log
+> find . -name "*.${PATTERN,,}" | head -5 # Find pattern files
+```
+
+**Background Jobs with Variables**:
+```bash
+> env BACKUP_DIR=/backup
+> env SOURCE_DIR=/data
+> cp -r $SOURCE_DIR $BACKUP_DIR &         # Background backup
+[1] ThreadId(2)
+> jobs
+[1]+  Running    cp -r /data /backup
+```
+
+**Complex Variable Scenarios**:
+```bash
+> env PROJECT=myapp
+> env VERSION=1.0
+> env BUILD=release
+> env 1ST_ENV=prod
+> echo Building ${PROJECT}-v${VERSION}-${BUILD}-${1ST_ENV}.tar.gz
+Building myapp-v1.0-release-prod.tar.gz
+
+# Numeric sequence variables
+> env 1=alpha
+> env 2=beta  
+> env 3=gamma
+> echo Deployment sequence: $1 -> $2 -> $3
+Deployment sequence: alpha -> beta -> gamma
 ```
 
 ## Commands
@@ -65,58 +153,21 @@ $ echo $PATH             # System PATH unchanged
 **File Operations**: `cat`, `write`, `cp`, `mv`, `rm`  
 **Directory Operations**: `ls`, `cd`, `pwd`, `mkdir`  
 **Search Operations**: `find`, `grep`  
-**Environment**: `env` - manage environment variables
+**Environment**: `env` - manage environment variables with expansion support
 **Job Control**: `jobs`, `fg`  
 **Utilities**: `echo`, `repeat`, `sleep`, `alias`, `version`, `help`, `exit`
 
 **Operators**:
-- `|` - Pipe commands together
-- `>` - Redirect output (overwrite)
-- `>>` - Redirect output (append)
-- `<` - Input redirect from file
-- `&` - Background execution
+- `|` - Pipe commands together (with variable expansion)
+- `>` - Redirect output (with variable expansion)
+- `>>` - Redirect output append (with variable expansion)
+- `<` - Input redirect from file (with variable expansion)
+- `&` - Background execution (with variable expansion)
 
-## Environment Commands
-
-```bash
-# List all variables (system + session)
-> env
-PATH=/usr/bin:/bin
-HOME=/home/user
-TEST_VAR=hello
-
-# Show specific variable
-> env HOME
-/home/user
-
-# Set session variable
-> env CUSTOM_VAR=my_value
-> env CUSTOM_VAR
-my_value
-
-# Override system variable safely
-> env USER=custom_user
-> env USER
-custom_user
-```
-
-## Examples
-
-```bash
-# Environment variable management
-> env DEBUG=true
-> env LOG_LEVEL=info
-> env                    # Shows all variables including new ones
-
-# Safe system variable override  
-> env PATH=/custom/bin:$PATH  # (Variable expansion coming in PR #55)
-> echo Custom environment setup complete
-
-# Background jobs with environment
-> env WORKER_ID=1
-> long_running_task &    # Will use WORKER_ID=1
-[1] ThreadId(2)
-```
+**Variable Expansion**:
+- `$VAR` - Basic variable expansion
+- `${VAR}` - Brace notation for clear boundaries
+- Works in all commands, arguments, and file paths
 
 ## Project Structure
 
@@ -125,9 +176,9 @@ rucli/
 ├── src/
 │   ├── main.rs         # Entry point
 │   ├── commands.rs     # Command definitions & execution
-│   ├── parser.rs       # Input parsing & command recognition
+│   ├── parser.rs       # Input parsing with variable expansion
 │   ├── handlers.rs     # Command implementations
-│   ├── environment.rs  # Environment variable management
+│   ├── environment.rs  # Environment variables & expansion engine
 │   ├── pipeline.rs     # Pipeline execution logic
 │   ├── redirect.rs     # I/O redirection handling
 │   ├── job.rs          # Background job management
@@ -142,8 +193,9 @@ rucli/
 
 ```bash
 cargo test              # Run all tests
-cargo test environment  # Test environment variables
-cargo test env          # Test env command
+cargo test environment  # Test environment & expansion
+cargo test expansion    # Test variable expansion
+cargo test integration  # Test env + expansion integration
 cargo run -- --debug    # Run with debug logging
 ```
 
@@ -155,7 +207,7 @@ cargo run -- --debug    # Run with debug logging
 - [x] Background execution (52)
 - [x] Job management (53)
 - [x] Environment variables (54)
-- [ ] Variable expansion ($VAR) (55)
+- [x] Variable expansion (55)
 - [ ] Command substitution (56)
 - [ ] Here documents (57)
 - [ ] Scripting support (58-65)
@@ -172,4 +224,4 @@ cargo run -- --debug    # Run with debug logging
 
 ---
 
-**Next**: Variable expansion (`$VAR` syntax) in PR #55! 🔄
+**Next**: Command substitution (`$(command)` syntax) in PR #56! 🔄
