@@ -1,7 +1,10 @@
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use std::sync::Mutex;
-use std::vec;
+use crate::error::{Result};
+
+use crate::commands::execute_command_get_output;
+use crate::parser::parse_command;
 
 /// セッション固有の環境変数ストレージ
 static SESSION_VARS: Lazy<Mutex<HashMap<String, String>>> =
@@ -90,7 +93,7 @@ pub fn expand_variables(input: &str) -> String {
                 else if found_closing_brace && var_name.is_empty() {
                     ans_string.push_str("${}");
                 }
-                // 閉じカッコ内場合も元の文字列をそのまま出力
+                // 閉じカッコが存在しない場合も元の文字列をそのまま出力
                 else {
                     ans_string.push_str("${");
                     ans_string.push_str(&var_name);
@@ -123,12 +126,94 @@ pub fn expand_variables(input: &str) -> String {
     ans_string
 }
 
+/// コマンド置換を実行する関数
+pub fn expand_command_substitution(input: &str) -> Result<String>
+{
+    // 結果を格納する文字列
+    let mut ans_string = String::new();
+    let mut chars = input.chars().peekable();
+
+    // 文字列をスキャンして$以降の単語を置換
+    while let Some(ch) = chars.next() {
+        if ch == '$' {
+            // 次の文字が(かチェック
+            if chars.peek() == Some(&'('){
+                // (を消費
+                chars.next();
+                
+                let mut paren_count = 1;
+                let mut cmd_string = String::new();
+                let mut found_closing_brace = false;
+
+                // )まで読み取る
+                for next_ch in chars.by_ref(){
+                    if next_ch == '(' {
+                        paren_count += 1;
+                        cmd_string.push(next_ch);
+                    } else if next_ch == ')' {
+                        paren_count -= 1;
+                        if paren_count == 0 {
+                            found_closing_brace = true;
+                            break;
+                        }
+                        cmd_string.push(next_ch);
+                    } else {
+                        cmd_string.push(next_ch);
+                    }
+                }
+
+                // 変数名が取得できた場合は置換
+                if found_closing_brace && !cmd_string.is_empty() {
+                    // 再帰的に内部のコマンド置換を実行
+                    let inner_expanded = expand_command_substitution(&cmd_string)?;
+
+                    match parse_command(&inner_expanded) {
+                        Ok(cmd) => 
+                        {
+                            match execute_command_get_output(cmd, None) {
+                                Ok(output) => {
+                                    // 末尾の開業を削除
+                                    ans_string.push_str(output.trim_end());
+                                },
+                                Err(_) => {
+                                    // エラーなのでなにもしない
+                                }
+                            }
+                        }
+                        Err(_) => {
+                            // パースエラーなのでなにもしない
+                        }
+                    }
+                }
+                // 空文字列はそのまま出力
+                else if found_closing_brace && cmd_string.is_empty() {
+                    // 何もしない
+                }
+                // 閉じカッコが存在しない場合も元の文字列をそのまま出力
+                else {
+                    ans_string.push_str("$(");
+                    ans_string.push_str(&cmd_string);
+                }
+            }
+            // $だけなのでそのまま残しておく
+            else{
+                ans_string.push(ch);
+            }
+        }
+        else {
+            ans_string.push(ch);
+        }
+    }
+
+    Ok(ans_string)
+}
+
 #[cfg(test)]
 mod environment_tests {
     use super::*;
     use crate::environment::{set_var, expand_variables};
     use crate::handlers::handle_environment;
-    use crate::commands::{Command, EnvironmentAction, execute_command_get_output};
+    use crate::commands::{execute_command, execute_command_get_output, Command, EnvironmentAction};
     use crate::parser::parse_command;
 
     // ========================================
@@ -505,5 +590,195 @@ mod environment_tests {
         
         // アンダースコア始まり
         assert_eq!(expand_variables("$_UNDERSCORE"), "underscore_value"); // 有効
+    }
+
+    #[test]
+    fn test_basic_command_substitution() {
+        // Given: pwdコマンドの出力を置換
+        let input = "Current dir: $(pwd)";
+        
+        // When: コマンド置換を実行
+        let result = expand_command_substitution(input).unwrap();
+        
+        // Then: pwdの出力が含まれる
+        assert!(result.starts_with("Current dir: /"));
+        assert!(!result.contains("$(pwd)"));
+    }
+
+    #[test]
+    fn test_multiple_command_substitutions() {
+        // Given: 複数のコマンド置換
+        let input = "First: $(echo hello) Second: $(echo world)";
+        
+        // When: 置換実行
+        let result = expand_command_substitution(input).unwrap();
+        
+        // Then: 両方が置換される
+        assert_eq!(result, "First: hello Second: world");
+    }
+
+    #[test]
+    fn test_nested_command_substitution() {
+        // Given: ネストされたコマンド置換
+        let input = "Result: $(echo $(echo nested))";
+        
+        // When: 置換実行
+        let result = expand_command_substitution(input).unwrap();
+        
+        // Then: 正しく評価される
+        assert_eq!(result, "Result: nested");
+    }
+
+    #[test]
+    fn test_command_substitution_with_pipe() {
+        // Given: echoコマンドでパイプをシミュレート
+        let input = "Result: $(echo hello | cat)";
+        
+        // When: 置換実行
+        let result = expand_command_substitution(input).unwrap();
+        
+        // Then: パイプラインが実行される
+        assert_eq!(result, "Result: hello");
+    }
+
+    #[test]
+    fn test_failed_command_substitution() {
+        // Given: 失敗するコマンド
+        let input = "Error: $(nonexistent_command)";
+        
+        // When: 置換実行
+        let result = expand_command_substitution(input).unwrap();
+        
+        // Then: 空文字列に置換される
+        assert_eq!(result, "Error: ");
+    }
+
+    #[test]
+    fn test_unclosed_command_substitution() {
+        // Given: 閉じていない括弧
+        let input = "Incomplete: $(echo hello";
+        
+        // When: 置換実行
+        let result = expand_command_substitution(input).unwrap();
+        
+        // Then: 元の文字列が保持される
+        assert_eq!(result, input);
+    }
+
+    #[test]
+    fn test_empty_command_substitution() {
+        // Given: 空のコマンド
+        let input = "Empty: $() end";
+        
+        // When: 置換実行
+        let result = expand_command_substitution(input).unwrap();
+        
+        // Then: 空文字列に置換
+        assert_eq!(result, "Empty:  end");
+    }
+
+    #[test]
+    fn test_command_substitution_preserves_quotes() {
+        // Given: クォート内でのコマンド置換
+        let input = r#"Message: "$(echo hello world)""#;
+        
+        // When: 置換実行
+        let result = expand_command_substitution(input).unwrap();
+        
+        // Then: クォートが保持される
+        assert_eq!(result, r#"Message: "hello world""#);
+    }
+
+    #[test]
+    fn test_command_substitution_with_variables() {
+        // Given: 変数を含むコマンド
+        set_var("NAME", "test");
+        let input = "Result: $(echo $NAME)";
+        
+        // When: 変数展開してから置換実行
+        let expanded = expand_variables(input);
+        let result = expand_command_substitution(&expanded).unwrap();
+        
+        // Then: 変数が展開されてから実行される
+        assert_eq!(result, "Result: test");
+    }
+
+    #[test]
+    fn test_complex_nested_substitution() {
+        // Given: 複雑なネスト
+        let input = "$(echo Result: $(echo $(echo deep)))";
+        
+        // When: 置換実行
+        let result = expand_command_substitution(input).unwrap();
+        
+        // Then: 正しく評価される
+        assert_eq!(result, "Result: deep");
+    }
+
+    #[test]
+    fn test_command_substitution_trims_newline() {
+        // Given: 改行を含む出力
+        let input = "Dir: $(pwd)!";
+        
+        // When: 置換実行
+        let result = expand_command_substitution(input).unwrap();
+        
+        // Then: 改行が除去される
+        assert!(result.ends_with("!"));
+        assert!(!result.contains('\n'));
+    }
+
+    #[test]
+    fn test_dollar_without_parenthesis() {
+        // Given: $だけの文字列
+        let input = "Price is $100";
+        
+        // When: 置換実行
+        let result = expand_command_substitution(input).unwrap();
+        
+        // Then: 変更されない
+        assert_eq!(result, "Price is $100");
+    }
+
+    #[test]
+    fn test_command_substitution_in_echo() {
+        // Given: echoコマンドで使用
+        let cmd = parse_command("echo Today is $(echo Saturday)").unwrap();
+        let result = execute_command_get_output(cmd, None).unwrap();
+        
+        // Then: 置換されて出力される
+        assert_eq!(result.trim(), "Today is Saturday");
+    }
+
+    #[test]
+    fn test_command_substitution_in_write() {
+        use std::fs;
+        use tempfile::TempDir;
+        
+        // Given: 一時ディレクトリとファイル
+        let temp_dir = TempDir::new().unwrap();
+        let file_path = temp_dir.path().join("test.txt");
+        
+        // When: writeコマンドで使用
+        let cmd = parse_command(&format!("write {} $(echo Hello World)", file_path.display())).unwrap();
+        execute_command(cmd).unwrap();
+        
+        // Then: ファイルに置換された内容が書き込まれる
+        let content = fs::read_to_string(&file_path).unwrap();
+        assert_eq!(content, "Hello World");
+    }
+
+    #[test]
+    fn test_mixed_expansion_and_substitution() {
+        // Given: 変数展開とコマンド置換の混在
+        set_var("PREFIX", "Hello");
+        let input = "$PREFIX $(echo World)!";
+        
+        // When: 両方の展開を実行
+        let var_expanded = expand_variables(input);
+        let result = expand_command_substitution(&var_expanded).unwrap();
+        
+        // Then: 両方が正しく処理される
+        assert_eq!(result, "Hello World!");
     }
 }

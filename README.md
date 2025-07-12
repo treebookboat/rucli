@@ -2,75 +2,88 @@
 
 🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
 
-## Progress: 55/100 PRs 🎉
+## Progress: 56/100 PRs 🎉
 
-[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
 
-## Latest Changes (PR #55)
+## Latest Changes (PR #56)
 
-- Added comprehensive variable expansion with `$VAR` and `${VAR}` syntax
-- Integrated variable expansion into parser for all commands
-- Support for mixed expansion styles and alphanumeric variable names
-- Robust error handling for malformed syntax and missing variables
-- Variable expansion works in pipelines, redirects, and background jobs
-- Session variables take priority over system variables
+- Added command substitution with `$(command)` syntax
+- Support for nested substitutions: `$(echo $(pwd))`
+- Seamless integration with variable expansion
+- Automatic trimming of trailing newlines from command output
+- Robust error handling - failed commands expand to empty string
+- Full test coverage for all substitution patterns
 
 ## Usage
 
 ```bash
 $ cargo run
-> env NAME=world
-> echo Hello $NAME           # Hello world
-> echo ${NAME}!              # world!
-> cat ${NAME}.txt            # Reads world.txt
-> env PREFIX=test
-> cp $PREFIX.txt ${PREFIX}_backup.txt  # test.txt -> test_backup.txt
+> echo Today is $(date)              # Today is Sat Jul 12 15:30:00 JST 2025
+> echo Working in $(pwd)              # Working in /home/user/rucli
+> mkdir $(echo myproject)-$(date +%Y%m%d)  # Creates myproject-20250712
+> echo Hello $(echo $(echo World))   # Hello World (nested)
+> cat $(ls | grep config | head -1)  # Reads first config file
 ```
 
-## Variable Expansion System
+## Command Substitution System
 
-**Basic Expansion (`$VAR`)**:
+**Basic Syntax**:
 ```bash
-> env USER=alice
-> echo Welcome $USER         # Welcome alice
-> echo $USER/documents       # alice/documents
-
-# Fish-style flexible naming (numeric start allowed)
-> env 1ST_USER=bob
-> echo $1ST_USER             # bob
-> env 123=numeric
-> echo $123                  # numeric
+> echo Current directory: $(pwd)
+> echo Files: $(ls | wc -l) files found
+> write output.txt $(cat input.txt | grep pattern)
 ```
 
-**Brace Expansion (`${VAR}`)**:
+**Nested Substitutions**:
 ```bash
-> env PREFIX=myfile
-> echo $PREFIXname           # (empty - looks for PREFIXname variable)
-> echo ${PREFIX}name         # myfilename (PREFIX + name)
-> echo ${PREFIX}.txt         # myfile.txt
-> echo ${123}data            # numericdata (if 123=numeric)
+> echo $(echo Nested: $(pwd))        # Evaluates inner $(pwd) first
+> cp file.txt $(echo backup)-$(date +%s).txt  # Dynamic filenames
 ```
 
-**Variable Naming Rules (Fish-Inspired)**:
-- **Valid characters**: `a-z`, `A-Z`, `0-9`, `_` (underscore)
-- **No restrictions**: Numeric start allowed (`$123`, `$1ST_VAR`)
-- **Case sensitive**: `$VAR` ≠ `$var`
-- **Priority**: Session variables > System variables
-
-**Mixed Usage**:
+**With Variable Expansion**:
 ```bash
-> env HOST=server
-> env PORT=8080
-> env 1ST_DB=primary
-> echo Connect to $HOST:${PORT}/api/${1ST_DB}    # server:8080/api/primary
+> env PROJECT=myapp
+> echo Building in $(pwd) for $PROJECT version $(cat VERSION)
+> mkdir -p $(echo $PROJECT)/$(date +%Y)/$(git branch --show-current)
 ```
 
 **Error Handling**:
 ```bash
-> echo $NONEXISTENT          # (empty string)
-> echo ${MISSING}            # (empty string)
-> echo ${INCOMPLETE          # ${INCOMPLETE (preserved as-is)
-> echo ${}                   # ${} (preserved as-is)
+> echo Result: $(nonexistent_cmd)    # Result: (empty on error)
+> echo Unclosed: $(echo hello        # Unclosed: $(echo hello (preserved)
+> echo Empty: $()                    # Empty: (empty substitution)
+```
+
+## Complete Expansion System
+
+**Processing Order**:
+1. **Variable Expansion** (`$VAR`, `${VAR}`) - First pass
+2. **Command Substitution** (`$(command)`) - Second pass
+3. **Command Parsing** - Final pass
+
+**Combined Examples**:
+```bash
+# Variables defined
+> env USER=alice
+> env PROJECT=myapp
+> env BUILD_DIR=/tmp/builds
+
+# Complex substitutions
+> echo $USER working on $PROJECT in $(pwd)
+alice working on myapp in /home/alice/myapp
+
+> cd $(echo $BUILD_DIR)/$PROJECT-$(date +%Y%m%d)
+> echo Switched to $(pwd)
+Switched to /tmp/builds/myapp-20250712
+
+# Nested with pipes
+> echo Found $(ls $(echo $PROJECT)*.txt | wc -l) project files
+Found 5 project files
+
+# Dynamic file operations
+> cp $(find . -name "*.conf" | head -1) $(echo $PROJECT).conf.backup
+> write log.txt User $USER executed $(echo $0) at $(date)
 ```
 
 ## Environment Variable System
@@ -83,69 +96,28 @@ $ cargo run
 
 **Variable Expansion Priority**: Session Variables > System Variables
 
-```bash
-# Safe PATH customization with expansion
-> env PATH=/custom/bin
-> echo Current path: $PATH   # Shows custom path
-> echo $PATH/mycommand       # /custom/bin/mycommand
-> exit                       # System PATH unchanged
-```
-
 ## Advanced Usage Examples
 
-**Advanced Usage Examples
-
-**File Operations with Flexible Variables**:
+**Build Automation**:
 ```bash
-> env 1ST_SOURCE=data.csv
-> env 2ND_DEST=backup
-> env 123=logs
-> cp $1ST_SOURCE ${2ND_DEST}/$1ST_SOURCE     # Copy data.csv to backup/data.csv  
-> cat ${123}/app.log | grep error > ${2ND_DEST}/errors.log
+> env VERSION=$(cat version.txt)
+> env BUILD_ID=$(date +%Y%m%d-%H%M%S)
+> mkdir -p builds/$(echo $VERSION)-$(echo $BUILD_ID)
+> echo Build directory: $(pwd)/builds/$(ls builds | tail -1)
 ```
 
-**Numeric Variables for Iteration-Style Operations**:
+**Log Analysis**:
 ```bash
-> env 1=first.txt
-> env 2=second.txt  
-> env 3=third.txt
-> cat $1 $2 $3 > combined.txt                # Combine all files
-> echo Processing ${1}, ${2}, ${3}           # Processing first.txt, second.txt, third.txt
+> env LOG_DATE=$(date +%Y-%m-%d)
+> grep ERROR $(find /var/log -name "*$LOG_DATE*.log") > errors-$(date +%s).txt
+> echo Found $(cat errors-*.txt | wc -l) errors today
 ```
 
-**Pipeline Integration**:
+**Dynamic Configuration**:
 ```bash
-> env PATTERN=ERROR
-> env LOGFILE=app.log
-> cat $LOGFILE | grep $PATTERN | wc -l    # Count errors in log
-> find . -name "*.${PATTERN,,}" | head -5 # Find pattern files
-```
-
-**Background Jobs with Variables**:
-```bash
-> env BACKUP_DIR=/backup
-> env SOURCE_DIR=/data
-> cp -r $SOURCE_DIR $BACKUP_DIR &         # Background backup
-[1] ThreadId(2)
-> jobs
-[1]+  Running    cp -r /data /backup
-```
-
-**Complex Variable Scenarios**:
-```bash
-> env PROJECT=myapp
-> env VERSION=1.0
-> env BUILD=release
-> env 1ST_ENV=prod
-> echo Building ${PROJECT}-v${VERSION}-${BUILD}-${1ST_ENV}.tar.gz
-Building myapp-v1.0-release-prod.tar.gz
-
-# Numeric sequence variables
-> env 1=alpha
-> env 2=beta  
-> env 3=gamma
-> echo Deployment sequence: $1 -> $2 -> $3
-Deployment sequence: alpha -> beta -> gamma
+> env CONFIG_FILE=$(find . -name "*.conf" | grep $(hostname))
+> cat $(echo $CONFIG_FILE) | grep -v "^#" > active.conf
+> echo Loaded $(wc -l < active.conf) configuration lines
 ```
 
 ## Commands
@@ -153,21 +125,21 @@ Deployment sequence: alpha -> beta -> gamma
 **File Operations**: `cat`, `write`, `cp`, `mv`, `rm`  
 **Directory Operations**: `ls`, `cd`, `pwd`, `mkdir`  
 **Search Operations**: `find`, `grep`  
-**Environment**: `env` - manage environment variables with expansion support
+**Environment**: `env` - manage environment variables
 **Job Control**: `jobs`, `fg`  
 **Utilities**: `echo`, `repeat`, `sleep`, `alias`, `version`, `help`, `exit`
 
 **Operators**:
-- `|` - Pipe commands together (with variable expansion)
-- `>` - Redirect output (with variable expansion)
-- `>>` - Redirect output append (with variable expansion)
-- `<` - Input redirect from file (with variable expansion)
-- `&` - Background execution (with variable expansion)
+- `|` - Pipe commands together
+- `>` - Redirect output to file
+- `>>` - Append output to file
+- `<` - Input from file
+- `&` - Background execution
 
-**Variable Expansion**:
+**Expansion Features**:
 - `$VAR` - Basic variable expansion
 - `${VAR}` - Brace notation for clear boundaries
-- Works in all commands, arguments, and file paths
+- `$(command)` - Command substitution with full nesting support
 
 ## Project Structure
 
@@ -176,9 +148,9 @@ rucli/
 ├── src/
 │   ├── main.rs         # Entry point
 │   ├── commands.rs     # Command definitions & execution
-│   ├── parser.rs       # Input parsing with variable expansion
+│   ├── parser.rs       # Input parsing with expansions
 │   ├── handlers.rs     # Command implementations
-│   ├── environment.rs  # Environment variables & expansion engine
+│   ├── environment.rs  # Variables & substitution engine
 │   ├── pipeline.rs     # Pipeline execution logic
 │   ├── redirect.rs     # I/O redirection handling
 │   ├── job.rs          # Background job management
@@ -193,35 +165,13 @@ rucli/
 
 ```bash
 cargo test              # Run all tests
-cargo test environment  # Test environment & expansion
-cargo test expansion    # Test variable expansion
-cargo test integration  # Test env + expansion integration
+cargo test environment  # Test variables & substitutions
+cargo test command_sub  # Test command substitution
+cargo test integration  # Test combined features
 cargo run -- --debug    # Run with debug logging
 ```
 
 ## Roadmap
 
 **Phase 3: Advanced Features (46-65)** 🚀
-- [x] Pipelines (46-48)
-- [x] Redirections (49-51)
-- [x] Background execution (52)
-- [x] Job management (53)
-- [x] Environment variables (54)
-- [x] Variable expansion (55)
-- [ ] Command substitution (56)
-- [ ] Here documents (57)
-- [ ] Scripting support (58-65)
-
-**Phase 4: Interactive Features (66-85)**
-- [ ] Command history & navigation
-- [ ] Tab completion
-- [ ] Syntax highlighting
-
-**Phase 5: Extensions (86-100)**
-- [ ] Plugin system
-- [ ] Configuration files
-- [ ] Performance optimization
-
----
-
-**Next**: Command substitution (`$(command)` syntax) in PR #56! 🔄
+- [x

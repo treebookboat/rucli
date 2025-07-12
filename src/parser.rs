@@ -2,7 +2,7 @@
 
 use crate::alias::get_alias;
 use crate::commands::{COMMANDS, Command, CommandInfo, EnvironmentAction};
-use crate::environment::expand_variables;
+use crate::environment::{expand_command_substitution, expand_variables};
 use crate::error::{Result, RucliError};
 use log::{debug, trace};
 
@@ -70,7 +70,11 @@ pub fn parse_command(input: &str) -> Result<Command> {
 
     // 最初に変数展開
     let expanded_input = expand_variables(input);
-    let input = expanded_input.as_str();
+
+    // コマンド置換を追加
+    let substituted_input = expand_command_substitution(&expanded_input)?;
+
+    let input = substituted_input.as_str();
 
     let parts: Vec<&str> = input.split_whitespace().collect();
 
