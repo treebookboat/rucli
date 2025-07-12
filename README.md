@@ -2,57 +2,102 @@
 
 🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
 
-## Progress: 56/100 PRs 🎉
+## Progress: 57/100 PRs 🎉
 
-[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
 
-## Latest Changes (PR #56)
+## Latest Changes (PR #57)
 
-- Added command substitution with `$(command)` syntax
-- Support for nested substitutions: `$(echo $(pwd))`
-- Seamless integration with variable expansion
-- Automatic trimming of trailing newlines from command output
-- Robust error handling - failed commands expand to empty string
-- Full test coverage for all substitution patterns
+- Added here document support with `<<EOF` syntax
+- Implemented strip indent feature with `<<-EOF`
+- Multi-line input mode with `heredoc>` prompt
+- Variable expansion and command substitution work in heredocs
+- Refactored main loop for cleaner code structure
+- Comprehensive test coverage for all heredoc patterns
 
 ## Usage
 
 ```bash
 $ cargo run
-> echo Today is $(date)              # Today is Sat Jul 12 15:30:00 JST 2025
-> echo Working in $(pwd)              # Working in /home/user/rucli
-> mkdir $(echo myproject)-$(date +%Y%m%d)  # Creates myproject-20250712
-> echo Hello $(echo $(echo World))   # Hello World (nested)
-> cat $(ls | grep config | head -1)  # Reads first config file
+> cat <<EOF
+heredoc> Hello World
+heredoc> This is a multi-line
+heredoc> text input
+heredoc> EOF
+Hello World
+This is a multi-line
+text input
+
+> env NAME=Alice
+> cat <<MESSAGE
+heredoc> Dear $NAME,
+heredoc> Welcome to $(echo rucli)!
+heredoc> MESSAGE
+Dear Alice,
+Welcome to rucli!
 ```
 
-## Command Substitution System
+## Here Documents
 
 **Basic Syntax**:
 ```bash
-> echo Current directory: $(pwd)
-> echo Files: $(ls | wc -l) files found
-> write output.txt $(cat input.txt | grep pattern)
+> cat <<EOF
+heredoc> Line 1
+heredoc> Line 2
+heredoc> EOF
+Line 1
+Line 2
 ```
 
-**Nested Substitutions**:
+**Strip Leading Tabs** (`<<-`):
 ```bash
-> echo $(echo Nested: $(pwd))        # Evaluates inner $(pwd) first
-> cp file.txt $(echo backup)-$(date +%s).txt  # Dynamic filenames
+> cat <<-END
+heredoc> 	This tab will be removed
+heredoc> 		Two tabs: only first removed
+heredoc>     Spaces are preserved
+heredoc> END
+This tab will be removed
+	Two tabs: only first removed
+    Spaces are preserved
 ```
 
-**With Variable Expansion**:
+**Variable Expansion**:
 ```bash
-> env PROJECT=myapp
-> echo Building in $(pwd) for $PROJECT version $(cat VERSION)
-> mkdir -p $(echo $PROJECT)/$(date +%Y)/$(git branch --show-current)
+> env USER=Bob
+> env DIR=/home/bob
+> cat <<DOC
+heredoc> User: $USER
+heredoc> Home: $DIR
+heredoc> Shell: $(echo $0)
+heredoc> DOC
+User: Bob
+Home: /home/bob
+Shell: rucli
 ```
 
-**Error Handling**:
+**With Redirects**:
 ```bash
-> echo Result: $(nonexistent_cmd)    # Result: (empty on error)
-> echo Unclosed: $(echo hello        # Unclosed: $(echo hello (preserved)
-> echo Empty: $()                    # Empty: (empty substitution)
+> cat <<CONFIG > app.conf
+heredoc> server=localhost
+heredoc> port=8080
+heredoc> debug=true
+heredoc> CONFIG
+> cat app.conf
+server=localhost
+port=8080
+debug=true
+```
+
+**Custom Delimiters**:
+```bash
+> grep error <<END_OF_LOG
+heredoc> [INFO] Starting application
+heredoc> [ERROR] Connection failed
+heredoc> [INFO] Retrying...
+heredoc> [ERROR] Timeout
+heredoc> END_OF_LOG
+[ERROR] Connection failed
+[ERROR] Timeout
 ```
 
 ## Complete Expansion System
@@ -62,62 +107,39 @@ $ cargo run
 2. **Command Substitution** (`$(command)`) - Second pass
 3. **Command Parsing** - Final pass
 
-**Combined Examples**:
+This applies to both regular commands and here document content.
+
+## Advanced Examples
+
+**Configuration Files**:
 ```bash
-# Variables defined
-> env USER=alice
-> env PROJECT=myapp
-> env BUILD_DIR=/tmp/builds
-
-# Complex substitutions
-> echo $USER working on $PROJECT in $(pwd)
-alice working on myapp in /home/alice/myapp
-
-> cd $(echo $BUILD_DIR)/$PROJECT-$(date +%Y%m%d)
-> echo Switched to $(pwd)
-Switched to /tmp/builds/myapp-20250712
-
-# Nested with pipes
-> echo Found $(ls $(echo $PROJECT)*.txt | wc -l) project files
-Found 5 project files
-
-# Dynamic file operations
-> cp $(find . -name "*.conf" | head -1) $(echo $PROJECT).conf.backup
-> write log.txt User $USER executed $(echo $0) at $(date)
+> cat <<EOF > config.yaml
+heredoc> database:
+heredoc>   host: $(echo localhost)
+heredoc>   port: 5432
+heredoc>   user: $DB_USER
+heredoc> EOF
 ```
 
-## Environment Variable System
-
-**Session Variables**: Variables set within rucli using `env VAR=value`
-- Stored separately from system environment
-- Persist throughout rucli session
-- Don't affect system environment after exit
-- Take precedence over system variables with same name
-
-**Variable Expansion Priority**: Session Variables > System Variables
-
-## Advanced Usage Examples
-
-**Build Automation**:
+**Multi-line Scripts**:
 ```bash
-> env VERSION=$(cat version.txt)
-> env BUILD_ID=$(date +%Y%m%d-%H%M%S)
-> mkdir -p builds/$(echo $VERSION)-$(echo $BUILD_ID)
-> echo Build directory: $(pwd)/builds/$(ls builds | tail -1)
+> cat <<SCRIPT > setup.sh
+heredoc> #!/bin/bash
+heredoc> echo "Setting up environment..."
+heredoc> mkdir -p $(pwd)/data
+heredoc> export PATH=$PATH:$(pwd)/bin
+heredoc> echo "Setup complete!"
+heredoc> SCRIPT
 ```
 
-**Log Analysis**:
+**SQL Queries** (simulated):
 ```bash
-> env LOG_DATE=$(date +%Y-%m-%d)
-> grep ERROR $(find /var/log -name "*$LOG_DATE*.log") > errors-$(date +%s).txt
-> echo Found $(cat errors-*.txt | wc -l) errors today
-```
-
-**Dynamic Configuration**:
-```bash
-> env CONFIG_FILE=$(find . -name "*.conf" | grep $(hostname))
-> cat $(echo $CONFIG_FILE) | grep -v "^#" > active.conf
-> echo Loaded $(wc -l < active.conf) configuration lines
+> cat <<SQL
+heredoc> SELECT * FROM users
+heredoc> WHERE created_at > '2024-01-01'
+heredoc>   AND status = 'active'
+heredoc> ORDER BY name;
+heredoc> SQL
 ```
 
 ## Commands
@@ -135,6 +157,8 @@ Found 5 project files
 - `>>` - Append output to file
 - `<` - Input from file
 - `&` - Background execution
+- `<<` - Here document
+- `<<-` - Here document with tab stripping
 
 **Expansion Features**:
 - `$VAR` - Basic variable expansion
@@ -146,9 +170,9 @@ Found 5 project files
 ```
 rucli/
 ├── src/
-│   ├── main.rs         # Entry point
+│   ├── main.rs         # Entry point with heredoc support
 │   ├── commands.rs     # Command definitions & execution
-│   ├── parser.rs       # Input parsing with expansions
+│   ├── parser.rs       # Input parsing with heredoc detection
 │   ├── handlers.rs     # Command implementations
 │   ├── environment.rs  # Variables & substitution engine
 │   ├── pipeline.rs     # Pipeline execution logic
@@ -165,8 +189,8 @@ rucli/
 
 ```bash
 cargo test              # Run all tests
+cargo test heredoc      # Test here documents
 cargo test environment  # Test variables & substitutions
-cargo test command_sub  # Test command substitution
 cargo test integration  # Test combined features
 cargo run -- --debug    # Run with debug logging
 ```
@@ -174,4 +198,33 @@ cargo run -- --debug    # Run with debug logging
 ## Roadmap
 
 **Phase 3: Advanced Features (46-65)** 🚀
-- [x
+- [x] Pipelines (46-48)
+- [x] Redirections (49-51)
+- [x] Background execution (52)
+- [x] Job management (53)
+- [x] Environment variables (54)
+- [x] Variable expansion (55)
+- [x] Command substitution (56)
+- [x] Here documents (57)
+- [ ] Script file execution (58)
+- [ ] If conditions (59)
+- [ ] While loops (60)
+- [ ] For loops (61)
+- [ ] Functions (62)
+- [ ] Error handling in scripts (63)
+- [ ] Script debugging (64)
+- [ ] Phase 3 integration tests (65)
+
+**Phase 4: Interactive Features (66-85)**
+- [ ] Command history & navigation
+- [ ] Tab completion
+- [ ] Syntax highlighting
+
+**Phase 5: Extensions (86-100)**
+- [ ] Plugin system
+- [ ] Configuration files
+- [ ] Performance optimization
+
+---
+
+**Next**: Script file execution (`rucli script.rsh`) in PR #58! 📜

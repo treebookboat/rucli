@@ -403,6 +403,40 @@ pub fn contains_pipeline(input: &str) -> bool {
     input.contains('|')
 }
 
+/// ヒアドキュメントの情報を抽出
+pub fn parse_heredoc_header(input: &str) -> Option<(String, String, bool)> {
+    // "<<-"を探す(長いほうから)
+    if let Some(pos) = input.find("<<-") {
+        // コマンド部分をトリミング
+        let cmd = input[..pos].trim();
+
+        // デリミタ部分を取得
+        let delimiter_part = input[pos + "<<-".len()..].trim();
+        let delimiter = delimiter_part.split_whitespace().next()?;
+
+        return Some((cmd.to_string(), delimiter.to_string(), true));
+    }
+
+    // "<<"を探す
+    if let Some(pos) = input.find("<<") {
+        // コマンド部分をトリミング
+        let cmd = input[..pos].trim();
+
+        // デリミタ部分を取得
+        let delimiter_part = input[pos + "<<".len()..].trim();
+        let delimiter = delimiter_part.split_whitespace().next()?;
+
+        return Some((cmd.to_string(), delimiter.to_string(), false));
+    }
+
+    None
+}
+
+/// ヒアドキュメントを含むかチェック
+pub fn contains_heredoc(input: &str) -> bool {
+    input.contains("<<") && !input.contains("<<<")
+}
+
 // リダイレクトでコマンドを分割
 /// 例: "echo hello > file.txt" → ("echo hello", Some((">", "file.txt")))
 pub fn split_redirect(input: &str) -> (String, Option<(String, String)>) {

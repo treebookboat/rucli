@@ -73,6 +73,12 @@ pub enum Command {
     Fg { job_id: Option<u32> },
     /// 環境変数コマンド
     Environment { action: EnvironmentAction },
+    /// ヒアドキュメント付きコマンド
+    HereDoc {
+        command: Box<Command>, // 実行するコマンド
+        delimiter: String,     // 終了デリミタ(例: "EOF")
+        strip_indent: bool,    // <<- の場合true
+    },
     /// プログラムを終了
     Exit,
 }
@@ -281,6 +287,9 @@ pub fn execute_command(command: Command) -> Result<()> {
             }
             Ok(())
         }
+        Command::HereDoc { .. } => {
+            unimplemented!("HereDoc execution not yet implemented")
+        }
         _ => {
             let output = execute_command_get_output(command, None)?;
             if !output.is_empty() {
@@ -365,6 +374,9 @@ pub fn execute_command_get_output(command: Command, input: Option<&str>) -> Resu
             Ok(String::new())
         }
         Command::Environment { action } => handle_environment(action),
+        Command::HereDoc { .. } => {
+            unimplemented!("HereDoc execution not yet implemented")
+        }
         Command::Exit => {
             handle_exit();
             Ok(String::new())

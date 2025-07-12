@@ -583,3 +583,274 @@ fn test_background_with_redirect() {
         .stdout(predicate::str::contains("[1]"))
         .stdout(predicate::str::contains("background test"));
 }
+
+#[test]
+fn test_heredoc_basic_cat() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "cat <<EOF\n\
+             Hello World\n\
+             This is a test\n\
+             EOF\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Hello World"))
+        .stdout(predicate::str::contains("This is a test"));
+}
+
+#[test]
+fn test_heredoc_with_grep() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "grep error <<LOG\n\
+             info: starting application\n\
+             error: connection failed\n\
+             info: retrying\n\
+             error: timeout\n\
+             LOG\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("error: connection failed"))
+        .stdout(predicate::str::contains("error: timeout"))
+        .stdout(predicate::str::contains("info: starting").not())
+        .stdout(predicate::str::contains("info: retrying").not());
+}
+
+#[test]
+fn test_heredoc_strip_indent() {
+    let temp_dir = TempDir::new().unwrap();
+
+    // タブ文字を実際に含む文字列を作成
+    let input = format!(
+        "cat <<-END\n{}First line with tab\n{}{}Second line with two tabs\n    Third line with spaces\nEND\nexit\n",
+        "\t", // 1つのタブ
+        "\t", // 1つ目のタブ
+        "\t"  // 2つ目のタブ
+    );
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("First line with tab"))
+        .stdout(predicate::str::contains("\tSecond line with two tabs"))
+        .stdout(predicate::str::contains("    Third line with spaces"));
+}
+
+#[test]
+fn test_heredoc_with_variable_expansion() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "env USER=Alice\n\
+             env GREETING=Hello\n\
+             cat <<MESSAGE\n\
+             $GREETING, $USER!\n\
+             Welcome to rucli\n\
+             MESSAGE\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Hello, Alice!"))
+        .stdout(predicate::str::contains("Welcome to rucli"));
+}
+
+#[test]
+fn test_heredoc_with_command_substitution() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "cat <<END\n\
+             Echo test: $(echo Hello)\n\
+             END\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Echo test: Hello"));
+}
+
+#[test]
+fn test_heredoc_custom_delimiter() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "cat <<CUSTOM_END_MARKER\n\
+             This uses a custom delimiter\n\
+             EOF is just text here\n\
+             CUSTOM_END_MARKER\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("This uses a custom delimiter"))
+        .stdout(predicate::str::contains("EOF is just text here"));
+}
+
+#[test]
+fn test_heredoc_write_to_file() {
+    let temp_dir = TempDir::new().unwrap();
+    let config_file = temp_dir.path().join("config.txt");
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(format!(
+            "cat <<CONFIG > {}\n\
+             server=localhost\n\
+             port=8080\n\
+             debug=true\n\
+             CONFIG\n\
+             cat {}\n\
+             exit\n",
+            config_file.display(),
+            config_file.display()
+        ))
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("server=localhost"))
+        .stdout(predicate::str::contains("port=8080"))
+        .stdout(predicate::str::contains("debug=true"));
+}
+
+#[test]
+fn test_heredoc_empty_content() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "cat <<EMPTY\n\
+             EMPTY\n\
+             exit\n",
+        )
+        .assert()
+        .success();
+}
+
+#[test]
+fn test_heredoc_multiple_lines() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "cat <<MULTILINE\n\
+             Line 1\n\
+             Line 2\n\
+             Line 3\n\
+             Line 4\n\
+             Line 5\n\
+             MULTILINE\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Line 1"))
+        .stdout(predicate::str::contains("Line 2"))
+        .stdout(predicate::str::contains("Line 3"))
+        .stdout(predicate::str::contains("Line 4"))
+        .stdout(predicate::str::contains("Line 5"));
+}
+
+#[test]
+fn test_heredoc_with_special_characters() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "cat <<SPECIAL\n\
+             Special chars: !@#$%^&*()\n\
+             Quotes: \"double\" and 'single'\n\
+             Path: /usr/local/bin\n\
+             SPECIAL\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Special chars: !@#$%^&*()"))
+        .stdout(predicate::str::contains("Quotes: \"double\" and 'single'"))
+        .stdout(predicate::str::contains("Path: /usr/local/bin"));
+}
+
+#[test]
+fn test_heredoc_delimiter_in_content() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "cat <<EOF\n\
+             This line contains EOF in the middle\n\
+             EOF at the start of line is still content\n\
+             Only a line with exactly EOF ends it\n\
+             EOF\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "This line contains EOF in the middle",
+        ))
+        .stdout(predicate::str::contains(
+            "EOF at the start of line is still content",
+        ))
+        .stdout(predicate::str::contains(
+            "Only a line with exactly EOF ends it",
+        ));
+}
+
+#[test]
+fn test_heredoc_with_pipeline_and_redirect() {
+    let temp_dir = TempDir::new().unwrap();
+    let output_file = temp_dir.path().join("filtered.txt");
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(format!(
+            "grep line <<DATA | grep important > {}\n\
+             line 1: not important\n\
+             line 2: important data\n\
+             line 3: also important\n\
+             line 4: not relevant\n\
+             DATA\n\
+             cat {}\n\
+             exit\n",
+            output_file.display(),
+            output_file.display()
+        ))
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("line 2: important data"))
+        .stdout(predicate::str::contains("line 3: also important"));
+}

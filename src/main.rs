@@ -62,23 +62,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let input = read_input();
         debug!("Received input: {input}"); // 入力内容の記録
 
-        // コマンドのパース
-        match parse_command(&input) {
-            // 命令の実行
-            Ok(command) => {
-                debug!("Command parsed successfully"); // パース成功
-                let start = Instant::now();
-                if let Err(err) = execute_command(command) {
-                    error!("Command execution failed: {err}");
-                    eprintln!("{err}");
-                }
-                let duration = start.elapsed().as_secs_f64() * 1000.0;
-                debug!("処理時間: {duration:?}ms");
-            }
-            Err(error) => {
-                debug!("Parse error occurred: {error}");
-                eprintln!("{error}");
-            }
+        // シンプルなディスパッチ
+        if parser::contains_heredoc(&input) {
+            handle_heredoc_command(&input);
+        } else {
+            handle_normal_command(&input);
         }
     }
 }
@@ -94,4 +82,111 @@ fn read_input() -> String {
 
     // 改行文字をトリミングしてString型にしてから返す
     input.trim().to_string()
+}
+
+/// ヒアドキュメント付きコマンドを処理
+fn handle_heredoc_command(input: &str) {
+    if let Some((cmd_str, delimiter, strip_indent)) = parser::parse_heredoc_header(input) {
+        debug!(
+            "Heredoc header: cmd='{}', delimiter='{}', strip_indent={}",
+            cmd_str, delimiter, strip_indent
+        );
+
+        // 内容を収集
+        let content = read_heredoc_content(&delimiter, strip_indent);
+        debug!(
+            "Collected heredoc content: {} lines",
+            content.lines().count()
+        );
+
+        // 展開を適用
+        let expanded_content = environment::expand_variables(&content);
+        let final_content = match environment::expand_command_substitution(&expanded_content) {
+            Ok(substituted) => substituted,
+            Err(_) => expanded_content,
+        };
+
+        // コマンドを実行
+        execute_with_input(&cmd_str, &final_content);
+    }
+}
+
+/// 通常のコマンドを処理（既存のコードを移動）
+fn handle_normal_command(input: &str) {
+    match parse_command(input) {
+        Ok(command) => {
+            debug!("Command parsed successfully");
+            let start = Instant::now();
+            if let Err(err) = execute_command(command) {
+                error!("Command execution failed: {err}");
+                eprintln!("{err}");
+            }
+            let duration = start.elapsed().as_secs_f64() * 1000.0;
+            debug!("処理時間: {duration:?}ms");
+        }
+        Err(error) => {
+            debug!("Parse error occurred: {error}");
+            eprintln!("{error}");
+        }
+    }
+}
+
+/// 入力付きでコマンドを実行
+fn execute_with_input(cmd_str: &str, input: &str) {
+    match parse_command(cmd_str) {
+        Ok(command) => {
+            let start = Instant::now();
+            match commands::execute_command_get_output(command, Some(input)) {
+                Ok(output) => {
+                    if !output.is_empty() {
+                        println!("{}", output);
+                    }
+                }
+                Err(err) => {
+                    error!("Command execution failed: {err}");
+                    eprintln!("{err}");
+                }
+            }
+            let duration = start.elapsed().as_secs_f64() * 1000.0;
+            debug!("処理時間: {duration:?}ms");
+        }
+        Err(error) => {
+            debug!("Parse error occurred: {error}");
+            eprintln!("{error}");
+        }
+    }
+}
+
+/// ヒアドキュメントの内容を読み取る
+fn read_heredoc_content(delimiter: &str, strip_indent: bool) -> String {
+    // 空のVec<String>を作成
+    let mut lines = Vec::new();
+    loop {
+        // heredocプロンプト表示
+        print!("heredoc> ");
+        io::stdout().flush().unwrap();
+
+        let mut line = String::new();
+        // 一行読み取り
+        io::stdin()
+            .read_line(&mut line)
+            .expect("failed to read line");
+
+        // デリミタと完全に一致したらbreak
+        let line = line.trim_end_matches('\n').trim_end_matches('\r');
+        if delimiter == line {
+            break;
+        }
+
+        // strip_indentがtrueなら先頭タブを削除
+        let processed_line = if strip_indent {
+            line.strip_prefix('\t').unwrap_or(&line)
+        } else {
+            &line
+        };
+
+        // Vecに追加
+        lines.push(processed_line.to_string());
+    }
+    lines.join("\n")
 }
