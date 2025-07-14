@@ -2,197 +2,246 @@
 
 🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
 
-## Progress: 57/100 PRs 🎉
+## Progress: 58/100 PRs 🎉
 
-[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
 
-## Latest Changes (PR #57)
+## Latest Changes (PR #58)
 
-- Added here document support with `<<EOF` syntax
-- Implemented strip indent feature with `<<-EOF`
-- Multi-line input mode with `heredoc>` prompt
-- Variable expansion and command substitution work in heredocs
-- Refactored main loop for cleaner code structure
-- Comprehensive test coverage for all heredoc patterns
+- Added script file execution with `rucli script.rsh`
+- Support for shebang `#!/usr/bin/env rucli`
+- Comments and empty lines are skipped
+- Scripts continue on error (bash-compatible)
+- Refactored main into interactive and script modes
+- Comprehensive test coverage for all script features
 
 ## Usage
 
+### Interactive Mode (default)
 ```bash
 $ cargo run
-> cat <<EOF
-heredoc> Hello World
-heredoc> This is a multi-line
-heredoc> text input
-heredoc> EOF
-Hello World
-This is a multi-line
-text input
-
-> env NAME=Alice
-> cat <<MESSAGE
-heredoc> Dear $NAME,
-heredoc> Welcome to $(echo rucli)!
-heredoc> MESSAGE
-Dear Alice,
-Welcome to rucli!
+Hello, rucli!
+> echo "Interactive mode"
+Interactive mode
+> exit
+good bye
 ```
 
-## Here Documents
-
-**Basic Syntax**:
+### Script Mode (new!)
 ```bash
-> cat <<EOF
-heredoc> Line 1
-heredoc> Line 2
-heredoc> EOF
-Line 1
-Line 2
+$ cargo run -- script.rsh
+# or after building:
+$ rucli script.rsh
 ```
 
-**Strip Leading Tabs** (`<<-`):
+## Script Files
+
+### Basic Script Example
 ```bash
-> cat <<-END
-heredoc> 	This tab will be removed
-heredoc> 		Two tabs: only first removed
-heredoc>     Spaces are preserved
-heredoc> END
-This tab will be removed
-	Two tabs: only first removed
-    Spaces are preserved
+#!/usr/bin/env rucli
+# setup.rsh - Project setup script
+
+echo "Setting up new project..."
+
+# Create directory structure
+mkdir -p src tests docs
+cd src
+
+# Create main file
+write main.rs "fn main() {
+    println!(\"Hello, world!\");
+}"
+
+# Create README
+cd ..
+write README.md "# My Project
+
+A new Rust project created with rucli."
+
+echo "Project setup complete!"
 ```
 
-**Variable Expansion**:
+### Running Scripts
+
 ```bash
-> env USER=Bob
-> env DIR=/home/bob
-> cat <<DOC
-heredoc> User: $USER
-heredoc> Home: $DIR
-heredoc> Shell: $(echo $0)
-heredoc> DOC
-User: Bob
-Home: /home/bob
-Shell: rucli
+# Direct execution
+$ rucli setup.rsh
+
+# With debug output
+$ rucli setup.rsh --debug
+
+# Make executable (with shebang)
+$ chmod +x setup.rsh
+$ ./setup.rsh
 ```
 
-**With Redirects**:
+### Script Features
+
+**Comments and Shebang**:
 ```bash
-> cat <<CONFIG > app.conf
-heredoc> server=localhost
-heredoc> port=8080
-heredoc> debug=true
-heredoc> CONFIG
-> cat app.conf
-server=localhost
-port=8080
-debug=true
+#!/usr/bin/env rucli
+# This is a comment
+echo "Comments are ignored"  # Inline comments too
+
+# Empty lines are also skipped
+
+echo "Only commands are executed"
 ```
 
-**Custom Delimiters**:
+**Error Handling**:
 ```bash
-> grep error <<END_OF_LOG
-heredoc> [INFO] Starting application
-heredoc> [ERROR] Connection failed
-heredoc> [INFO] Retrying...
-heredoc> [ERROR] Timeout
-heredoc> END_OF_LOG
-[ERROR] Connection failed
-[ERROR] Timeout
+echo "Before error"
+cat nonexistent.txt  # Error, but script continues
+echo "After error - still running!"
 ```
 
-## Complete Expansion System
-
-**Processing Order**:
-1. **Variable Expansion** (`$VAR`, `${VAR}`) - First pass
-2. **Command Substitution** (`$(command)`) - Second pass
-3. **Command Parsing** - Final pass
-
-This applies to both regular commands and here document content.
-
-## Advanced Examples
-
-**Configuration Files**:
+**All Shell Features Work**:
 ```bash
-> cat <<EOF > config.yaml
-heredoc> database:
-heredoc>   host: $(echo localhost)
-heredoc>   port: 5432
-heredoc>   user: $DB_USER
-heredoc> EOF
+# Variables
+env NAME=World
+echo "Hello, $NAME"
+
+# Command substitution
+echo "Current time: $(date)"
+
+# Pipelines
+cat data.txt | grep pattern | wc -l
+
+# Redirections
+echo "Log entry" >> app.log
+
+# Background jobs
+sleep 5 &
+echo "Background job started"
 ```
 
-**Multi-line Scripts**:
+## Real-World Script Examples
+
+### Backup Script
 ```bash
-> cat <<SCRIPT > setup.sh
-heredoc> #!/bin/bash
-heredoc> echo "Setting up environment..."
-heredoc> mkdir -p $(pwd)/data
-heredoc> export PATH=$PATH:$(pwd)/bin
-heredoc> echo "Setup complete!"
-heredoc> SCRIPT
+#!/usr/bin/env rucli
+# backup.rsh - Daily backup script
+
+env DATE=$(date +%Y%m%d)
+env BACKUP_DIR=backups/$DATE
+
+echo "Starting backup for $DATE..."
+mkdir -p $BACKUP_DIR
+
+# Backup source files
+cp -r src $BACKUP_DIR/
+cp -r docs $BACKUP_DIR/
+
+# Create archive
+cd backups
+echo "Creating archive..."
+# tar would go here in real implementation
+
+echo "Backup completed: $BACKUP_DIR"
 ```
 
-**SQL Queries** (simulated):
+### Deployment Script
 ```bash
-> cat <<SQL
-heredoc> SELECT * FROM users
-heredoc> WHERE created_at > '2024-01-01'
-heredoc>   AND status = 'active'
-heredoc> ORDER BY name;
-heredoc> SQL
+#!/usr/bin/env rucli
+# deploy.rsh - Build and deploy script
+
+echo "Building project..."
+mkdir -p dist
+
+# Copy files
+cp -r src dist/
+cp README.md dist/
+cp LICENSE dist/
+
+# Create version file
+env VERSION=1.0.0
+write dist/VERSION "Version: $VERSION
+Built: $(date)"
+
+echo "Build complete!"
+echo "Files in dist:"
+ls dist
 ```
 
-## Commands
+### Test Runner Script
+```bash
+#!/usr/bin/env rucli
+# test.rsh - Run various tests
 
-**File Operations**: `cat`, `write`, `cp`, `mv`, `rm`  
-**Directory Operations**: `ls`, `cd`, `pwd`, `mkdir`  
-**Search Operations**: `find`, `grep`  
-**Environment**: `env` - manage environment variables
-**Job Control**: `jobs`, `fg`  
-**Utilities**: `echo`, `repeat`, `sleep`, `alias`, `version`, `help`, `exit`
+echo "Running test suite..."
 
-**Operators**:
-- `|` - Pipe commands together
-- `>` - Redirect output to file
-- `>>` - Append output to file
-- `<` - Input from file
-- `&` - Background execution
-- `<<` - Here document
-- `<<-` - Here document with tab stripping
+# Check required files
+echo "Checking project structure..."
+cat Cargo.toml > /dev/null
+cat src/main.rs > /dev/null
+echo "✓ Required files exist"
 
-**Expansion Features**:
-- `$VAR` - Basic variable expansion
-- `${VAR}` - Brace notation for clear boundaries
-- `$(command)` - Command substitution with full nesting support
+# Run different test categories
+echo ""
+echo "Running unit tests..."
+# cargo test would go here
+
+echo ""
+echo "Running integration tests..."
+# integration tests would go here
+
+echo ""
+echo "All tests completed!"
+```
+
+## Complete Feature Set
+
+**Execution Modes**:
+- Interactive shell mode (REPL)
+- Script file execution
+- Command line arguments support
+
+**Script Features**:
+- Shebang support (`#!/usr/bin/env rucli`)
+- Comments (`#`) and empty lines ignored
+- Error resilience (continues on error)
+- All interactive features available
+
+**Shell Features**:
+- File operations: `cat`, `write`, `cp`, `mv`, `rm`
+- Directory operations: `ls`, `cd`, `pwd`, `mkdir`
+- Search operations: `find`, `grep`
+- Environment variables: `env`, `$VAR`, `${VAR}`
+- Command substitution: `$(command)`
+- Pipelines: `cmd1 | cmd2`
+- Redirections: `>`, `>>`, `<`
+- Background execution: `&`
+- Here documents: `<<EOF`
 
 ## Project Structure
 
 ```
 rucli/
 ├── src/
-│   ├── main.rs         # Entry point with heredoc support
-│   ├── commands.rs     # Command definitions & execution
-│   ├── parser.rs       # Input parsing with heredoc detection
+│   ├── main.rs         # Entry point with mode detection
+│   ├── commands.rs     # Command definitions
+│   ├── parser.rs       # Input parsing
 │   ├── handlers.rs     # Command implementations
-│   ├── environment.rs  # Variables & substitution engine
-│   ├── pipeline.rs     # Pipeline execution logic
-│   ├── redirect.rs     # I/O redirection handling
-│   ├── job.rs          # Background job management
-│   ├── alias.rs        # Command alias system
-│   └── error.rs        # Error types & handling
-└── tests/
-    ├── cli_tests.rs
-    └── integration_tests.rs
+│   ├── environment.rs  # Variables & expansions
+│   ├── pipeline.rs     # Pipeline execution
+│   ├── redirect.rs     # I/O redirection
+│   ├── job.rs          # Background jobs
+│   ├── alias.rs        # Command aliases
+│   └── error.rs        # Error handling
+├── tests/
+│   └── integration_tests.rs
+└── examples/
+    ├── setup.rsh       # Project setup script
+    ├── backup.rsh      # Backup script
+    └── deploy.rsh      # Deployment script
 ```
 
 ## Testing
 
 ```bash
 cargo test              # Run all tests
-cargo test heredoc      # Test here documents
-cargo test environment  # Test variables & substitutions
-cargo test integration  # Test combined features
-cargo run -- --debug    # Run with debug logging
+cargo test script       # Test script execution
+cargo run -- test.rsh   # Run a test script
 ```
 
 ## Roadmap
@@ -206,7 +255,7 @@ cargo run -- --debug    # Run with debug logging
 - [x] Variable expansion (55)
 - [x] Command substitution (56)
 - [x] Here documents (57)
-- [ ] Script file execution (58)
+- [x] Script file execution (58)
 - [ ] If conditions (59)
 - [ ] While loops (60)
 - [ ] For loops (61)
@@ -227,4 +276,4 @@ cargo run -- --debug    # Run with debug logging
 
 ---
 
-**Next**: Script file execution (`rucli script.rsh`) in PR #58! 📜
+**Next**: If conditions (`if command; then; fi`) in PR #59! 🔀

@@ -15,15 +15,27 @@ use log::{debug, error, info};
 
 use env_logger::Builder;
 use log::LevelFilter;
-use std::env;
 use std::io::{self, Write};
+use std::path::Path;
 use std::time::Instant;
+use std::{env, fs};
 
 use crate::parser::parse_command;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // 引数を取得
+    let args: Vec<String> = env::args().collect();
+
     // コマンドライン引数をチェック
-    let debug_mode = env::args().any(|arg| arg == "--debug");
+    let debug_mode = args.iter().any(|arg| arg == "--debug");
+
+    // スクリプトファイルのチェック
+    // 引数の最初にスクリプトファイルが入っているかチェック
+    let script_file = if args.len() > 1 && !args[1].starts_with("--") {
+        Some(&args[1])
+    } else {
+        None
+    };
 
     // env_loggerの設定
     let mut builder = Builder::from_default_env();
@@ -42,6 +54,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         info!("Debug mode enabled");
     }
 
+    // 実行モードの分岐
+    if let Some(filename) = script_file {
+        run_script_file(filename)?;
+    } else {
+        run_interactive_mode()?;
+    }
+
+    Ok(())
+}
+
+// 対話モードでの実行関数
+fn run_interactive_mode() -> Result<(), Box<dyn std::error::Error>> {
     // 起動時の作業ディレクトリを記録（デバッグ用）
     let initial_dir = env::current_dir()?;
     debug!("Initial working directory: {initial_dir:?}");
@@ -71,6 +95,35 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 }
 
+fn run_script_file(filename: &str) -> Result<(), Box<dyn std::error::Error>> {
+    // ファイルの存在確認
+    if !Path::new(filename).exists() {
+        eprintln!("Error: Script file {filename} not found");
+        std::process::exit(1);
+    };
+
+    // ファイル全体を読み込む
+    let contents = fs::read_to_string(filename)?;
+
+    // 内容を行ごとに分割
+    let lines = contents.lines();
+
+    // 各行を順番に処理
+    for (line_num, line) in lines.enumerate() {
+        // 行の前処理
+        let line = line.trim();
+
+        // シバンコメント。空行スキップ
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+
+        handle_normal_command(line);
+    }
+
+    Ok(())
+}
+
 // 入力された文字列の読み取り
 fn read_input() -> String {
     let mut input = String::new();
@@ -88,8 +141,7 @@ fn read_input() -> String {
 fn handle_heredoc_command(input: &str) {
     if let Some((cmd_str, delimiter, strip_indent)) = parser::parse_heredoc_header(input) {
         debug!(
-            "Heredoc header: cmd='{}', delimiter='{}', strip_indent={}",
-            cmd_str, delimiter, strip_indent
+            "Heredoc header: cmd='{cmd_str}', delimiter='{delimiter}', strip_indent={strip_indent}"
         );
 
         // 内容を収集

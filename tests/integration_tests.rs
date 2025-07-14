@@ -854,3 +854,400 @@ fn test_heredoc_with_pipeline_and_redirect() {
         .stdout(predicate::str::contains("line 2: important data"))
         .stdout(predicate::str::contains("line 3: also important"));
 }
+
+#[test]
+fn test_script_basic_execution() {
+    let temp_dir = TempDir::new().unwrap();
+    let script_file = temp_dir.path().join("test.rsh");
+
+    // スクリプトファイルを作成
+    fs::write(
+        &script_file,
+        "echo Hello from script\n\
+         pwd\n\
+         echo Done\n",
+    )
+    .unwrap();
+
+    // スクリプトを実行
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .arg(script_file.to_str().unwrap())
+        .current_dir(&temp_dir)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Hello from script"))
+        .stdout(predicate::str::contains("Done"));
+}
+
+#[test]
+fn test_script_with_shebang_and_comments() {
+    let temp_dir = TempDir::new().unwrap();
+    let script_file = temp_dir.path().join("commented.rsh");
+
+    fs::write(
+        &script_file,
+        "#!/usr/bin/env rucli\n\
+         # This is a comment\n\
+         echo First line\n\
+         # Another comment\n\
+         \n\
+         echo Second line\n",
+    )
+    .unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .arg(script_file.to_str().unwrap())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("First line"))
+        .stdout(predicate::str::contains("Second line"))
+        .stdout(predicate::str::contains("#!/usr/bin/env rucli").not())
+        .stdout(predicate::str::contains("# This is a comment").not());
+}
+
+#[test]
+fn test_script_with_error_continues() {
+    let temp_dir = TempDir::new().unwrap();
+    let script_file = temp_dir.path().join("error.rsh");
+
+    fs::write(
+        &script_file,
+        "echo Before error\n\
+         cat nonexistent.txt\n\
+         echo After error\n",
+    )
+    .unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .arg(script_file.to_str().unwrap())
+        .current_dir(&temp_dir)
+        .assert()
+        .success() // スクリプトは続行
+        .stdout(predicate::str::contains("Before error"))
+        .stdout(predicate::str::contains("After error"))
+        .stderr(predicate::str::contains("No such file"));
+}
+
+#[test]
+fn test_script_not_found() {
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .arg("nonexistent.rsh")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "Script file nonexistent.rsh not found",
+        ));
+}
+
+#[test]
+fn test_script_with_variables() {
+    let temp_dir = TempDir::new().unwrap();
+    let script_file = temp_dir.path().join("vars.rsh");
+
+    fs::write(
+        &script_file,
+        "env NAME=Script\n\
+         echo Hello $NAME\n\
+         env VERSION=1.0\n\
+         echo Version: $VERSION\n",
+    )
+    .unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .arg(script_file.to_str().unwrap())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Hello Script"))
+        .stdout(predicate::str::contains("Version: 1.0"));
+}
+
+#[test]
+fn test_script_with_command_substitution() {
+    let temp_dir = TempDir::new().unwrap();
+    let script_file = temp_dir.path().join("subst.rsh");
+
+    fs::write(
+        &script_file,
+        "echo Current dir: $(pwd)\n\
+         echo Echo test: $(echo nested)\n\
+         env VAR=test\n\
+         echo Variable in substitution: $(echo $VAR)\n",
+    )
+    .unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .arg(script_file.to_str().unwrap())
+        .current_dir(&temp_dir)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Current dir:"))
+        .stdout(predicate::str::contains("Echo test: nested"))
+        .stdout(predicate::str::contains("Variable in substitution: test"));
+}
+
+#[test]
+fn test_script_file_operations() {
+    let temp_dir = TempDir::new().unwrap();
+    let script_file = temp_dir.path().join("fileops.rsh");
+
+    fs::write(
+        &script_file,
+        "write test.txt Script created this file\n\
+         cat test.txt\n\
+         cp test.txt backup.txt\n\
+         cat backup.txt\n\
+         rm test.txt\n\
+         rm backup.txt\n",
+    )
+    .unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .arg(script_file.to_str().unwrap())
+        .current_dir(&temp_dir)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("File written successfully"))
+        .stdout(predicate::str::contains("Script created this file").count(2));
+}
+
+#[test]
+fn test_script_with_pipelines() {
+    let temp_dir = TempDir::new().unwrap();
+    let script_file = temp_dir.path().join("pipes.rsh");
+
+    fs::write(
+        &script_file,
+        "echo apple > fruits.txt\n\
+         echo banana >> fruits.txt\n\
+         echo apricot >> fruits.txt\n\
+         cat fruits.txt | grep a\n\
+         cat fruits.txt | grep a | wc -l\n\
+         rm fruits.txt\n",
+    )
+    .unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .arg(script_file.to_str().unwrap())
+        .current_dir(&temp_dir)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("apple"))
+        .stdout(predicate::str::contains("banana"))
+        .stdout(predicate::str::contains("apricot"));
+}
+
+#[test]
+fn test_script_with_redirections() {
+    let temp_dir = TempDir::new().unwrap();
+    let script_file = temp_dir.path().join("redirect.rsh");
+
+    fs::write(
+        &script_file,
+        "echo First line > output.txt\n\
+         echo Second line >> output.txt\n\
+         cat < output.txt\n\
+         rm output.txt\n",
+    )
+    .unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .arg(script_file.to_str().unwrap())
+        .current_dir(&temp_dir)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("First line"))
+        .stdout(predicate::str::contains("Second line"));
+}
+
+#[test]
+fn test_script_with_background_jobs() {
+    let temp_dir = TempDir::new().unwrap();
+    let script_file = temp_dir.path().join("background.rsh");
+
+    fs::write(
+        &script_file,
+        "echo Starting background job\n\
+         sleep 1 &\n\
+         echo Background job started\n\
+         jobs\n",
+    )
+    .unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .arg(script_file.to_str().unwrap())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Starting background job"))
+        .stdout(predicate::str::contains("[1]"))
+        .stdout(predicate::str::contains("Background job started"));
+}
+
+#[test]
+fn test_script_with_directory_operations() {
+    let temp_dir = TempDir::new().unwrap();
+    let script_file = temp_dir.path().join("dirs.rsh");
+
+    fs::write(
+        &script_file,
+        "mkdir test_dir\n\
+         cd test_dir\n\
+         pwd\n\
+         write file.txt content\n\
+         ls\n\
+         cd ..\n\
+         rm -rf test_dir\n",
+    )
+    .unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .arg(script_file.to_str().unwrap())
+        .current_dir(&temp_dir)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("test_dir"))
+        .stdout(predicate::str::contains("file.txt"));
+}
+
+#[test]
+fn test_script_with_aliases() {
+    let temp_dir = TempDir::new().unwrap();
+    let script_file = temp_dir.path().join("alias.rsh");
+
+    // Note: エイリアスはセッション内でのみ有効
+    fs::write(
+        &script_file,
+        "alias ll=ls\n\
+         alias\n\
+         write test.txt content\n\
+         ll\n",
+    )
+    .unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .arg(script_file.to_str().unwrap())
+        .current_dir(&temp_dir)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("ll = ls"))
+        .stdout(predicate::str::contains("test.txt"));
+}
+
+#[test]
+fn test_script_empty_file() {
+    let temp_dir = TempDir::new().unwrap();
+    let script_file = temp_dir.path().join("empty.rsh");
+
+    fs::write(&script_file, "").unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .arg(script_file.to_str().unwrap())
+        .assert()
+        .success();
+}
+
+#[test]
+fn test_script_only_comments() {
+    let temp_dir = TempDir::new().unwrap();
+    let script_file = temp_dir.path().join("comments_only.rsh");
+
+    fs::write(
+        &script_file,
+        "#!/usr/bin/env rucli\n\
+         # Just comments\n\
+         # Nothing to execute\n\
+         \n\
+         # More comments\n",
+    )
+    .unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .arg(script_file.to_str().unwrap())
+        .assert()
+        .success()
+        .stdout(predicate::str::is_empty());
+}
+
+#[test]
+fn test_script_with_find_and_grep() {
+    let temp_dir = TempDir::new().unwrap();
+    let script_file = temp_dir.path().join("search.rsh");
+
+    fs::write(
+        &script_file,
+        "write test1.txt contains search term\n\
+         write test2.rs rust code\n\
+         write data.json {}\n\
+         find . *.txt\n\
+         grep search test1.txt\n\
+         rm test1.txt\n\
+         rm test2.rs\n\
+         rm data.json\n",
+    )
+    .unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .arg(script_file.to_str().unwrap())
+        .current_dir(&temp_dir)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("test1.txt"))
+        .stdout(predicate::str::contains("contains search term"));
+}
+
+#[test]
+fn test_script_complex_workflow() {
+    let temp_dir = TempDir::new().unwrap();
+    let script_file = temp_dir.path().join("workflow.rsh");
+
+    fs::write(
+        &script_file,
+        "#!/usr/bin/env rucli\n\
+         # Complex workflow test\n\
+         echo Setting up project...\n\
+         \n\
+         # Create directory structure\n\
+         mkdir -p project/src\n\
+         mkdir -p project/tests\n\
+         \n\
+         # Create files\n\
+         cd project\n\
+         write src/main.rs fn main() {}\n\
+         write Cargo.toml [package]\n\
+         \n\
+         # List created files\n\
+         find . *.rs\n\
+         find . *.toml\n\
+         \n\
+         # Cleanup\n\
+         cd ..\n\
+         rm -rf project\n\
+         echo Workflow completed!\n",
+    )
+    .unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .arg(script_file.to_str().unwrap())
+        .current_dir(&temp_dir)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Setting up project..."))
+        .stdout(predicate::str::contains("main.rs"))
+        .stdout(predicate::str::contains("Cargo.toml"))
+        .stdout(predicate::str::contains("Workflow completed!"));
+}
