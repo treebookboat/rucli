@@ -79,6 +79,12 @@ pub enum Command {
         delimiter: String,     // 終了デリミタ(例: "EOF")
         strip_indent: bool,    // <<- の場合true
     },
+    /// if条件分岐
+    If {
+        condition: Box<Command>,         // 条件コマンド
+        then_part: Box<Command>,         // 成功時の処理
+        else_part: Option<Box<Command>>, // 失敗時の処理（オプション）
+    },
     /// プログラムを終了
     Exit,
 }
@@ -269,7 +275,6 @@ pub const COMMANDS: &[CommandInfo] = &[
 ///
 /// - ファイル操作系コマンドでI/Oエラーが発生した場合
 /// - ファイルが存在しない、権限がない等
-// 通常実行用（変更なし）
 pub fn execute_command(command: Command) -> Result<()> {
     match command {
         Command::Pipeline { commands } => {
@@ -376,6 +381,28 @@ pub fn execute_command_get_output(command: Command, input: Option<&str>) -> Resu
         Command::Environment { action } => handle_environment(action),
         Command::HereDoc { .. } => {
             unimplemented!("HereDoc execution not yet implemented")
+        }
+        Command::If {
+            condition,
+            then_part,
+            else_part,
+        } => {
+            // conditionが成功すればthen,失敗すればelseパートを実行
+            match execute_command_get_output(*condition, input) {
+                Ok(condition_output) => {
+                    // 条件コマンドの出力を保持
+                    let then_output = execute_command_get_output(*then_part, input)?;
+                    // 両方の出力を結合
+                    Ok(format!("{condition_output}{then_output}"))
+                }
+                Err(_) => {
+                    if let Some(else_cmd) = else_part {
+                        execute_command_get_output(*else_cmd, input)
+                    } else {
+                        Ok(String::new())
+                    }
+                }
+            }
         }
         Command::Exit => {
             handle_exit();

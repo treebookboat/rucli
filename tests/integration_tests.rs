@@ -1251,3 +1251,162 @@ fn test_script_complex_workflow() {
         .stdout(predicate::str::contains("Cargo.toml"))
         .stdout(predicate::str::contains("Workflow completed!"));
 }
+
+#[test]
+fn test_if_condition_success() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "if echo test; then echo OK; else echo FAIL; fi\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("test"))
+        .stdout(predicate::str::contains("OK"))
+        .stdout(predicate::str::contains("FAIL").not());
+}
+
+#[test]
+fn test_if_condition_failure() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "if cat /nonexistent/file.txt; then echo OK; else echo FAIL; fi\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("FAIL"))
+        .stdout(predicate::str::contains("OK").not());
+}
+
+#[test]
+fn test_if_without_else_success() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "if echo test; then echo SUCCESS; fi\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("test"))
+        .stdout(predicate::str::contains("SUCCESS"));
+}
+
+#[test]
+fn test_if_without_else_failure() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "if cat /nonexistent; then echo OK; fi\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("OK").not());
+}
+
+#[test]
+fn test_if_with_pwd_condition() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "if pwd; then echo Working dir found; fi\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("/")) // pwdの出力
+        .stdout(predicate::str::contains("Working dir found"));
+}
+
+#[test]
+fn test_if_with_variables() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "env STATUS=OK\n\
+             if echo $STATUS; then echo Variable is $STATUS; fi\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("OK"))
+        .stdout(predicate::str::contains("Variable is OK"));
+}
+
+#[test]
+fn test_if_with_write_command() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "if write test.txt content; then echo Write successful; else echo Write failed; fi\n\
+             cat test.txt\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("File written successfully"))
+        .stdout(predicate::str::contains("Write successful"))
+        .stdout(predicate::str::contains("content"));
+}
+
+#[test]
+fn test_nested_if_not_supported() {
+    // ネストされたifは今回サポートしない
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "if echo outer; then if echo inner; then echo nested; fi; fi\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("outer"))
+        // 内側のifは文字列として扱われる可能性
+        .stdout(predicate::str::contains("inner").or(predicate::str::contains("if")));
+}
+
+#[test]
+fn test_if_in_pipeline() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "echo test > file.txt\n\
+             if cat file.txt | grep test; then echo Pattern found; fi\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("test"))
+        .stdout(predicate::str::contains("Pattern found"));
+}

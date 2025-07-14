@@ -108,6 +108,11 @@ pub fn parse_command(input: &str) -> Result<Command> {
         });
     }
 
+    // if文のチェックを追加
+    if contains_if(input) {
+        return parse_if_statement(input);
+    }
+
     // まずパイプで分割
     let pipe_parts = split_by_pipe(input);
 
@@ -158,13 +163,6 @@ pub fn parse_command(input: &str) -> Result<Command> {
                 target,
             });
         }
-    }
-
-    // パイプラインチェックを追加
-    if contains_pipeline(input) {
-        let commands = split_by_pipe(input).iter().map(|s| s.to_string()).collect();
-
-        return Ok(Command::Pipeline { commands });
     }
 
     // 引数の数チェック
@@ -403,6 +401,11 @@ pub fn contains_pipeline(input: &str) -> bool {
     input.contains('|')
 }
 
+// ifを含むかチェック
+pub fn contains_if(input: &str) -> bool {
+    input.trim().starts_with("if ")
+}
+
 /// ヒアドキュメントの情報を抽出
 pub fn parse_heredoc_header(input: &str) -> Option<(String, String, bool)> {
     // "<<-"を探す(長いほうから)
@@ -505,6 +508,51 @@ fn parse_environment(args: &[&str]) -> Result<Command> {
         }
         _ => unreachable!(),
     }
+}
+
+/// ifコマンドのパースを行う
+pub fn parse_if_statement(input: &str) -> Result<Command> {
+    let input = input.trim();
+
+    // ;を空白文字に置き換えて正規化
+    let input = input.replace(';', " ");
+
+    // キーワードの位置を探す
+    let then_pos = input
+        .find(" then ")
+        .ok_or(RucliError::ParseError("if: 'then' not found".to_string()))?;
+
+    // fiの位置を探す（rfindで後ろから探すのも良い）
+    let fi_pos = input
+        .rfind(" fi")
+        .ok_or(RucliError::ParseError("if: 'fi' not found".to_string()))?;
+
+    // else の位置を探す（オプション）
+    let else_pos = input[then_pos..fi_pos]
+        .find(" else ")
+        .map(|pos| then_pos + pos);
+
+    let condition_str = input["if ".len()..then_pos].trim();
+
+    let (then_str, else_str) = if let Some(else_pos) = else_pos {
+        let then_part = input[then_pos + " then ".len()..else_pos].trim();
+        let else_part = input[else_pos + " else ".len()..fi_pos].trim();
+        (then_part, Some(else_part))
+    } else {
+        let then_part = input[then_pos + " then ".len()..fi_pos].trim();
+        (then_part, None)
+    };
+
+    // 各部分をパース
+    let condition_cmd = parse_command(condition_str)?;
+    let then_cmd = parse_command(then_str)?;
+    let else_cmd = else_str.map(|s| parse_command(s)).transpose()?;
+
+    Ok(Command::If {
+        condition: Box::new(condition_cmd),
+        then_part: Box::new(then_cmd),
+        else_part: else_cmd.map(Box::new),
+    })
 }
 
 #[cfg(test)]
@@ -734,5 +782,73 @@ mod tests {
         // 無効な引数
         let result = parse_command("sleep abc");
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_contains_if() {
+        use super::contains_if;
+
+        assert!(contains_if("if echo test; then echo OK; fi"));
+        assert!(contains_if("  if cat file; then echo found; fi"));
+        assert!(!contains_if("echo if test"));
+        assert!(!contains_if("gift"));
+    }
+
+    #[test]
+    fn test_parse_if_basic() {
+        let input = "if echo test; then echo success; fi";
+        let cmd = parse_command(input).unwrap();
+
+        match cmd {
+            Command::If {
+                condition,
+                then_part,
+                else_part,
+            } => {
+                // conditionがEchoコマンドであることを確認
+                assert!(matches!(*condition, Command::Echo { .. }));
+                // then_partもEchoコマンド
+                assert!(matches!(*then_part, Command::Echo { .. }));
+                // else_partはNone
+                assert!(else_part.is_none());
+            }
+            _ => panic!("Expected If command"),
+        }
+    }
+
+    #[test]
+    fn test_parse_if_with_else() {
+        let input = "if cat nonexistent; then echo found; else echo not found; fi";
+        let cmd = parse_command(input).unwrap();
+
+        match cmd {
+            Command::If {
+                condition,
+                then_part,
+                else_part,
+            } => {
+                assert!(matches!(*condition, Command::Cat { .. }));
+                assert!(matches!(*then_part, Command::Echo { .. }));
+                assert!(else_part.is_some());
+                assert!(matches!(*else_part.unwrap(), Command::Echo { .. }));
+            }
+            _ => panic!("Expected If command"),
+        }
+    }
+
+    #[test]
+    fn test_parse_if_missing_then() {
+        let input = "if echo test; echo OK; fi";
+        let result = parse_command(input);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("then"));
+    }
+
+    #[test]
+    fn test_parse_if_missing_fi() {
+        let input = "if echo test; then echo OK";
+        let result = parse_command(input);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("fi"));
     }
 }

@@ -2,216 +2,158 @@
 
 🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
 
-## Progress: 58/100 PRs 🎉
+## Progress: 59/100 PRs 🎉
 
-[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
 
-## Latest Changes (PR #58)
+## Latest Changes (PR #59)
 
-- Added script file execution with `rucli script.rsh`
-- Support for shebang `#!/usr/bin/env rucli`
-- Comments and empty lines are skipped
-- Scripts continue on error (bash-compatible)
-- Refactored main into interactive and script modes
-- Comprehensive test coverage for all script features
+- Added if-then-else conditional statements
+- Support for single-line if syntax
+- Condition command output is preserved
+- Fixed duplicate pipeline checks in parser
+- Comprehensive test coverage for conditionals
 
 ## Usage
 
-### Interactive Mode (default)
+### Conditional Statements (New!)
+
+**Basic if-then syntax**:
+```bash
+> if echo "Checking..."; then echo "Success!"; fi
+Checking...
+Success!
+
+> if cat nonexistent.txt; then echo "Found"; else echo "Not found"; fi
+Not found
+```
+
+**With command success/failure**:
+```bash
+> if pwd; then echo "Directory exists"; fi
+/home/user/rucli
+Directory exists
+
+> if cat missing.txt; then echo "OK"; else echo "File missing"; fi
+File missing
+```
+
+**In scripts**:
+```bash
+#!/usr/bin/env rucli
+# check.rsh - Conditional logic example
+
+if ls; then echo "Files found in directory"; fi
+
+env STATUS=active
+if echo $STATUS; then echo "Status is $STATUS"; fi
+
+if cat config.txt; then
+    echo "Config loaded"
+else
+    echo "No config file, using defaults"
+fi
+```
+
+**Current limitations**:
+- ✅ Single-line if statements
+- ✅ Basic then/else branches
+- ❌ elif (else if) - not yet supported
+- ❌ Multi-line if in scripts - not yet supported
+- ❌ Nested if statements - not yet supported
+- ❌ Conditions with pipelines - not yet supported
+
+### Interactive Mode
 ```bash
 $ cargo run
 Hello, rucli!
-> echo "Interactive mode"
-Interactive mode
+> if echo test; then echo OK; fi
+test
+OK
 > exit
 good bye
 ```
 
-### Script Mode (new!)
+### Script Mode
 ```bash
 $ cargo run -- script.rsh
 # or after building:
 $ rucli script.rsh
 ```
 
-## Script Files
-
-### Basic Script Example
-```bash
-#!/usr/bin/env rucli
-# setup.rsh - Project setup script
-
-echo "Setting up new project..."
-
-# Create directory structure
-mkdir -p src tests docs
-cd src
-
-# Create main file
-write main.rs "fn main() {
-    println!(\"Hello, world!\");
-}"
-
-# Create README
-cd ..
-write README.md "# My Project
-
-A new Rust project created with rucli."
-
-echo "Project setup complete!"
-```
-
-### Running Scripts
-
-```bash
-# Direct execution
-$ rucli setup.rsh
-
-# With debug output
-$ rucli setup.rsh --debug
-
-# Make executable (with shebang)
-$ chmod +x setup.rsh
-$ ./setup.rsh
-```
-
-### Script Features
-
-**Comments and Shebang**:
-```bash
-#!/usr/bin/env rucli
-# This is a comment
-echo "Comments are ignored"  # Inline comments too
-
-# Empty lines are also skipped
-
-echo "Only commands are executed"
-```
-
-**Error Handling**:
-```bash
-echo "Before error"
-cat nonexistent.txt  # Error, but script continues
-echo "After error - still running!"
-```
-
-**All Shell Features Work**:
-```bash
-# Variables
-env NAME=World
-echo "Hello, $NAME"
-
-# Command substitution
-echo "Current time: $(date)"
-
-# Pipelines
-cat data.txt | grep pattern | wc -l
-
-# Redirections
-echo "Log entry" >> app.log
-
-# Background jobs
-sleep 5 &
-echo "Background job started"
-```
-
-## Real-World Script Examples
-
-### Backup Script
-```bash
-#!/usr/bin/env rucli
-# backup.rsh - Daily backup script
-
-env DATE=$(date +%Y%m%d)
-env BACKUP_DIR=backups/$DATE
-
-echo "Starting backup for $DATE..."
-mkdir -p $BACKUP_DIR
-
-# Backup source files
-cp -r src $BACKUP_DIR/
-cp -r docs $BACKUP_DIR/
-
-# Create archive
-cd backups
-echo "Creating archive..."
-# tar would go here in real implementation
-
-echo "Backup completed: $BACKUP_DIR"
-```
-
-### Deployment Script
-```bash
-#!/usr/bin/env rucli
-# deploy.rsh - Build and deploy script
-
-echo "Building project..."
-mkdir -p dist
-
-# Copy files
-cp -r src dist/
-cp README.md dist/
-cp LICENSE dist/
-
-# Create version file
-env VERSION=1.0.0
-write dist/VERSION "Version: $VERSION
-Built: $(date)"
-
-echo "Build complete!"
-echo "Files in dist:"
-ls dist
-```
-
-### Test Runner Script
-```bash
-#!/usr/bin/env rucli
-# test.rsh - Run various tests
-
-echo "Running test suite..."
-
-# Check required files
-echo "Checking project structure..."
-cat Cargo.toml > /dev/null
-cat src/main.rs > /dev/null
-echo "✓ Required files exist"
-
-# Run different test categories
-echo ""
-echo "Running unit tests..."
-# cargo test would go here
-
-echo ""
-echo "Running integration tests..."
-# integration tests would go here
-
-echo ""
-echo "All tests completed!"
-```
-
 ## Complete Feature Set
 
-**Execution Modes**:
-- Interactive shell mode (REPL)
-- Script file execution
-- Command line arguments support
+**Control Flow**:
+- If-then-else conditionals (NEW!)
+- Background execution with `&`
+- Pipeline chaining with `|`
 
-**Script Features**:
-- Shebang support (`#!/usr/bin/env rucli`)
-- Comments (`#`) and empty lines ignored
-- Error resilience (continues on error)
-- All interactive features available
+**File Operations**: `cat`, `write`, `cp`, `mv`, `rm`  
+**Directory Operations**: `ls`, `cd`, `pwd`, `mkdir`  
+**Search Operations**: `find`, `grep`  
+**Environment**: `env` - manage environment variables  
+**Job Control**: `jobs`, `fg` - background job management  
+**Utilities**: `echo`, `repeat`, `sleep`, `alias`, `version`, `help`, `exit`
 
-**Shell Features**:
-- File operations: `cat`, `write`, `cp`, `mv`, `rm`
-- Directory operations: `ls`, `cd`, `pwd`, `mkdir`
-- Search operations: `find`, `grep`
-- Environment variables: `env`, `$VAR`, `${VAR}`
-- Command substitution: `$(command)`
-- Pipelines: `cmd1 | cmd2`
-- Redirections: `>`, `>>`, `<`
-- Background execution: `&`
-- Here documents: `<<EOF`
+**Operators**:
+- `|` - Pipe commands together
+- `>` - Redirect output to file
+- `>>` - Append output to file
+- `<` - Input from file
+- `&` - Background execution
+- `<<` - Here document
+- `<<-` - Here document with tab stripping
+- `;` - Command separator
+- `if-then-fi` - Conditional execution
+
+**Expansion Features**:
+- `$VAR` - Basic variable expansion
+- `${VAR}` - Brace notation for clear boundaries
+- `$(command)` - Command substitution with full nesting support
+
+## Examples
+
+### Conditional Scripts
+
+**backup_smart.rsh**:
+```bash
+#!/usr/bin/env rucli
+# Smart backup with existence checking
+
+env BACKUP_DIR=backups
+if mkdir $BACKUP_DIR; then
+    echo "Created new backup directory"
+else
+    echo "Using existing backup directory"
+fi
+
+if cp -r src $BACKUP_DIR/; then
+    echo "Source files backed up successfully"
+else
+    echo "Warning: Failed to backup source files"
+fi
+```
+
+**deploy_safe.rsh**:
+```bash
+#!/usr/bin/env rucli
+# Safe deployment with checks
+
+echo "Starting deployment..."
+
+if cat VERSION; then
+    echo "Version file found"
+    if mkdir dist; then
+        echo "Created dist directory"
+        cp -r src dist/
+        echo "Deployment complete"
+    else
+        echo "Error: Could not create dist directory"
+    fi
+else
+    echo "Error: VERSION file not found"
+fi
+```
 
 ## Project Structure
 
@@ -219,8 +161,8 @@ echo "All tests completed!"
 rucli/
 ├── src/
 │   ├── main.rs         # Entry point with mode detection
-│   ├── commands.rs     # Command definitions
-│   ├── parser.rs       # Input parsing
+│   ├── commands.rs     # Command definitions + if execution
+│   ├── parser.rs       # Input parsing + if statement parser
 │   ├── handlers.rs     # Command implementations
 │   ├── environment.rs  # Variables & expansions
 │   ├── pipeline.rs     # Pipeline execution
@@ -231,16 +173,16 @@ rucli/
 ├── tests/
 │   └── integration_tests.rs
 └── examples/
-    ├── setup.rsh       # Project setup script
-    ├── backup.rsh      # Backup script
-    └── deploy.rsh      # Deployment script
+    ├── conditionals.rsh # If-then-else examples
+    ├── setup.rsh        # Project setup script
+    └── deploy.rsh       # Deployment script
 ```
 
 ## Testing
 
 ```bash
 cargo test              # Run all tests
-cargo test script       # Test script execution
+cargo test if_condition # Test conditionals
 cargo run -- test.rsh   # Run a test script
 ```
 
@@ -256,7 +198,7 @@ cargo run -- test.rsh   # Run a test script
 - [x] Command substitution (56)
 - [x] Here documents (57)
 - [x] Script file execution (58)
-- [ ] If conditions (59)
+- [x] If conditions (59)
 - [ ] While loops (60)
 - [ ] For loops (61)
 - [ ] Functions (62)
@@ -276,4 +218,4 @@ cargo run -- test.rsh   # Run a test script
 
 ---
 
-**Next**: If conditions (`if command; then; fi`) in PR #59! 🔀
+**Next**: While loops (`while condition; do commands; done`) in PR #60! 🔁
