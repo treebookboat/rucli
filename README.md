@@ -1,168 +1,178 @@
-# rucli - Rust CLI Tool
+rucli - Rust CLI Tool
 
-🎯 **100 PR Challenge**: Building a feature-rich CLI tool in 100 PRs
+🎯 100 Commit Challenge: Building a feature-rich CLI tool in 100 commits
+Progress: 60/100 Commits 🎉
 
-## Progress: 59/100 PRs 🎉
+[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+Latest Changes (Commit #60)
 
-[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+    Added while loops for condition-based repetition
+    Real-time command execution with immediate output
+    Loop iteration limit (1000) to prevent infinite loops
+    Single-line while statement support
+    Clone trait added to Command for loop iteration
 
-## Latest Changes (PR #59)
+Usage
+While Loops (New!)
 
-- Added if-then-else conditional statements
-- Support for single-line if syntax
-- Condition command output is preserved
-- Fixed duplicate pipeline checks in parser
-- Comprehensive test coverage for conditionals
+Basic while loop syntax:
+bash
 
-## Usage
+> while condition; do command; done
 
-### Conditional Statements (New!)
+File processing example:
+bash
 
-**Basic if-then syntax**:
-```bash
-> if echo "Checking..."; then echo "Success!"; fi
-Checking...
-Success!
+> write data.txt "Processing..."
+> while cat data.txt; do echo "File exists"; rm data.txt; done
+Processing...
+File exists
+# Loop ends when file is deleted
 
-> if cat nonexistent.txt; then echo "Found"; else echo "Not found"; fi
-Not found
-```
+Counter simulation:
+bash
 
-**With command success/failure**:
-```bash
-> if pwd; then echo "Directory exists"; fi
-/home/user/rucli
-Directory exists
+> write counter.txt "3"
+> while cat counter.txt; do echo "Count"; rm counter.txt; done
+3
+Count
+# Ends after one iteration
 
-> if cat missing.txt; then echo "OK"; else echo "File missing"; fi
-File missing
-```
+With variables:
+bash
 
-**In scripts**:
-```bash
-#!/usr/bin/env rucli
-# check.rsh - Conditional logic example
+> env FILE=test.txt
+> write $FILE "content"
+> while cat $FILE; do rm $FILE; done
+content
+# File removed, loop ends
 
-if ls; then echo "Files found in directory"; fi
+Current limitations:
 
-env STATUS=active
-if echo $STATUS; then echo "Status is $STATUS"; fi
+    ✅ Single-line while statements
+    ✅ Real-time output during execution
+    ✅ Infinite loop protection (1000 iterations max)
+    ❌ Multiple commands in loop body - not yet supported
+    ❌ Break/continue statements - not yet supported
+    ❌ Nested loops - not yet supported
 
-if cat config.txt; then
-    echo "Config loaded"
-else
-    echo "No config file, using defaults"
-fi
-```
+Control Flow Features
 
-**Current limitations**:
-- ✅ Single-line if statements
-- ✅ Basic then/else branches
-- ❌ elif (else if) - not yet supported
-- ❌ Multi-line if in scripts - not yet supported
-- ❌ Nested if statements - not yet supported
-- ❌ Conditions with pipelines - not yet supported
+Conditionals:
+bash
 
-### Interactive Mode
-```bash
+if condition; then action; else alternative; fi
+
+Loops:
+bash
+
+while condition; do action; done
+
+Interactive Mode
+bash
+
 $ cargo run
 Hello, rucli!
-> if echo test; then echo OK; fi
-test
-OK
+> while echo "Loop"; do echo "Running"; done
+Loop
+Running
+Loop
+Running
+... (continues until MAX_ITERATIONS)
 > exit
 good bye
-```
 
-### Script Mode
-```bash
-$ cargo run -- script.rsh
-# or after building:
-$ rucli script.rsh
-```
+Complete Feature Set
 
-## Complete Feature Set
+Control Flow:
 
-**Control Flow**:
-- If-then-else conditionals (NEW!)
-- Background execution with `&`
-- Pipeline chaining with `|`
+    If-then-else conditionals
+    While loops (NEW!)
+    Background execution with &
+    Pipeline chaining with |
 
-**File Operations**: `cat`, `write`, `cp`, `mv`, `rm`  
-**Directory Operations**: `ls`, `cd`, `pwd`, `mkdir`  
-**Search Operations**: `find`, `grep`  
-**Environment**: `env` - manage environment variables  
-**Job Control**: `jobs`, `fg` - background job management  
-**Utilities**: `echo`, `repeat`, `sleep`, `alias`, `version`, `help`, `exit`
+File Operations: cat, write, cp, mv, rm
+Directory Operations: ls, cd, pwd, mkdir
+Search Operations: find, grep
+Environment: env - manage environment variables
+Job Control: jobs, fg - background job management
+Utilities: echo, repeat, sleep, alias, version, help, exit
 
-**Operators**:
-- `|` - Pipe commands together
-- `>` - Redirect output to file
-- `>>` - Append output to file
-- `<` - Input from file
-- `&` - Background execution
-- `<<` - Here document
-- `<<-` - Here document with tab stripping
-- `;` - Command separator
-- `if-then-fi` - Conditional execution
+Operators:
 
-**Expansion Features**:
-- `$VAR` - Basic variable expansion
-- `${VAR}` - Brace notation for clear boundaries
-- `$(command)` - Command substitution with full nesting support
+    | - Pipe commands together
+    > - Redirect output to file
+    >> - Append output to file
+    < - Input from file
+    & - Background execution
+    << - Here document
+    <<- - Here document with tab stripping
+    ; - Command separator
+    if-then-fi - Conditional execution
+    while-do-done - Loop execution
 
-## Examples
+Examples
+Loop Scripts
 
-### Conditional Scripts
+cleanup_loop.rsh:
+bash
 
-**backup_smart.rsh**:
-```bash
 #!/usr/bin/env rucli
-# Smart backup with existence checking
+# Clean temporary files until none exist
 
-env BACKUP_DIR=backups
-if mkdir $BACKUP_DIR; then
-    echo "Created new backup directory"
-else
-    echo "Using existing backup directory"
-fi
+echo "Starting cleanup..."
+while find . *.tmp; do
+    rm *.tmp
+    echo "Removed temporary files"
+done
+echo "Cleanup complete"
 
-if cp -r src $BACKUP_DIR/; then
-    echo "Source files backed up successfully"
-else
-    echo "Warning: Failed to backup source files"
-fi
-```
+monitor.rsh:
+bash
 
-**deploy_safe.rsh**:
-```bash
 #!/usr/bin/env rucli
-# Safe deployment with checks
+# Monitor file existence
 
-echo "Starting deployment..."
+env TARGET=important.txt
+while cat $TARGET; do
+    echo "File still exists"
+    sleep 2
+done
+echo "File has been removed!"
 
-if cat VERSION; then
-    echo "Version file found"
-    if mkdir dist; then
-        echo "Created dist directory"
-        cp -r src dist/
-        echo "Deployment complete"
-    else
-        echo "Error: Could not create dist directory"
-    fi
-else
-    echo "Error: VERSION file not found"
-fi
-```
+process_files.rsh:
+bash
 
-## Project Structure
+#!/usr/bin/env rucli
+# Process files one by one
 
-```
+write file1.txt "Data 1"
+write file2.txt "Data 2"
+write file3.txt "Data 3"
+
+while ls *.txt; do
+    echo "Processing files..."
+    # In real implementation, would process each file
+    rm file1.txt
+done
+echo "All files processed"
+
+Safety Features
+
+Infinite Loop Protection:
+bash
+
+# This will stop after 1000 iterations
+> while echo "infinite"; do echo "loop"; done
+
+Maximum iterations: 1000 (prevents system hang)
+Project Structure
+
 rucli/
 ├── src/
-│   ├── main.rs         # Entry point with mode detection
-│   ├── commands.rs     # Command definitions + if execution
-│   ├── parser.rs       # Input parsing + if statement parser
+│   ├── main.rs         # Entry point
+│   ├── commands.rs     # Command definitions + while execution
+│   ├── parser.rs       # Input parsing + while parser
 │   ├── handlers.rs     # Command implementations
 │   ├── environment.rs  # Variables & expansions
 │   ├── pipeline.rs     # Pipeline execution
@@ -173,49 +183,48 @@ rucli/
 ├── tests/
 │   └── integration_tests.rs
 └── examples/
+    ├── loops.rsh        # While loop examples
     ├── conditionals.rsh # If-then-else examples
-    ├── setup.rsh        # Project setup script
-    └── deploy.rsh       # Deployment script
-```
+    └── scripts.rsh      # General scripts
 
-## Testing
+Testing
+bash
 
-```bash
 cargo test              # Run all tests
-cargo test if_condition # Test conditionals
+cargo test while        # Test while loops
 cargo run -- test.rsh   # Run a test script
-```
 
-## Roadmap
+Roadmap
 
-**Phase 3: Advanced Features (46-65)** 🚀
-- [x] Pipelines (46-48)
-- [x] Redirections (49-51)
-- [x] Background execution (52)
-- [x] Job management (53)
-- [x] Environment variables (54)
-- [x] Variable expansion (55)
-- [x] Command substitution (56)
-- [x] Here documents (57)
-- [x] Script file execution (58)
-- [x] If conditions (59)
-- [ ] While loops (60)
-- [ ] For loops (61)
-- [ ] Functions (62)
-- [ ] Error handling in scripts (63)
-- [ ] Script debugging (64)
-- [ ] Phase 3 integration tests (65)
+Phase 3: Advanced Features (46-65) 🚀
 
-**Phase 4: Interactive Features (66-85)**
-- [ ] Command history & navigation
-- [ ] Tab completion
-- [ ] Syntax highlighting
+    Pipelines (46-48)
+    Redirections (49-51)
+    Background execution (52)
+    Job management (53)
+    Environment variables (54)
+    Variable expansion (55)
+    Command substitution (56)
+    Here documents (57)
+    Script file execution (58)
+    If conditions (59)
+    While loops (60)
+    For loops (61)
+    Functions (62)
+    Error handling in scripts (63)
+    Script debugging (64)
+    Phase 3 integration tests (65)
 
-**Phase 5: Extensions (86-100)**
-- [ ] Plugin system
-- [ ] Configuration files
-- [ ] Performance optimization
+Phase 4: Interactive Features (66-85)
 
----
+    Command history & navigation
+    Tab completion
+    Syntax highlighting
 
-**Next**: While loops (`while condition; do commands; done`) in PR #60! 🔁
+Phase 5: Extensions (86-100)
+
+    Plugin system
+    Configuration files
+    Performance optimization
+
+Next: For loops (for var in items; do commands; done) in Commit #61! 🔁

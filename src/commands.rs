@@ -7,7 +7,7 @@ use crate::redirect::execute_redirect;
 use log::debug;
 
 /// 実行可能なコマンドを表す列挙型
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Command {
     /// ヘルプを表示
     Help,
@@ -85,12 +85,17 @@ pub enum Command {
         then_part: Box<Command>,         // 成功時の処理
         else_part: Option<Box<Command>>, // 失敗時の処理（オプション）
     },
+    /// While繰り返し
+    While {
+        condition: Box<Command>,
+        body: Box<Command>,
+    },
     /// プログラムを終了
     Exit,
 }
 
 /// 環境変数のアクション
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum EnvironmentAction {
     List,                // env
     Show(String),        // env VAR
@@ -403,6 +408,30 @@ pub fn execute_command_get_output(command: Command, input: Option<&str>) -> Resu
                     }
                 }
             }
+        }
+        Command::While { condition, body } => {
+            let mut loop_count = 0;
+            const MAX_ITERATIONS: usize = 1000;
+
+            loop {
+                if loop_count >= MAX_ITERATIONS {
+                    return Err(crate::error::RucliError::RuntimeError(
+                        "While loop exceeded maximum iterations".to_string(),
+                    ));
+                }
+
+                // inputは無視してexecute_commandを使う
+                match execute_command(*condition.clone()) {
+                    Ok(_) => {
+                        execute_command(*body.clone())?;
+                    }
+                    Err(_) => break,
+                }
+
+                loop_count += 1;
+            }
+
+            Ok(String::new())
         }
         Command::Exit => {
             handle_exit();

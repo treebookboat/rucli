@@ -108,9 +108,14 @@ pub fn parse_command(input: &str) -> Result<Command> {
         });
     }
 
-    // if文のチェックを追加
+    // if文のチェック
     if contains_if(input) {
         return parse_if_statement(input);
+    }
+
+    // while分のチェック
+    if contains_while(input) {
+        return parse_while_statement(input);
     }
 
     // まずパイプで分割
@@ -406,6 +411,11 @@ pub fn contains_if(input: &str) -> bool {
     input.trim().starts_with("if ")
 }
 
+// whileを含むかチェック
+pub fn contains_while(input: &str) -> bool {
+    input.trim().starts_with("while ")
+}
+
 /// ヒアドキュメントの情報を抽出
 pub fn parse_heredoc_header(input: &str) -> Option<(String, String, bool)> {
     // "<<-"を探す(長いほうから)
@@ -517,12 +527,15 @@ pub fn parse_if_statement(input: &str) -> Result<Command> {
     // ;を空白文字に置き換えて正規化
     let input = input.replace(';', " ");
 
-    // キーワードの位置を探す
+    // 複数の空白を一つにまとめる
+    let input = input.split_whitespace().collect::<Vec<_>>().join(" ");
+
+    // thenの位置を探す
     let then_pos = input
         .find(" then ")
         .ok_or(RucliError::ParseError("if: 'then' not found".to_string()))?;
 
-    // fiの位置を探す（rfindで後ろから探すのも良い）
+    // fiの位置を探す
     let fi_pos = input
         .rfind(" fi")
         .ok_or(RucliError::ParseError("if: 'fi' not found".to_string()))?;
@@ -552,6 +565,39 @@ pub fn parse_if_statement(input: &str) -> Result<Command> {
         condition: Box::new(condition_cmd),
         then_part: Box::new(then_cmd),
         else_part: else_cmd.map(Box::new),
+    })
+}
+
+/// whileコマンドのパースを行う
+pub fn parse_while_statement(input: &str) -> Result<Command> {
+    let input = input.trim();
+
+    // ;を空白文字に置き換えて正規化
+    let input = input.replace(';', " ");
+
+    // 複数の空白を一つにまとめる
+    let input = input.split_whitespace().collect::<Vec<_>>().join(" ");
+
+    // doの位置を探す
+    let do_pos = input
+        .find(" do ")
+        .ok_or(RucliError::ParseError("while: 'do' not found".to_string()))?;
+
+    // doneの位置を探す
+    let done_pos = input.rfind(" done").ok_or(RucliError::ParseError(
+        "while: 'done' not found".to_string(),
+    ))?;
+
+    let condition_str = input["while ".len()..do_pos].trim();
+    let body_str = input[do_pos + " do ".len()..done_pos].trim();
+
+    // 各部分をパース
+    let condition_cmd = parse_command(condition_str)?;
+    let body_cmd = parse_command(body_str)?;
+
+    Ok(Command::While {
+        condition: Box::new(condition_cmd),
+        body: Box::new(body_cmd),
     })
 }
 
@@ -850,5 +896,61 @@ mod tests {
         let result = parse_command(input);
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("fi"));
+    }
+
+    #[test]
+    fn test_contains_while() {
+        use super::contains_while;
+
+        assert!(contains_while("while echo test; do echo OK; done"));
+        assert!(contains_while("  while cat file; do rm file; done"));
+        assert!(!contains_while("echo while test"));
+        assert!(!contains_while("meanwhile"));
+    }
+
+    #[test]
+    fn test_parse_while_basic() {
+        let input = "while echo testing; do echo loop; done";
+        let cmd = parse_command(input).unwrap();
+
+        match cmd {
+            Command::While { condition, body } => {
+                // conditionがEchoコマンドであることを確認
+                assert!(matches!(*condition, Command::Echo { .. }));
+                // bodyもEchoコマンド
+                assert!(matches!(*body, Command::Echo { .. }));
+            }
+            _ => panic!("Expected While command"),
+        }
+    }
+
+    #[test]
+    fn test_parse_while_with_cat() {
+        let input = "while cat file.txt; do rm file.txt; done";
+        let cmd = parse_command(input).unwrap();
+
+        match cmd {
+            Command::While { condition, body } => {
+                assert!(matches!(*condition, Command::Cat { .. }));
+                assert!(matches!(*body, Command::Rm { .. }));
+            }
+            _ => panic!("Expected While command"),
+        }
+    }
+
+    #[test]
+    fn test_parse_while_missing_do() {
+        let input = "while echo test; echo loop; done";
+        let result = parse_command(input);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("do"));
+    }
+
+    #[test]
+    fn test_parse_while_missing_done() {
+        let input = "while echo test; do echo loop";
+        let result = parse_command(input);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("done"));
     }
 }

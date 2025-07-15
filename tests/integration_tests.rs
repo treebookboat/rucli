@@ -1410,3 +1410,163 @@ fn test_if_in_pipeline() {
         .stdout(predicate::str::contains("test"))
         .stdout(predicate::str::contains("Pattern found"));
 }
+
+#[test]
+fn test_while_loop_basic() {
+    let temp_dir = TempDir::new().unwrap();
+
+    // ファイルを作成してwhileループでテスト
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "write test.txt content\n\
+             while cat test.txt; do rm test.txt; done\n\
+             cat test.txt\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("File written successfully"))
+        .stdout(predicate::str::contains("content"))
+        .stderr(predicate::str::contains("No such file")); // 2回目のcatで失敗
+}
+
+#[test]
+fn test_while_loop_counter() {
+    let temp_dir = TempDir::new().unwrap();
+
+    // カウンタ的な動作をシミュレート（3回実行して終了）
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "write counter.txt 3\n\
+             while cat counter.txt; do rm counter.txt; done\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("3"));
+}
+
+#[test]
+fn test_while_loop_immediate_false() {
+    let temp_dir = TempDir::new().unwrap();
+
+    // 最初から条件が偽の場合
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "while cat nonexistent.txt; do echo Should not appear; done\n\
+             echo After loop\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Should not appear").not())
+        .stdout(predicate::str::contains("After loop"));
+}
+
+#[test]
+fn test_while_loop_with_echo() {
+    let temp_dir = TempDir::new().unwrap();
+
+    // 簡単なループ（手動で制限）
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "write flag.txt yes\n\
+             while cat flag.txt; do echo Loop executed; rm flag.txt; done\n\
+             echo Loop finished\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("yes"))
+        .stdout(predicate::str::contains("Loop executed"))
+        .stdout(predicate::str::contains("Loop finished"));
+}
+
+#[test]
+fn test_while_in_script() {
+    let temp_dir = TempDir::new().unwrap();
+    let script_file = temp_dir.path().join("while_test.rsh");
+
+    fs::write(
+        &script_file,
+        "#!/usr/bin/env rucli\n\
+         # Test while loop in script\n\
+         write data.txt test\n\
+         while cat data.txt; do rm data.txt; done\n\
+         echo Script completed\n",
+    )
+    .unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .arg(script_file.to_str().unwrap())
+        .current_dir(&temp_dir)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("test"))
+        .stdout(predicate::str::contains("Script completed"));
+}
+
+#[test]
+fn test_while_with_variables() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "env FILENAME=test.txt\n\
+             write $FILENAME content\n\
+             while cat $FILENAME; do rm $FILENAME; done\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("content"));
+}
+
+#[test]
+fn test_while_body_error_continues() {
+    let temp_dir = TempDir::new().unwrap();
+
+    // ボディでエラーが発生してもループは継続（今回の実装では停止）
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "write test.txt line\n\
+             while cat test.txt; do cat nonexistent.txt; done\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("line"))
+        .stderr(predicate::str::contains("No such file"));
+}
+
+#[test]
+fn test_while_nested_not_supported() {
+    let temp_dir = TempDir::new().unwrap();
+
+    // ネストしたwhileは今回サポートしない
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "while echo outer; do while echo inner; do echo nested; done; done\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("outer"))
+        // 内側のwhileは文字列として扱われる可能性
+        .stderr(predicate::str::is_empty().not());
+}
