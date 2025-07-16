@@ -1,59 +1,65 @@
 rucli - Rust CLI Tool
 
 🎯 100 Commit Challenge: Building a feature-rich CLI tool in 100 commits
-Progress: 60/100 Commits 🎉
+Progress: 61/100 Commits 🎉
 
-[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
-Latest Changes (Commit #60)
+[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□]
+Latest Changes (Commit #61)
 
-    Added while loops for condition-based repetition
-    Real-time command execution with immediate output
-    Loop iteration limit (1000) to prevent infinite loops
-    Single-line while statement support
-    Clone trait added to Command for loop iteration
+    Added for loops for list iteration
+    Runtime variable expansion with expand_variables method
+    Loop variables are set/unset as environment variables
+    Fixed all environment tests for new expansion behavior
+    Single-line for statement support
 
 Usage
-While Loops (New!)
+For Loops (New!)
 
-Basic while loop syntax:
+Basic for loop syntax:
 bash
 
-> while condition; do command; done
+> for var in items; do command; done
 
-File processing example:
+Number iteration:
 bash
 
-> write data.txt "Processing..."
-> while cat data.txt; do echo "File exists"; rm data.txt; done
-Processing...
-File exists
-# Loop ends when file is deleted
+> for i in 1 2 3; do echo Number: $i; done
+Number: 1
+Number: 2
+Number: 3
 
-Counter simulation:
+String iteration:
 bash
 
-> write counter.txt "3"
-> while cat counter.txt; do echo "Count"; rm counter.txt; done
-3
-Count
-# Ends after one iteration
+> for name in Alice Bob Charlie; do echo Hello, $name!; done
+Hello, Alice!
+Hello, Bob!
+Hello, Charlie!
 
-With variables:
+File processing:
 bash
 
-> env FILE=test.txt
-> write $FILE "content"
-> while cat $FILE; do rm $FILE; done
-content
-# File removed, loop ends
+> for file in file1.txt file2.txt; do cat $file; done
+# Contents of file1.txt
+# Contents of file2.txt
+
+With existing variables:
+bash
+
+> env PREFIX=test
+> for num in 1 2 3; do echo $PREFIX-$num; done
+test-1
+test-2
+test-3
 
 Current limitations:
 
-    ✅ Single-line while statements
-    ✅ Real-time output during execution
-    ✅ Infinite loop protection (1000 iterations max)
+    ✅ Single-line for statements
+    ✅ Variable expansion in loop body
+    ✅ Loop variable cleanup after execution
     ❌ Multiple commands in loop body - not yet supported
-    ❌ Break/continue statements - not yet supported
+    ❌ Wildcard expansion (*.txt) - not yet supported
+    ❌ Command substitution in list - not yet supported
     ❌ Nested loops - not yet supported
 
 Control Flow Features
@@ -63,31 +69,35 @@ bash
 
 if condition; then action; else alternative; fi
 
-Loops:
+While loops:
 bash
 
 while condition; do action; done
 
-Interactive Mode
+For loops:
 bash
 
-$ cargo run
-Hello, rucli!
-> while echo "Loop"; do echo "Running"; done
-Loop
-Running
-Loop
-Running
-... (continues until MAX_ITERATIONS)
-> exit
-good bye
+for var in list; do action; done
 
+Variable Expansion Changes
+
+Starting from this commit, variables are expanded at runtime rather than parse time:
+bash
+
+> env X=1
+> alias show="echo $X"
+> env X=2
+> show
+2  # Uses current value, not value when alias was created
+
+This enables proper support for loop variables and dynamic values.
 Complete Feature Set
 
 Control Flow:
 
     If-then-else conditionals
-    While loops (NEW!)
+    While loops
+    For loops (NEW!)
     Background execution with &
     Pipeline chaining with |
 
@@ -110,69 +120,74 @@ Operators:
     ; - Command separator
     if-then-fi - Conditional execution
     while-do-done - Loop execution
+    for-in-do-done - List iteration
 
 Examples
-Loop Scripts
+For Loop Scripts
 
-cleanup_loop.rsh:
+batch_rename.rsh:
 bash
 
 #!/usr/bin/env rucli
-# Clean temporary files until none exist
+# Rename files with prefix
 
-echo "Starting cleanup..."
-while find . *.tmp; do
-    rm *.tmp
-    echo "Removed temporary files"
+env PREFIX=backup
+for file in data1.txt data2.txt data3.txt; do
+    mv $file ${PREFIX}_$file
+    echo Renamed $file to ${PREFIX}_$file
 done
-echo "Cleanup complete"
+echo All files renamed
 
-monitor.rsh:
+process_list.rsh:
 bash
 
 #!/usr/bin/env rucli
-# Monitor file existence
+# Process a list of items
 
-env TARGET=important.txt
-while cat $TARGET; do
-    echo "File still exists"
-    sleep 2
+for item in apple banana cherry; do
+    echo Processing $item
+    write ${item}.txt "Data for $item"
 done
-echo "File has been removed!"
+echo Created files for all items
 
-process_files.rsh:
+directory_tour.rsh:
 bash
 
 #!/usr/bin/env rucli
-# Process files one by one
+# Visit each directory
 
-write file1.txt "Data 1"
-write file2.txt "Data 2"
-write file3.txt "Data 3"
-
-while ls *.txt; do
-    echo "Processing files..."
-    # In real implementation, would process each file
-    rm file1.txt
+mkdir -p project/src project/docs project/tests
+for dir in src docs tests; do
+    cd project/$dir
+    echo Now in: $(pwd)
+    cd ../..
 done
-echo "All files processed"
+echo Tour complete
 
 Safety Features
 
-Infinite Loop Protection:
+Loop Variable Isolation:
 bash
 
-# This will stop after 1000 iterations
-> while echo "infinite"; do echo "loop"; done
+> env var=original
+> for var in temp; do echo Inside: $var; done
+Inside: temp
+> echo Outside: $var
+Outside: original  # Original value preserved
 
-Maximum iterations: 1000 (prevents system hang)
+Environment Variable Safety:
+
+    Uses unsafe blocks for env::set_var/remove_var (required in Rust 1.71+)
+    Variables are properly cleaned up after loop execution
+    No interference with system environment
+
 Project Structure
 
 rucli/
 ├── src/
 │   ├── main.rs         # Entry point
-│   ├── commands.rs     # Command definitions + while execution
-│   ├── parser.rs       # Input parsing + while parser
+│   ├── commands.rs     # Command definitions + expand_variables
+│   ├── parser.rs       # Input parsing + for parser
 │   ├── handlers.rs     # Command implementations
 │   ├── environment.rs  # Variables & expansions
 │   ├── pipeline.rs     # Pipeline execution
@@ -183,7 +198,7 @@ rucli/
 ├── tests/
 │   └── integration_tests.rs
 └── examples/
-    ├── loops.rsh        # While loop examples
+    ├── loops.rsh        # For/while loop examples
     ├── conditionals.rsh # If-then-else examples
     └── scripts.rsh      # General scripts
 
@@ -191,7 +206,7 @@ Testing
 bash
 
 cargo test              # Run all tests
-cargo test while        # Test while loops
+cargo test for_loop     # Test for loops
 cargo run -- test.rsh   # Run a test script
 
 Roadmap
@@ -227,4 +242,4 @@ Phase 5: Extensions (86-100)
     Configuration files
     Performance optimization
 
-Next: For loops (for var in items; do commands; done) in Commit #61! 🔁
+Next: Functions (function name() { commands; }) in Commit #62! 🔧

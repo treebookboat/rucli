@@ -1,5 +1,6 @@
 //! コマンドの定義と実行を管理するモジュール
 
+use crate::environment::expand_variables;
 use crate::error::Result;
 use crate::handlers::*;
 use crate::pipeline::{PipelineCommand, PipelineExecutor};
@@ -88,6 +89,12 @@ pub enum Command {
     /// While繰り返し
     While {
         condition: Box<Command>,
+        body: Box<Command>,
+    },
+    /// For繰り返し
+    For {
+        variable: String,
+        items: Vec<String>,
         body: Box<Command>,
     },
     /// プログラムを終了
@@ -274,6 +281,92 @@ pub const COMMANDS: &[CommandInfo] = &[
     },
 ];
 
+impl Command {
+    /// コマンド内の全ての変数を展開
+    pub fn expand_variables(self) -> Self {
+        match self {
+            Command::Echo { message } => Command::Echo {
+                message: expand_variables(&message),
+            },
+            Command::Cat { filename } => Command::Cat {
+                filename: expand_variables(&filename),
+            },
+            Command::Write { filename, content } => Command::Write {
+                filename: expand_variables(&filename),
+                content: expand_variables(&content),
+            },
+            Command::Cd { path } => Command::Cd {
+                path: expand_variables(&path),
+            },
+            Command::Mkdir { path, parents } => Command::Mkdir {
+                path: expand_variables(&path),
+                parents,
+            },
+            Command::Rm {
+                path,
+                recursive,
+                force,
+            } => Command::Rm {
+                path: expand_variables(&path),
+                recursive,
+                force,
+            },
+            Command::Cp {
+                source,
+                destination,
+                recursive,
+            } => Command::Cp {
+                source: expand_variables(&source),
+                destination: expand_variables(&destination),
+                recursive,
+            },
+            Command::Mv {
+                source,
+                destination,
+            } => Command::Mv {
+                source: expand_variables(&source),
+                destination: expand_variables(&destination),
+            },
+            Command::Find { path, name } => Command::Find {
+                path: path.map(|p| expand_variables(&p)),
+                name: expand_variables(&name),
+            },
+            Command::Grep { pattern, files } => Command::Grep {
+                pattern: expand_variables(&pattern),
+                files: files.into_iter().map(|f| expand_variables(&f)).collect(),
+            },
+            Command::Alias { name, command } => Command::Alias {
+                name: name.map(|n| expand_variables(&n)),
+                command: command.map(|c| expand_variables(&c)),
+            },
+            Command::Repeat { count, message } => Command::Repeat {
+                count,
+                message: expand_variables(&message),
+            },
+
+            // 複合コマンドはそのまま（実行時に再度展開される）
+            Command::If { .. } => self,
+            Command::While { .. } => self,
+            Command::For { .. } => self,
+            Command::Pipeline { .. } => self,
+            Command::Redirect { .. } => self,
+            Command::Background { .. } => self,
+            Command::HereDoc { .. } => self,
+
+            // 変数を含まないコマンド
+            Command::Help => self,
+            Command::Version => self,
+            Command::Pwd => self,
+            Command::Ls => self,
+            Command::Jobs => self,
+            Command::Exit => self,
+            Command::Sleep { .. } => self,
+            Command::Fg { .. } => self,
+            Command::Environment { .. } => self,
+        }
+    }
+}
+
 /// コマンドの実行
 ///
 /// # Errors
@@ -314,6 +407,8 @@ pub fn execute_command(command: Command) -> Result<()> {
 pub fn execute_command_get_output(command: Command, input: Option<&str>) -> Result<String> {
     // コマンド実行開始を記録
     debug!("Executing command: {command:?}");
+
+    let command = command.expand_variables();
 
     match command {
         Command::Help => Ok(handle_help()),
@@ -429,6 +524,28 @@ pub fn execute_command_get_output(command: Command, input: Option<&str>) -> Resu
                 }
 
                 loop_count += 1;
+            }
+
+            Ok(String::new())
+        }
+        Command::For {
+            variable,
+            items,
+            body,
+        } => {
+            for item in items {
+                // ループ変数を環境変数として設定
+                unsafe {
+                    std::env::set_var(&variable, &item);
+                }
+
+                // bodyを実行
+                execute_command(*body.clone())?;
+            }
+
+            // ループ変数をクリア
+            unsafe {
+                std::env::remove_var(&variable);
             }
 
             Ok(String::new())

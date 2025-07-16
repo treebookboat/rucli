@@ -68,11 +68,11 @@ fn validate_args(cmd_info: &CommandInfo, args: &[&str]) -> Result<()> {
 pub fn parse_command(input: &str) -> Result<Command> {
     debug!("Parsing input: '{input}'");
 
-    // 最初に変数展開
-    let expanded_input = expand_variables(input);
+    // // 最初に変数展開
+    // let expanded_input = expand_variables(input);
 
     // コマンド置換を追加
-    let substituted_input = expand_command_substitution(&expanded_input)?;
+    let substituted_input = expand_command_substitution(&input)?;
 
     let input = substituted_input.as_str();
 
@@ -108,14 +108,19 @@ pub fn parse_command(input: &str) -> Result<Command> {
         });
     }
 
-    // if文のチェック
+    // ifのチェック
     if contains_if(input) {
         return parse_if_statement(input);
     }
 
-    // while分のチェック
+    // whileのチェック
     if contains_while(input) {
         return parse_while_statement(input);
+    }
+
+    // forのチェック
+    if contains_for(input) {
+        return parse_for_statement(input);
     }
 
     // まずパイプで分割
@@ -416,6 +421,11 @@ pub fn contains_while(input: &str) -> bool {
     input.trim().starts_with("while ")
 }
 
+// forを含むかチェック
+pub fn contains_for(input: &str) -> bool {
+    input.trim().starts_with("for ")
+}
+
 /// ヒアドキュメントの情報を抽出
 pub fn parse_heredoc_header(input: &str) -> Option<(String, String, bool)> {
     // "<<-"を探す(長いほうから)
@@ -597,6 +607,50 @@ pub fn parse_while_statement(input: &str) -> Result<Command> {
 
     Ok(Command::While {
         condition: Box::new(condition_cmd),
+        body: Box::new(body_cmd),
+    })
+}
+
+/// forコマンドのパースを行う
+pub fn parse_for_statement(input: &str) -> Result<Command> {
+    let input = input.trim();
+
+    // ;を空白文字に置き換えて正規化
+    let input = input.replace(';', " ");
+
+    // 複数の空白を一つにまとめる
+    let input = input.split_whitespace().collect::<Vec<_>>().join(" ");
+
+    // inの位置を探す
+    let in_pos = input
+        .find(" in ")
+        .ok_or(RucliError::ParseError("for: 'in' not found".to_string()))?;
+
+    // doの位置を探す
+    let do_pos = input
+        .find(" do ")
+        .ok_or(RucliError::ParseError("for: 'do' not found".to_string()))?;
+
+    // doneの位置を探す
+    let done_pos = input
+        .rfind(" done")
+        .ok_or(RucliError::ParseError("for: 'done' not found".to_string()))?;
+
+    // 各部分をパース
+    let variable_str = input["for ".len()..in_pos].trim().to_string();
+    let items_str = input[in_pos + " in ".len()..do_pos].trim();
+    let items_vec = items_str
+        .split_whitespace()
+        .map(|s| s.to_string())
+        .collect();
+    let body_str = input[do_pos + " do ".len()..done_pos].trim();
+
+    // bodyのパース
+    let body_cmd = parse_command(body_str)?;
+
+    Ok(Command::For {
+        variable: variable_str,
+        items: items_vec,
         body: Box::new(body_cmd),
     })
 }
@@ -949,6 +1003,78 @@ mod tests {
     #[test]
     fn test_parse_while_missing_done() {
         let input = "while echo test; do echo loop";
+        let result = parse_command(input);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("done"));
+    }
+
+    #[test]
+    fn test_contains_for() {
+        use super::contains_for;
+
+        assert!(contains_for("for i in 1 2 3; do echo $i; done"));
+        assert!(contains_for("  for name in Alice Bob; do echo $name; done"));
+        assert!(!contains_for("echo for test"));
+        assert!(!contains_for("fortune"));
+    }
+
+    #[test]
+    fn test_parse_for_basic() {
+        let input = "for i in 1 2 3; do echo $i; done";
+        let cmd = parse_command(input).unwrap();
+
+        match cmd {
+            Command::For {
+                variable,
+                items,
+                body,
+            } => {
+                assert_eq!(variable, "i");
+                assert_eq!(items, vec!["1", "2", "3"]);
+                assert!(matches!(*body, Command::Echo { .. }));
+            }
+            _ => panic!("Expected For command"),
+        }
+    }
+
+    #[test]
+    fn test_parse_for_with_names() {
+        let input = "for name in Alice Bob Charlie; do echo Hello $name; done";
+        let cmd = parse_command(input).unwrap();
+
+        match cmd {
+            Command::For {
+                variable,
+                items,
+                body,
+            } => {
+                assert_eq!(variable, "name");
+                assert_eq!(items, vec!["Alice", "Bob", "Charlie"]);
+                assert!(matches!(*body, Command::Echo { .. }));
+            }
+            _ => panic!("Expected For command"),
+        }
+    }
+
+    #[test]
+    fn test_parse_for_missing_in() {
+        let input = "for i 1 2 3; do echo $i; done";
+        let result = parse_command(input);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("in"));
+    }
+
+    #[test]
+    fn test_parse_for_missing_do() {
+        let input = "for i in 1 2 3; echo $i; done";
+        let result = parse_command(input);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("do"));
+    }
+
+    #[test]
+    fn test_parse_for_missing_done() {
+        let input = "for i in 1 2 3; do echo $i";
         let result = parse_command(input);
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("done"));
