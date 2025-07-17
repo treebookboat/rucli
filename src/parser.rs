@@ -129,6 +129,11 @@ pub fn parse_command(input: &str) -> Result<Command> {
         return parse_function_definition(input);
     }
 
+    // セミコロンを含むかチェック
+    if split_by_semicolon(input).len() > 1 {
+        return parse_multiple_commands(input);
+    }
+
     // まずパイプで分割
     let pipe_parts = split_by_pipe(input);
 
@@ -554,9 +559,6 @@ fn parse_environment(args: &[&str]) -> Result<Command> {
 pub fn parse_if_statement(input: &str) -> Result<Command> {
     let input = input.trim();
 
-    // ;を空白文字に置き換えて正規化
-    let input = input.replace(';', " ");
-
     // 複数の空白を一つにまとめる
     let input = input.split_whitespace().collect::<Vec<_>>().join(" ");
 
@@ -575,7 +577,10 @@ pub fn parse_if_statement(input: &str) -> Result<Command> {
         .find(" else ")
         .map(|pos| then_pos + pos);
 
-    let condition_str = input["if ".len()..then_pos].trim();
+    let condition_str = input["if ".len()..then_pos]
+        .trim()
+        .trim_end_matches(';') // 末尾のセミコロンを削除
+        .trim();
 
     let (then_str, else_str) = if let Some(else_pos) = else_pos {
         let then_part = input[then_pos + " then ".len()..else_pos].trim();
@@ -588,8 +593,8 @@ pub fn parse_if_statement(input: &str) -> Result<Command> {
 
     // 各部分をパース
     let condition_cmd = parse_command(condition_str)?;
-    let then_cmd = parse_command(then_str)?;
-    let else_cmd = else_str.map(|s| parse_command(s)).transpose()?;
+    let then_cmd = parse_multiple_commands(then_str)?;
+    let else_cmd = else_str.map(|s| parse_multiple_commands(s)).transpose()?;
 
     Ok(Command::If {
         condition: Box::new(condition_cmd),
@@ -601,9 +606,6 @@ pub fn parse_if_statement(input: &str) -> Result<Command> {
 /// whileコマンドのパースを行う
 pub fn parse_while_statement(input: &str) -> Result<Command> {
     let input = input.trim();
-
-    // ;を空白文字に置き換えて正規化
-    let input = input.replace(';', " ");
 
     // 複数の空白を一つにまとめる
     let input = input.split_whitespace().collect::<Vec<_>>().join(" ");
@@ -618,12 +620,15 @@ pub fn parse_while_statement(input: &str) -> Result<Command> {
         "while: 'done' not found".to_string(),
     ))?;
 
-    let condition_str = input["while ".len()..do_pos].trim();
+    let condition_str = input["while ".len()..do_pos]
+        .trim()
+        .trim_end_matches(';') // これを追加！
+        .trim();
     let body_str = input[do_pos + " do ".len()..done_pos].trim();
 
     // 各部分をパース
     let condition_cmd = parse_command(condition_str)?;
-    let body_cmd = parse_command(body_str)?;
+    let body_cmd = parse_multiple_commands(body_str)?;
 
     Ok(Command::While {
         condition: Box::new(condition_cmd),
@@ -634,9 +639,6 @@ pub fn parse_while_statement(input: &str) -> Result<Command> {
 /// forコマンドのパースを行う
 pub fn parse_for_statement(input: &str) -> Result<Command> {
     let input = input.trim();
-
-    // ;を空白文字に置き換えて正規化
-    let input = input.replace(';', " ");
 
     // 複数の空白を一つにまとめる
     let input = input.split_whitespace().collect::<Vec<_>>().join(" ");
@@ -658,7 +660,11 @@ pub fn parse_for_statement(input: &str) -> Result<Command> {
 
     // 各部分をパース
     let variable_str = input["for ".len()..in_pos].trim().to_string();
-    let items_str = input[in_pos + " in ".len()..do_pos].trim();
+    let items_str = input[in_pos + " in ".len()..do_pos]
+        .trim()
+        .trim_end_matches(';') // 末尾のセミコロンを削除
+        .trim();
+
     let items_vec = items_str
         .split_whitespace()
         .map(|s| s.to_string())
@@ -666,7 +672,7 @@ pub fn parse_for_statement(input: &str) -> Result<Command> {
     let body_str = input[do_pos + " do ".len()..done_pos].trim();
 
     // bodyのパース
-    let body_cmd = parse_command(body_str)?;
+    let body_cmd = parse_multiple_commands(body_str)?;
 
     Ok(Command::For {
         variable: variable_str,
@@ -686,9 +692,6 @@ pub fn parse_for_statement(input: &str) -> Result<Command> {
 ///
 pub fn parse_function_definition(input: &str) -> Result<Command> {
     let input = input.trim();
-
-    // ;を空白文字に置き換えて正規化
-    let input = input.replace(';', " ");
 
     // 複数の空白を一つにまとめる
     let input = input.split_whitespace().collect::<Vec<_>>().join(" ");
@@ -727,7 +730,7 @@ pub fn parse_function_definition(input: &str) -> Result<Command> {
     let body_str = input[start_bracket_pos + 1..end_bracket_pos].trim();
 
     // bodyのパース
-    let body_cmd = parse_command(body_str)?;
+    let body_cmd = parse_multiple_commands(body_str)?;
 
     Ok(Command::Function {
         name: name_str.to_string(),
@@ -735,14 +738,47 @@ pub fn parse_function_definition(input: &str) -> Result<Command> {
     })
 }
 
+/// 入力をセミコロンで分割する
+pub fn split_by_semicolon(input: &str) -> Vec<&str> {
+    input
+        .split(';')
+        .map(|cmd| cmd.trim())
+        .filter(|cmd| !cmd.is_empty()) // 空文字列を除外
+        .collect()
+}
+
+/// 複数のコマンドをパースする
+pub fn parse_multiple_commands(input: &str) -> Result<Command> {
+    // 入力の分割を行う
+    let split_str = split_by_semicolon(input);
+
+    // 命令が一つであればそれを返す
+    if split_str.len() == 1 {
+        parse_command(split_str[0])
+    }
+    // 複数の命令があればそれらすべてをパースする
+    else {
+        let mut commands = Vec::new();
+        for cmd_str in split_str {
+            commands.push(parse_command(cmd_str)?);
+        }
+        Ok(Command::Compound { commands })
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use std::env;
+
+    use tempfile::TempDir;
+
     use crate::{
-        commands::{Command, CommandInfo},
+        commands::{Command, CommandInfo, execute_command},
         functions,
         parser::{
             contains_pipeline, contains_redirect, find_command, find_redirect_position,
-            parse_command, split_by_pipe, split_redirect, validate_args,
+            parse_command, parse_multiple_commands, split_by_pipe, split_by_semicolon,
+            split_redirect, validate_args,
         },
     };
 
@@ -1214,5 +1250,91 @@ mod tests {
             }
             _ => panic!("Expected FunctionCall"),
         }
+    }
+
+    #[test]
+    fn test_split_by_semicolon_basic() {
+        let parts = split_by_semicolon("echo a; echo b; echo c");
+        assert_eq!(parts, vec!["echo a", "echo b", "echo c"]);
+    }
+
+    #[test]
+    fn test_split_by_semicolon_empty() {
+        let parts = split_by_semicolon("echo a;; echo b;");
+        assert_eq!(parts, vec!["echo a", "echo b"]);
+    }
+
+    #[test]
+    fn test_split_by_semicolon_whitespace() {
+        let parts = split_by_semicolon("  echo a  ;  echo b  ;  ");
+        assert_eq!(parts, vec!["echo a", "echo b"]);
+    }
+
+    #[test]
+    fn test_parse_multiple_commands_single() {
+        let cmd = parse_multiple_commands("echo single").unwrap();
+        assert!(matches!(cmd, Command::Echo { .. }));
+    }
+
+    #[test]
+    fn test_parse_multiple_commands_multiple() {
+        let cmd = parse_multiple_commands("echo a; echo b").unwrap();
+        match cmd {
+            Command::Compound { commands } => {
+                assert_eq!(commands.len(), 2);
+            }
+            _ => panic!("Expected Compound command"),
+        }
+    }
+
+    #[test]
+    fn test_execute_compound_commands() {
+        let cmd = parse_command("echo first; echo second; echo third").unwrap();
+        // execute_command prints each output
+        assert!(execute_command(cmd).is_ok());
+    }
+
+    #[test]
+    fn test_function_with_multiple_commands() {
+        // 関数定義
+        let define =
+            parse_command("function multi() { echo start; echo middle; echo end; }").unwrap();
+        execute_command(define).unwrap();
+
+        // 関数呼び出し
+        let call = parse_command("multi").unwrap();
+        assert!(execute_command(call).is_ok());
+    }
+
+    #[test]
+    fn test_if_with_multiple_commands() {
+        let cmd = parse_command("if echo condition; then echo first; echo second; fi").unwrap();
+        assert!(execute_command(cmd).is_ok());
+    }
+
+    #[test]
+    fn test_compound_with_file_operations() {
+        let temp_dir = TempDir::new().unwrap();
+        env::set_current_dir(&temp_dir).unwrap();
+
+        let cmd = parse_command("write test.txt content; cat test.txt; rm test.txt").unwrap();
+        assert!(execute_command(cmd).is_ok());
+
+        // ファイルが削除されていることを確認
+        assert!(!std::path::Path::new("test.txt").exists());
+    }
+
+    #[test]
+    fn test_compound_error_continues() {
+        // エラーがあっても続行（現在の実装）
+        let cmd = parse_command("echo before; cat /nonexistent; echo after").unwrap();
+        // エラーで停止するが、これは現在の仕様
+        assert!(execute_command(cmd).is_err());
+    }
+
+    #[test]
+    fn test_for_with_multiple_commands() {
+        let cmd = parse_command("for i in 1 2; do echo Number:; echo $i; done").unwrap();
+        assert!(execute_command(cmd).is_ok());
     }
 }

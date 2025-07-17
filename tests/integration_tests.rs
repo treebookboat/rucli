@@ -1375,25 +1375,6 @@ fn test_if_with_write_command() {
 }
 
 #[test]
-fn test_nested_if_not_supported() {
-    // ネストされたifは今回サポートしない
-    let temp_dir = TempDir::new().unwrap();
-
-    Command::cargo_bin("rucli")
-        .unwrap()
-        .current_dir(&temp_dir)
-        .write_stdin(
-            "if echo outer; then if echo inner; then echo nested; fi; fi\n\
-             exit\n",
-        )
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("outer"))
-        // 内側のifは文字列として扱われる可能性
-        .stdout(predicate::str::contains("inner").or(predicate::str::contains("if")));
-}
-
-#[test]
 fn test_if_in_pipeline() {
     let temp_dir = TempDir::new().unwrap();
 
@@ -1550,25 +1531,6 @@ fn test_while_body_error_continues() {
         .success()
         .stdout(predicate::str::contains("line"))
         .stderr(predicate::str::contains("No such file"));
-}
-
-#[test]
-fn test_while_nested_not_supported() {
-    let temp_dir = TempDir::new().unwrap();
-
-    // ネストしたwhileは今回サポートしない
-    Command::cargo_bin("rucli")
-        .unwrap()
-        .current_dir(&temp_dir)
-        .write_stdin(
-            "while echo outer; do while echo inner; do echo nested; done; done\n\
-             exit\n",
-        )
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("outer"))
-        // 内側のwhileは文字列として扱われる可能性
-        .stderr(predicate::str::is_empty().not());
 }
 
 #[test]

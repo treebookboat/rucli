@@ -101,6 +101,8 @@ pub enum Command {
     Function { name: String, body: Box<Command> },
     /// 関数呼び出し
     FunctionCall { name: String, args: Vec<String> },
+    /// 複数のコマンドを順次実行
+    Compound { commands: Vec<Command> },
     /// プログラムを終了
     Exit,
 }
@@ -351,6 +353,12 @@ impl Command {
                 name,
                 args: args.into_iter().map(|arg| expand_variables(&arg)).collect(),
             },
+            Command::Compound { commands } => Command::Compound {
+                commands: commands
+                    .into_iter()
+                    .map(|cmd| cmd.expand_variables())
+                    .collect(),
+            },
 
             // 複合コマンドはそのまま（実行時に再度展開される）
             Command::If { .. } => self,
@@ -564,6 +572,12 @@ pub fn execute_command_get_output(command: Command, input: Option<&str>) -> Resu
             Ok(String::new())
         }
         Command::FunctionCall { name, args } => handle_function_call(&name, &args),
+        Command::Compound { commands } => {
+            for cmd in commands {
+                execute_command(cmd)?;
+            }
+            Ok(String::new())
+        }
         Command::Exit => {
             handle_exit();
             Ok(String::new())
