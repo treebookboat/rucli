@@ -97,6 +97,10 @@ pub enum Command {
         items: Vec<String>,
         body: Box<Command>,
     },
+    /// 関数定義
+    Function { name: String, body: Box<Command> },
+    /// 関数呼び出し
+    FunctionCall { name: String, args: Vec<String> },
     /// プログラムを終了
     Exit,
 }
@@ -343,6 +347,10 @@ impl Command {
                 count,
                 message: expand_variables(&message),
             },
+            Command::FunctionCall { name, args } => Command::FunctionCall {
+                name,
+                args: args.into_iter().map(|arg| expand_variables(&arg)).collect(),
+            },
 
             // 複合コマンドはそのまま（実行時に再度展開される）
             Command::If { .. } => self,
@@ -352,6 +360,7 @@ impl Command {
             Command::Redirect { .. } => self,
             Command::Background { .. } => self,
             Command::HereDoc { .. } => self,
+            Command::Function { .. } => self,
 
             // 変数を含まないコマンド
             Command::Help => self,
@@ -550,6 +559,11 @@ pub fn execute_command_get_output(command: Command, input: Option<&str>) -> Resu
 
             Ok(String::new())
         }
+        Command::Function { name, body } => {
+            handle_function_definition(&name, body)?;
+            Ok(String::new())
+        }
+        Command::FunctionCall { name, args } => handle_function_call(&name, &args),
         Command::Exit => {
             handle_exit();
             Ok(String::new())

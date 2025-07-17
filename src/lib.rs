@@ -7,6 +7,7 @@ pub mod alias;
 pub mod commands;
 pub mod environment;
 pub mod error;
+pub mod functions;
 pub mod handlers;
 pub mod job;
 pub mod parser;

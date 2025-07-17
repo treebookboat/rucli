@@ -1570,3 +1570,283 @@ fn test_while_nested_not_supported() {
         // 内側のwhileは文字列として扱われる可能性
         .stderr(predicate::str::is_empty().not());
 }
+
+#[test]
+fn test_function_definition_and_call() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "function hello() { echo Hello, World!; }\n\
+             hello\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Hello, World!"));
+}
+
+#[test]
+fn test_function_with_arguments() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "function greet() { echo Hello, $1!; }\n\
+             greet Alice\n\
+             greet Bob\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Hello, Alice!"))
+        .stdout(predicate::str::contains("Hello, Bob!"));
+}
+
+#[test]
+fn test_function_multiple_arguments() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "function show() { echo Args: $1, $2, $3; }\n\
+             show first second third\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Args: first, second, third"));
+}
+
+#[test]
+fn test_function_overwrite() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "function test() { echo First version; }\n\
+             test\n\
+             function test() { echo Second version; }\n\
+             test\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("First version"))
+        .stdout(predicate::str::contains("Second version"));
+}
+
+#[test]
+fn test_function_not_found() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "nonexistent_function arg1\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("nonexistent_function"));
+}
+
+#[test]
+fn test_function_in_pipeline() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "function upper() { echo HELLO WORLD; }\n\
+             upper | grep HELLO\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("HELLO WORLD"));
+}
+
+#[test]
+fn test_function_with_file_operations() {
+    let temp_dir = TempDir::new().unwrap();
+
+    // 関数定義を分ける
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "write test.txt original content\n\
+             function show() { cat $1; }\n\
+             show test.txt\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("original content"));
+}
+
+#[test]
+fn test_function_calling_function() {
+    let temp_dir = TempDir::new().unwrap();
+
+    // 単一コマンドのみサポートなので、echoだけにする
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "function helper() { echo Helper: $1; }\n\
+             helper test\n\
+             function main() { echo Main with $1; }\n\
+             main test\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Helper: test"))
+        .stdout(predicate::str::contains("Main with test"));
+}
+
+#[test]
+fn test_function_with_redirect() {
+    let temp_dir = TempDir::new().unwrap();
+
+    // クォートを修正
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "function logger() { echo Log: $1; }\n\
+             logger TestMessage > log.txt\n\
+             cat log.txt\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Log: TestMessage"));
+}
+
+#[test]
+fn test_function_in_script() {
+    let temp_dir = TempDir::new().unwrap();
+    let script_file = temp_dir.path().join("functions.rsh");
+
+    fs::write(
+        &script_file,
+        "#!/usr/bin/env rucli\n\
+         # Function test script\n\
+         function greet() { echo Hello, $1!; }\n\
+         function farewell() { echo Goodbye, $1!; }\n\
+         \n\
+         greet Script\n\
+         farewell Script\n",
+    )
+    .unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .arg(script_file.to_str().unwrap())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Hello, Script!"))
+        .stdout(predicate::str::contains("Goodbye, Script!"));
+}
+
+#[test]
+fn test_function_with_background() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "function background_task() { echo Running in background; }\n\
+             background_task &\n\
+             sleep 1\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("[1]"));
+}
+
+#[test]
+fn test_function_in_if_condition() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "function check() { echo Checking; }\n\
+             if check; then echo Check passed; fi\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Checking"))
+        .stdout(predicate::str::contains("Check passed"));
+}
+
+#[test]
+fn test_function_empty_args() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "function no_args() { echo No arguments needed; }\n\
+             no_args\n\
+             no_args extra args ignored\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("No arguments needed").count(2));
+}
+
+#[test]
+fn test_function_with_command_substitution() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "function get_dir() { pwd; }\n\
+             echo Current: $(get_dir)\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Current:"));
+}
+
+#[test]
+fn test_function_with_variables() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "env PREFIX=Hello\n\
+             function say() { echo $PREFIX, $1!; }\n\
+             say World\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Hello, World!"));
+}

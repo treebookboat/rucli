@@ -3,7 +3,7 @@
 use crate::alias::{list_aliases, set_alias};
 use crate::environment::{get_var, list_all_vars, set_var};
 use crate::error::{Result, RucliError};
-use crate::job;
+use crate::{functions, job};
 use log::{debug, info, warn};
 use regex::Regex;
 use std::io::{BufRead, BufReader};
@@ -724,8 +724,7 @@ pub fn handle_environment(action: EnvironmentAction) -> Result<String> {
                 Ok(value)
             } else {
                 Err(RucliError::InvalidArgument(format!(
-                    "Environment variable '{}' not found",
-                    var_name
+                    "Environment variable '{var_name}' not found"
                 )))
             }
         }
@@ -733,6 +732,55 @@ pub fn handle_environment(action: EnvironmentAction) -> Result<String> {
             set_var(var_name.as_str(), value.as_str());
             Ok(String::new())
         }
+    }
+}
+
+/// 関数を定義する
+///
+/// # Arguments
+/// * `name` - 関数名
+/// * `body` - 関数本体のコマンド
+///
+pub fn handle_function_definition(name: &str, body: Box<Command>) -> Result<()> {
+    functions::define_function(name, *body);
+    Ok(())
+}
+
+/// 関数を実行する
+///
+/// # Arguments
+/// * `name` - 関数名
+/// * `args` - 関数に渡す引数
+///
+/// # Returns
+/// * 関数の実行結果（文字列）
+///
+pub fn handle_function_call(name: &str, args: &[String]) -> Result<String> {
+    if let Some(cmd) = functions::get_function(name) {
+        // 引数の設定
+        for (i, arg) in args.iter().enumerate() {
+            let var_name = (i + 1).to_string(); // "1", "2", ...
+            unsafe {
+                std::env::set_var(&var_name, arg);
+            }
+        }
+
+        let cmd_str = execute_command_get_output(cmd, None);
+
+        // 引数のクリーンアップ
+        // クリーンアップ
+        for i in 0..args.len() {
+            let var_name = (i + 1).to_string();
+            unsafe {
+                std::env::remove_var(&var_name);
+            }
+        }
+
+        cmd_str
+    } else {
+        Err(RucliError::UnknownCommand(format!(
+            "function '{name}' not found"
+        )))
     }
 }
 

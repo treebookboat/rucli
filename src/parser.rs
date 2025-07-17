@@ -4,6 +4,7 @@ use crate::alias::get_alias;
 use crate::commands::{COMMANDS, Command, CommandInfo, EnvironmentAction};
 use crate::environment::{expand_command_substitution, expand_variables};
 use crate::error::{Result, RucliError};
+use crate::functions;
 use log::{debug, trace};
 
 pub const DEFAULT_HOME_INDICATOR: &str = "~";
@@ -123,6 +124,11 @@ pub fn parse_command(input: &str) -> Result<Command> {
         return parse_for_statement(input);
     }
 
+    // functionのチェック
+    if contains_function(input) {
+        return parse_function_definition(input);
+    }
+
     // まずパイプで分割
     let pipe_parts = split_by_pipe(input);
 
@@ -211,11 +217,20 @@ pub fn parse_command(input: &str) -> Result<Command> {
         "fg" => parse_fg(args),
         "env" => parse_environment(args),
 
-        _ => Err(RucliError::UnknownCommand(format!(
-            "{} {}",
-            cmd_name,
-            args.join(" ")
-        ))),
+        _ => {
+            if functions::is_function(cmd_name) {
+                Ok(Command::FunctionCall {
+                    name: cmd_name.to_string(),
+                    args: args.iter().map(|s| s.to_string()).collect(),
+                })
+            } else {
+                Err(RucliError::UnknownCommand(format!(
+                    "{} {}",
+                    cmd_name,
+                    args.join(" ")
+                )))
+            }
+        }
     }
 }
 
@@ -424,6 +439,11 @@ pub fn contains_while(input: &str) -> bool {
 // forを含むかチェック
 pub fn contains_for(input: &str) -> bool {
     input.trim().starts_with("for ")
+}
+
+/// 関数定義を含むかチェック
+pub fn contains_function(input: &str) -> bool {
+    input.trim().starts_with("function ")
 }
 
 /// ヒアドキュメントの情報を抽出
@@ -655,10 +675,71 @@ pub fn parse_for_statement(input: &str) -> Result<Command> {
     })
 }
 
+/// 関数定義をパースする
+///
+/// # Arguments
+/// * `input` - "function name() { body }" 形式の文字列
+///
+/// # Returns
+/// * `Ok(Command::Function)` - パース成功
+/// * `Err(RucliError)` - パース失敗
+///
+pub fn parse_function_definition(input: &str) -> Result<Command> {
+    let input = input.trim();
+
+    // ;を空白文字に置き換えて正規化
+    let input = input.replace(';', " ");
+
+    // 複数の空白を一つにまとめる
+    let input = input.split_whitespace().collect::<Vec<_>>().join(" ");
+
+    // (の位置を探す
+    let start_parens_pos = input.find("(").ok_or(RucliError::ParseError(
+        "function: '(' not found".to_string(),
+    ))?;
+
+    // )の位置も確認（(の後に)があるか）
+    let end_parens_pos = input.find(")").ok_or(RucliError::ParseError(
+        "function: ')' not found".to_string(),
+    ))?;
+
+    // ()の間が空であることを確認（引数は未対応）
+    if end_parens_pos - start_parens_pos != 1 {
+        return Err(RucliError::ParseError(
+            "function: parameters not supported".to_string(),
+        ));
+    }
+
+    // {の位置を探す
+    let start_bracket_pos = input.find("{").ok_or(RucliError::ParseError(
+        "function: '{' not found".to_string(),
+    ))?;
+
+    // }の位置を探す
+    let end_bracket_pos = input.find("}").ok_or(RucliError::ParseError(
+        "function: '}' not found".to_string(),
+    ))?;
+
+    // 関数名を取得
+    let name_str = input["function ".len()..start_parens_pos].trim();
+
+    // 処理部分を取得
+    let body_str = input[start_bracket_pos + 1..end_bracket_pos].trim();
+
+    // bodyのパース
+    let body_cmd = parse_command(body_str)?;
+
+    Ok(Command::Function {
+        name: name_str.to_string(),
+        body: Box::new(body_cmd),
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
         commands::{Command, CommandInfo},
+        functions,
         parser::{
             contains_pipeline, contains_redirect, find_command, find_redirect_position,
             parse_command, split_by_pipe, split_redirect, validate_args,
@@ -1078,5 +1159,60 @@ mod tests {
         let result = parse_command(input);
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("done"));
+    }
+
+    #[test]
+    fn test_parse_function_simple() {
+        let input = "function greet() { echo Hello }";
+        let result = parse_command(input).unwrap();
+
+        match result {
+            Command::Function { name, body } => {
+                assert_eq!(name, "greet");
+                assert!(matches!(*body, Command::Echo { .. }));
+            }
+            _ => panic!("Expected Function command"),
+        }
+    }
+
+    #[test]
+    fn test_parse_function_with_semicolon() {
+        let input = "function test() { echo Test; }";
+        let result = parse_command(input).unwrap();
+        assert!(matches!(result, Command::Function { .. }));
+    }
+
+    #[test]
+    fn test_parse_function_missing_parentheses() {
+        let input = "function test { echo Hello }";
+        let result = parse_command(input);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_function_missing_braces() {
+        let input = "function test() echo Hello";
+        let result = parse_command(input);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_function_call() {
+        // 関数を定義
+        let body = Command::Echo {
+            message: "test".to_string(),
+        };
+        functions::define_function("mytest", body);
+
+        // 関数呼び出しをパース
+        let result = parse_command("mytest arg1 arg2").unwrap();
+
+        match result {
+            Command::FunctionCall { name, args } => {
+                assert_eq!(name, "mytest");
+                assert_eq!(args, vec!["arg1", "arg2"]);
+            }
+            _ => panic!("Expected FunctionCall"),
+        }
     }
 }
