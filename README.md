@@ -2,14 +2,19 @@
 
 100 Commit Challenge: Building a feature-rich CLI tool in 100 commits
 
-Progress: 64/100 Commits
+Progress: 65/100 Commits
 
-## Latest Changes (Commit #64)
+## Latest Changes (Commit #65)
 
-- Added **interactive multi-line input** for block syntax
-- Dynamic prompts (> and >>) for better UX
-- Support for multi-line for/while loops and if statements
-- Nested control structure support with depth tracking
+- **Parser refactoring**: Split 800+ line parser.rs into modular structure
+- Organized into logical modules:
+  - `basic.rs`: Basic commands (echo, cat, write)
+  - `file_ops.rs`: File operations (cp, mv, rm, mkdir)
+  - `control.rs`: Control structures (if, while, for, function)
+  - `operators.rs`: Operators (pipe, redirect, background)
+  - `utils.rs`: Shared utilities and constants
+- Each module contains its own tests for better maintainability
+- Improved code organization without functional changes
 
 ## Usage
 
@@ -73,7 +78,7 @@ for var in list; do action; done
 - If-then-else conditionals
 - While loops
 - For loops
-- Functions (NEW!)
+- Functions
 - Background execution with `&`
 - Pipeline chaining with `|`
 
@@ -161,9 +166,15 @@ rucli/
 ├── src/
 │   ├── main.rs         # Entry point
 │   ├── commands.rs     # Command definitions
-│   ├── parser.rs       # Input parsing
+│   ├── parser/         # Modular parser (NEW!)
+│   │   ├── mod.rs      # Public interface
+│   │   ├── basic.rs    # Basic commands
+│   │   ├── file_ops.rs # File operations
+│   │   ├── control.rs  # Control structures
+│   │   ├── operators.rs# Operators
+│   │   └── utils.rs    # Utilities
 │   ├── handlers.rs     # Command implementations
-│   ├── functions.rs    # Function storage (NEW!)
+│   ├── functions.rs    # Function storage
 │   ├── environment.rs  # Variables & expansions
 │   ├── pipeline.rs     # Pipeline execution
 │   ├── redirect.rs     # I/O redirection
@@ -173,7 +184,7 @@ rucli/
 ├── tests/
 │   └── integration_tests.rs
 └── examples/
-    ├── functions.rsh   # Function examples (NEW!)
+    ├── functions.rsh   # Function examples
     ├── loops.rsh       # For/while loops
     └── scripts.rsh     # General scripts
 ```
@@ -188,37 +199,57 @@ cargo run -- test.rsh   # Run a script
 
 ## Roadmap
 
-### Phase 3: Advanced Features (46-65)
-- Pipelines (46-48)
-- Redirections (49-51)
-- Background execution (52)
-- Job management (53)
-- Environment variables (54)
-- Variable expansion (55)
-- Command substitution (56)
-- Here documents (57)
-- Script file execution (58)
-- If conditions (59)
-- While loops (60)
-- For loops (61)
-- Functions (62)
-- Multiple commands (63)
-- Interactive multi-line input (64)
-- Phase 3 integration tests (65)
+### Phase 3: Advanced Features & Refactoring (46-70)
+- ✅ Command pipelines basic (46)
+- ✅ Pipeline error handling (47)
+- ✅ Pipeline performance optimization (48)
+- ✅ Output redirection (>) (49)
+- ✅ Append redirection (>>) (50)
+- ✅ Input redirection (<) (51)
+- ✅ Background processes (&) (52)
+- ✅ Job control (jobs, fg) (53)
+- ✅ Environment variables (env) (54)
+- ✅ Variable expansion ($VAR, ${VAR}) (55)
+- ✅ Command substitution ($()) (56)
+- ✅ Here documents (<<) (57)
+- ✅ Script file execution (58)
+- ✅ If conditions (if-then-else-fi) (59)
+- ✅ While loops (while-do-done) (60)
+- ✅ For loops (for-in-do-done) (61)
+- ✅ Functions (62)
+- ✅ Multiple commands (;) (63)
+- ✅ Interactive multi-line input (64)
+- ✅ Parser refactoring (65)
+- Command execution unification (66)
+- Error handling improvements (67)
+- Documentation & flow diagrams (68)
+- Test organization (69)
+- Phase 3 integration tests (70)
 
-### Phase 4: Interactive Features (66-85)
-- Command history & navigation
-- Tab completion
-- Syntax highlighting
+### Phase 4: Interactive Features (71-85)
+- Command history basics (71-72)
+- History persistence & search (73-74)
+- Arrow key navigation (75-76)
+- Tab completion framework (77-78)
+- Syntax highlighting basics (79-80)
+- Prompt customization (81-82)
+- Terminal handling (83-84)
+- Phase 4 integration (85)
 
-### Phase 5: Extensions (86-100)
-- Plugin system
-- Configuration files
-- Performance optimization
+### Phase 5: Extensions & Polish (86-100)
+- Plugin system architecture (86-87)
+- Configuration file support (88-89)
+- Performance optimizations (90-91)
+- Advanced patterns (92-93)
+- Network capabilities (94-95)
+- Final polish (96-97)
+- Comprehensive documentation (98)
+- Benchmarks & profiling (99)
+- 🎉 Project completion! (100)
 
-## Next: Phase 3 Integration Tests (Commit #65)
+## Next: Command Execution Unification (Commit #66)
 
-Complete Phase 3 with comprehensive integration tests:
-- Test all Phase 3 features
-- Ensure stability before refactoring
-- Document any limitations
+Unify `execute_command` and `execute_command_get_output`:
+- Create a common internal execution function
+- Reduce code duplication
+- Improve error handling consistency
