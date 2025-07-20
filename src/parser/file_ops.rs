@@ -1,7 +1,7 @@
 //! ファイル操作コマンドのパース関数
 
 use crate::commands::Command;
-use crate::error::{Result, RucliError};
+use crate::error::Result;
 
 pub(super) fn parse_mkdir(args: &[&str]) -> Result<Command> {
     match args {

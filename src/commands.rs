@@ -74,12 +74,6 @@ pub enum Command {
     Fg { job_id: Option<u32> },
     /// 環境変数コマンド
     Environment { action: EnvironmentAction },
-    /// ヒアドキュメント付きコマンド
-    HereDoc {
-        command: Box<Command>, // 実行するコマンド
-        delimiter: String,     // 終了デリミタ(例: "EOF")
-        strip_indent: bool,    // <<- の場合true
-    },
     /// if条件分岐
     If {
         condition: Box<Command>,         // 条件コマンド
@@ -367,7 +361,6 @@ impl Command {
             Command::Pipeline { .. } => self,
             Command::Redirect { .. } => self,
             Command::Background { .. } => self,
-            Command::HereDoc { .. } => self,
             Command::Function { .. } => self,
 
             // 変数を含まないコマンド
@@ -390,38 +383,16 @@ impl Command {
 ///
 /// - ファイル操作系コマンドでI/Oエラーが発生した場合
 /// - ファイルが存在しない、権限がない等
-pub fn execute_command(command: Command) -> Result<()> {
-    match command {
-        Command::Pipeline { commands } => {
-            let pipeline = PipelineCommand::new(commands);
-            PipelineExecutor::execute(&pipeline)
-        }
-        Command::Redirect {
-            command,
-            redirect_type,
-            target,
-        } => {
-            let output = execute_redirect(*command, &redirect_type, &target)?;
-            if !output.is_empty() {
-                println!("{output}");
-            }
-            Ok(())
-        }
-        Command::HereDoc { .. } => {
-            unimplemented!("HereDoc execution not yet implemented")
-        }
-        _ => {
-            let output = execute_command_get_output(command, None)?;
-            if !output.is_empty() {
-                println!("{output}");
-            }
-            Ok(())
-        }
+pub fn execute_command(command: Command, input: Option<&str>) -> Result<()> {
+    let output = execute_command_internal(command, input)?;
+    if !output.is_empty() {
+        println!("{output}");
     }
+    Ok(())
 }
 
-/// コマンドの実行後、文字列を返す
-pub fn execute_command_get_output(command: Command, input: Option<&str>) -> Result<String> {
+/// execute_commandの内部処理
+pub fn execute_command_internal(command: Command, input: Option<&str>) -> Result<String> {
     // コマンド実行開始を記録
     debug!("Executing command: {command:?}");
 
@@ -478,7 +449,7 @@ pub fn execute_command_get_output(command: Command, input: Option<&str>) -> Resu
         Command::Version => Ok(handle_version()),
         Command::Pipeline { commands } => {
             let pipeline = PipelineCommand::new(commands);
-            PipelineExecutor::execute_get_output(&pipeline)
+            PipelineExecutor::execute(&pipeline) // 文字列を返す
         }
         Command::Redirect {
             command,
@@ -496,28 +467,23 @@ pub fn execute_command_get_output(command: Command, input: Option<&str>) -> Resu
             Ok(String::new())
         }
         Command::Environment { action } => handle_environment(action),
-        Command::HereDoc { .. } => {
-            unimplemented!("HereDoc execution not yet implemented")
-        }
         Command::If {
             condition,
             then_part,
             else_part,
         } => {
             // conditionが成功すればthen,失敗すればelseパートを実行
-            match execute_command_get_output(*condition, input) {
-                Ok(condition_output) => {
-                    // 条件コマンドの出力を保持
-                    let then_output = execute_command_get_output(*then_part, input)?;
-                    // 両方の出力を結合
-                    Ok(format!("{condition_output}{then_output}"))
+            match execute_command(*condition, input) {
+                Ok(_) => {
+                    // thenの出力
+                    execute_command(*then_part, input)?;
+                    Ok(String::new())
                 }
                 Err(_) => {
                     if let Some(else_cmd) = else_part {
-                        execute_command_get_output(*else_cmd, input)
-                    } else {
-                        Ok(String::new())
+                        execute_command(*else_cmd, input)?;
                     }
+                    Ok(String::new())
                 }
             }
         }
@@ -533,9 +499,9 @@ pub fn execute_command_get_output(command: Command, input: Option<&str>) -> Resu
                 }
 
                 // inputは無視してexecute_commandを使う
-                match execute_command(*condition.clone()) {
+                match execute_command(*condition.clone(), None) {
                     Ok(_) => {
-                        execute_command(*body.clone())?;
+                        execute_command(*body.clone(), None)?;
                     }
                     Err(_) => break,
                 }
@@ -557,7 +523,7 @@ pub fn execute_command_get_output(command: Command, input: Option<&str>) -> Resu
                 }
 
                 // bodyを実行
-                execute_command(*body.clone())?;
+                execute_command(*body.clone(), None)?;
             }
 
             // ループ変数をクリア
@@ -568,13 +534,13 @@ pub fn execute_command_get_output(command: Command, input: Option<&str>) -> Resu
             Ok(String::new())
         }
         Command::Function { name, body } => {
-            handle_function_definition(&name, body)?;
+            handle_function_definition(&name, *body)?;
             Ok(String::new())
         }
         Command::FunctionCall { name, args } => handle_function_call(&name, &args),
         Command::Compound { commands } => {
             for cmd in commands {
-                execute_command(cmd)?;
+                execute_command(cmd, input)?;
             }
             Ok(String::new())
         }

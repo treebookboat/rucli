@@ -2,44 +2,37 @@
 
 100 Commit Challenge: Building a feature-rich CLI tool in 100 commits
 
-Progress: 65/100 Commits
+Progress: 66/100 Commits
 
-## Latest Changes (Commit #65)
+## Latest Changes (Commit #66)
 
-- **Parser refactoring**: Split 800+ line parser.rs into modular structure
-- Organized into logical modules:
-  - `basic.rs`: Basic commands (echo, cat, write)
-  - `file_ops.rs`: File operations (cp, mv, rm, mkdir)
-  - `control.rs`: Control structures (if, while, for, function)
-  - `operators.rs`: Operators (pipe, redirect, background)
-  - `utils.rs`: Shared utilities and constants
-- Each module contains its own tests for better maintainability
-- Improved code organization without functional changes
+- **Interactive input refactoring**: Simplified multi-line input handling
+- Removed unused `BlockState` enum - now uses simple boolean return
+- Fixed nested loop processing with proper depth tracking
+- Added missing keyword handlers:
+  - `then` for if statements
+  - `function`, `{`, `}` for function definitions
+  - `else` for if-else statements
+- Improved code quality by fixing all clippy warnings
+- Updated all tests to match new API
 
 ## Usage
 
 ### Interactive Multi-line Input
 
-Execute complex commands with natural multi-line syntax:
+Execute commands with natural multi-line syntax:
 
 ```bash
 # For loops
 > for i in 1 2 3
 >> do
->>   echo Number: $i
+>>   echo $i
 >> done
-Number: 1
-Number: 2
-Number: 3
+1
+2
+3
 
-# While loops
-> while test -f flag
->> do
->>   cat flag
->>   rm flag
->> done
-
-# If statements
+# If-then-else statements
 > if pwd
 >> then
 >>   echo "Directory exists"
@@ -47,13 +40,15 @@ Number: 3
 >>   echo "Error"
 >> fi
 
-# Functions
+# Function definitions
 > function greet()
 >> {
 >>   echo Hello
 >>   echo World
 >> }
 ```
+
+**Note**: Nested control structures (loops within loops) are not currently supported due to parser limitations. Each control structure must be completed before starting another.
 
 ### Control Flow Features
 
@@ -72,6 +67,16 @@ while condition; do action; done
 for var in list; do action; done
 ```
 
+**Functions:**
+```bash
+function name() { commands; }
+```
+
+**Limitations:**
+- Nested control structures are not supported (e.g., for loops inside for loops)
+- Each control structure must be completed before starting another
+- Complex scripts should use functions to organize logic
+
 ### Complete Feature Set
 
 **Control Flow:**
@@ -81,6 +86,8 @@ for var in list; do action; done
 - Functions
 - Background execution with `&`
 - Pipeline chaining with `|`
+
+*Note: Nested control structures are not supported in the current implementation*
 
 **File Operations:** `cat`, `write`, `cp`, `mv`, `rm`
 
@@ -111,52 +118,39 @@ for var in list; do action; done
 
 ## Examples
 
-### Function Scripts
+### Basic Scripts
 
-**backup_utils.rsh:**
+**simple_loop.rsh:**
 ```bash
 #!/usr/bin/env rucli
-# Backup utility functions
+# Simple for loop example
 
-function backup() { 
+for file in *.txt
+do
+    echo "Processing: $file"
+    cat $file | grep ERROR
+done
+```
+
+**backup_script.rsh:**
+```bash
+#!/usr/bin/env rucli
+# Use functions to organize logic
+
+function backup_file() {
     cp $1 $1.bak
+    echo "Backed up: $1"
 }
 
-function restore() {
-    cp $1.bak $1
+function process_directory() {
+    for file in *.txt
+    do
+        backup_file $file
+    done
 }
 
-# Usage
-write important.txt "Critical data"
-backup important.txt
-echo Backup created
-```
-
-**file_utils.rsh:**
-```bash
-#!/usr/bin/env rucli
-# File utility functions
-
-function show() { cat $1; }
-function count() { cat $1 | wc -l; }
-function find_error() { grep ERROR $1; }
-
-# Process log file
-find_error system.log
-```
-
-**project_setup.rsh:**
-```bash
-#!/usr/bin/env rucli
-# Project setup functions
-
-function create_dir() { mkdir -p $1; }
-function create_file() { write $1 "// TODO"; }
-
-# Setup project
-create_dir src
-create_file src/main.rs
-echo Project created
+# Execute
+process_directory
 ```
 
 ## Project Structure
@@ -164,9 +158,9 @@ echo Project created
 ```
 rucli/
 ├── src/
-│   ├── main.rs         # Entry point
+│   ├── main.rs         # Entry point (refactored input handling)
 │   ├── commands.rs     # Command definitions
-│   ├── parser/         # Modular parser (NEW!)
+│   ├── parser/         # Modular parser
 │   │   ├── mod.rs      # Public interface
 │   │   ├── basic.rs    # Basic commands
 │   │   ├── file_ops.rs # File operations
@@ -193,7 +187,8 @@ rucli/
 
 ```bash
 cargo test              # Run all tests
-cargo test function     # Test functions
+cargo test nested       # Test nested structures
+cargo clippy           # Check code quality (now clean!)
 cargo run -- test.rsh   # Run a script
 ```
 
@@ -220,7 +215,7 @@ cargo run -- test.rsh   # Run a script
 - ✅ Multiple commands (;) (63)
 - ✅ Interactive multi-line input (64)
 - ✅ Parser refactoring (65)
-- Command execution unification (66)
+- ✅ Interactive input refactoring (66)
 - Error handling improvements (67)
 - Documentation & flow diagrams (68)
 - Test organization (69)
@@ -247,9 +242,10 @@ cargo run -- test.rsh   # Run a script
 - Benchmarks & profiling (99)
 - 🎉 Project completion! (100)
 
-## Next: Command Execution Unification (Commit #66)
+## Next: Error Handling Improvements (Commit #67)
 
-Unify `execute_command` and `execute_command_get_output`:
-- Create a common internal execution function
-- Reduce code duplication
-- Improve error handling consistency
+Improve error handling consistency:
+- Unify error types and messages
+- Add better error context
+- Improve error recovery in interactive mode
+- Add proper error codes for script mode

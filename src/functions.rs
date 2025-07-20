@@ -53,19 +53,6 @@ pub fn is_function(name: &str) -> bool {
     functions.contains_key(name)
 }
 
-/// 定義済みの全関数名を取得
-///
-/// # Returns
-/// * 関数名のベクタ（アルファベット順でなくてもOK）
-///
-pub fn list_functions() -> Vec<String> {
-    // FUNCTIONSのロックを取得
-    let functions = FUNCTIONS.lock().unwrap();
-
-    // イテレータを取得して集める
-    functions.keys().cloned().collect()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -120,25 +107,6 @@ mod tests {
             Command::Echo { message } => assert_eq!(message, "Second"),
             _ => panic!("Expected Echo command"),
         }
-    }
-
-    #[test]
-    fn test_list_functions() {
-        // Setup: いくつか関数を定義
-        let echo_cmd = Command::Echo {
-            message: "test".to_string(),
-        };
-        define_function("func1", echo_cmd.clone());
-        define_function("func2", echo_cmd.clone());
-        define_function("func3", echo_cmd);
-
-        // When: 一覧取得
-        let functions = list_functions();
-
-        // Then: 定義した関数が含まれる
-        assert!(functions.contains(&"func1".to_string()));
-        assert!(functions.contains(&"func2".to_string()));
-        assert!(functions.contains(&"func3".to_string()));
     }
 
     #[test]

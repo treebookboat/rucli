@@ -23,191 +23,127 @@ use std::{env, fs};
 
 use crate::parser::parse_command;
 
-/// ブロック入力の状態
-#[derive(Debug, Copy, Clone, PartialEq)]
-enum BlockState {
-    Normal,         // 通常の入力
-    ExpectingDo,    // for/while の後、do を待つ
-    ExpectingThen,  // if の後、then を待つ
-    ExpectingDone,  // do の後、done を待つ
-    ExpectingFi,    // then の後、fi を待つ
-    ExpectingElse,  // then の後、else/fi を待つ
-    ExpectingBrace, // function の後、} を待つ
-}
-
 /// ブロック入力を管理する構造体
 struct BlockInputCollector {
     lines: Vec<String>,
-    state: BlockState,
     depth: i32,
+    pending_keywords: Vec<(String, i32)>,
 }
 
 impl BlockInputCollector {
     fn new() -> Self {
         BlockInputCollector {
             lines: Vec::new(),
-            state: BlockState::Normal,
             depth: 0,
+            pending_keywords: Vec::new(),
         }
     }
 
     /// 行を追加し、次の状態を返す
     /// Noneなら入力完了
-    fn add_line(&mut self, line: &str) -> Option<BlockState> {
+    fn add_line(&mut self, line: &str) -> bool {
         // 現在の行に新しく追加
         self.lines.push(line.to_string());
 
-        // キーワードを検出
-        let keyword = Self::detect_keyword(line);
-
-        // 現在の状態とキーワードに基づいて次の状態を決定する
-        match (self.state, keyword) {
-            // === for/while ループ ===
-            (BlockState::Normal, Some("for")) => {
-                self.state = BlockState::ExpectingDo;
-                Some(BlockState::ExpectingDo)
+        // 新規追加：キーワードを抽出して処理
+        let keywords = Self::extract_keywords(line);
+        for keyword in keywords {
+            match keyword.as_str() {
+                "while" | "for" => {
+                    self.depth += 1;
+                    self.pending_keywords.push(("do".to_string(), self.depth));
+                }
+                "if" => {
+                    self.depth += 1;
+                    self.pending_keywords.push(("then".to_string(), self.depth));
+                }
+                "function" => {
+                    self.depth += 1;
+                    self.pending_keywords.push(("{".to_string(), self.depth));
+                }
+                "do" => {
+                    self.pending_keywords
+                        .retain(|(k, d)| !(k == "do" && *d == self.depth));
+                    self.pending_keywords.push(("done".to_string(), self.depth));
+                }
+                "then" => {
+                    self.pending_keywords
+                        .retain(|(k, d)| !(k == "then" && *d == self.depth));
+                    self.pending_keywords.push(("fi".to_string(), self.depth));
+                }
+                "{" => {
+                    self.pending_keywords
+                        .retain(|(k, d)| !(k == "{" && *d == self.depth));
+                    self.pending_keywords.push(("}".to_string(), self.depth));
+                }
+                "done" | "fi" | "}" => {
+                    self.pending_keywords
+                        .retain(|(k, d)| !(k == keyword.as_str() && *d == self.depth));
+                    self.depth -= 1;
+                }
+                "else" => {
+                    // elseは深さを変えない（fiを待ち続ける）
+                }
+                _ => {}
             }
-            (BlockState::Normal, Some("while")) => {
-                self.state = BlockState::ExpectingDo;
-                Some(BlockState::ExpectingDo)
-            }
-
-            // === if 文 ===
-            (BlockState::Normal, Some("if")) => {
-                self.state = BlockState::ExpectingThen;
-                Some(BlockState::ExpectingThen)
-            }
-            (BlockState::ExpectingThen, Some("then")) => {
-                self.state = BlockState::ExpectingFi;
-                Some(BlockState::ExpectingFi)
-            }
-            (BlockState::ExpectingFi, Some("else")) => {
-                self.state = BlockState::ExpectingFi; // 状態維持
-                Some(BlockState::ExpectingFi)
-            }
-            (BlockState::ExpectingFi, Some("fi")) => {
-                None // 完了
-            }
-
-            // === 関数定義 ===
-            (BlockState::Normal, Some("function")) => {
-                self.state = BlockState::ExpectingBrace;
-                Some(BlockState::ExpectingBrace)
-            }
-            (BlockState::ExpectingBrace, Some("}")) => {
-                None // 完了
-            }
-
-            // doの入力後のdone待ち
-            (BlockState::ExpectingDo, Some("do")) => {
-                self.state = BlockState::ExpectingDone;
-                Some(BlockState::ExpectingDone)
-            }
-
-            // === ネスト処理（while も追加） ===
-            (BlockState::ExpectingDone, Some("for") | Some("while")) => {
-                self.depth += 1;
-                Some(BlockState::ExpectingDone)
-            }
-            // すでにネストが一つ深い状態のdoneはdepthを一つ下げる
-            (BlockState::ExpectingDone, Some("done")) if self.depth > 0 => {
-                self.depth -= 1;
-                Some(BlockState::ExpectingDone)
-            }
-            (BlockState::ExpectingDone, Some("done")) if self.depth == 0 => {
-                None // 完了
-            }
-
-            _ => Some(self.state),
         }
+
+        // pending_keywordsが空 = 完了
+        !self.pending_keywords.is_empty() || self.depth > 0
     }
 
-    /// 行からキーワードを検出
-    fn detect_keyword(line: &str) -> Option<&str> {
-        let trimmed = line.trim();
-        if trimmed.starts_with("for ") {
-            return Some("for");
-        }
-        if trimmed.starts_with("while ") {
-            return Some("while");
-        }
-        if trimmed.starts_with("if ") {
-            return Some("if");
-        }
-        if trimmed.starts_with("function ") {
-            // 同一行に { がある場合は単一行として扱う
-            if trimmed.contains("{") && trimmed.contains("}") {
-                return None; // 通常のコマンド
+    fn extract_keywords(line: &str) -> Vec<String> {
+        let mut keywords = Vec::new();
+        let words: Vec<&str> = line.split_whitespace().collect();
+
+        for word in words.iter() {
+            match *word {
+                "while" | "for" | "if" | "do" | "then" | "done" | "fi" | "else" | "function"
+                | "{" | "}" => {
+                    keywords.push(word.to_string());
+                }
+                _ => {}
             }
-            // 複数行の関数定義
-            return Some("function");
         }
-        if trimmed == "do" {
-            return Some("do");
-        }
-        if trimmed == "then" {
-            return Some("then");
-        }
-        if trimmed == "else" {
-            return Some("else");
-        }
-        if trimmed == "done" {
-            return Some("done");
-        }
-        if trimmed == "fi" {
-            return Some("fi");
-        }
-        if trimmed == "}" {
-            return Some("}");
-        }
-        None
+
+        keywords
     }
 
     /// 蓄積された入力を一行に統合
     fn get_complete_command(&self) -> String {
         let mut result = String::new();
 
-        for (i, line) in self.lines.iter().enumerate() {
-            let trimmed = line.trim();
+        // 空行を除外したリストを作成
+        let non_empty_lines: Vec<&str> = self
+            .lines
+            .iter()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+            .collect();
 
-            // 空行はスキップ
-            if trimmed.is_empty() {
-                continue;
-            }
-
+        for (i, line) in non_empty_lines.iter().enumerate() {
             // 行を追加
-            result.push_str(trimmed);
+            result.push_str(line);
 
             // 最後の行でなければ区切り文字を追加
-            if i < self.lines.len() - 1 {
-                let next_line = self
-                    .lines
-                    .get(i + 1)
-                    .map(|s| s.trim())
-                    .filter(|s| !s.is_empty());
+            if i < non_empty_lines.len() - 1 {
+                let next = non_empty_lines[i + 1];
 
-                if let Some(next) = next_line {
-                    // 現在の行と次の行に基づいて区切り文字を決定
-                    match (trimmed, next) {
-                        // "for/while/if ..." の後で "do/then" の前にはセミコロン
-                        (curr, "do") if curr.starts_with("for ") || curr.starts_with("while ") => {
-                            result.push_str("; ");
-                        }
-                        (curr, "then") if curr.starts_with("if ") => {
-                            result.push_str("; ");
-                        }
-                        // "do/then/else" の後はスペースのみ
-                        ("do" | "then" | "else", _) => {
-                            result.push(' ');
-                        }
-                        // キーワード行の前はスペースのみ
-                        (_, next) if Self::is_keyword_line(next) => {
-                            result.push(' ');
-                        }
-                        // その他の場合はセミコロン
-                        _ => {
-                            result.push_str("; ");
-                        }
+                match (*line, next) {
+                    // "for/while/if ..." の後で "do/then" の前にはセミコロン
+                    (curr, "do") if curr.starts_with("for ") || curr.starts_with("while ") => {
+                        result.push_str("; ");
+                    }
+                    (curr, "then") if curr.starts_with("if ") => {
+                        result.push_str("; ");
+                    }
+                    // "do/then/else" の後はスペースのみ
+                    ("do" | "then" | "else", _) => {
+                        result.push(' ');
+                    }
+                    // その他の場合はセミコロン
+                    _ => {
+                        result.push_str("; ");
                     }
                 }
             }
@@ -216,29 +152,12 @@ impl BlockInputCollector {
         result
     }
 
-    /// キーワードのみの行かチェック
-    fn is_keyword_line(line: &str) -> bool {
-        matches!(line, "do" | "then" | "else" | "done" | "fi" | "{" | "}")
-    }
-
-    /// セミコロン不要な行かチェック  
-    fn is_continuation(line: &str) -> bool {
-        // これらのキーワードで始まる行は次の行に続く
-        line.starts_with("for ")
-            || line.starts_with("while ")
-            || line.starts_with("if ")
-            || line.starts_with("function ")
-            || line == "then"
-            || line == "else"
-            || line == "do"
-            || line == "{"
-    }
-
     /// 現在のプロンプトを取得
     fn get_prompt(&self) -> &str {
-        match self.state {
-            BlockState::Normal => "> ",
-            _ => ">> ",
+        if self.pending_keywords.is_empty() && self.depth == 0 {
+            "> "
+        } else {
+            ">> "
         }
     }
 }
@@ -306,7 +225,7 @@ fn run_interactive_mode() -> Result<(), Box<dyn std::error::Error>> {
         debug!("Received input: {input}");
 
         // ブロック入力の処理
-        if let Some(_next_state) = block_collector.add_line(&input) {
+        if block_collector.add_line(&input) {
             // まだ入力継続中
             continue;
         }
@@ -343,7 +262,7 @@ fn run_script_file(filename: &str) -> Result<(), Box<dyn std::error::Error>> {
     let lines = contents.lines();
 
     // 各行を順番に処理
-    for (line_num, line) in lines.enumerate() {
+    for line in lines {
         // 行の前処理
         let line = line.trim();
 
@@ -403,7 +322,7 @@ fn handle_normal_command(input: &str) {
         Ok(command) => {
             debug!("Command parsed successfully");
             let start = Instant::now();
-            if let Err(err) = execute_command(command) {
+            if let Err(err) = execute_command(command, None) {
                 error!("Command execution failed: {err}");
                 eprintln!("{err}");
             }
@@ -422,12 +341,8 @@ fn execute_with_input(cmd_str: &str, input: &str) {
     match parse_command(cmd_str) {
         Ok(command) => {
             let start = Instant::now();
-            match commands::execute_command_get_output(command, Some(input)) {
-                Ok(output) => {
-                    if !output.is_empty() {
-                        println!("{}", output);
-                    }
-                }
+            match commands::execute_command(command, Some(input)) {
+                Ok(_) => {}
                 Err(err) => {
                     error!("Command execution failed: {err}");
                     eprintln!("{err}");
@@ -466,9 +381,9 @@ fn read_heredoc_content(delimiter: &str, strip_indent: bool) -> String {
 
         // strip_indentがtrueなら先頭タブを削除
         let processed_line = if strip_indent {
-            line.strip_prefix('\t').unwrap_or(&line)
+            line.strip_prefix('\t').unwrap_or(line)
         } else {
-            &line
+            line
         };
 
         // Vecに追加
@@ -485,18 +400,12 @@ mod block_input_tests {
     fn test_simple_for_loop() {
         let mut collector = BlockInputCollector::new();
 
-        assert_eq!(
-            collector.add_line("for i in 1 2 3"),
-            Some(BlockState::ExpectingDo)
-        );
+        assert!(collector.add_line("for i in 1 2 3")); // 継続
         assert_eq!(collector.get_prompt(), ">> ");
 
-        assert_eq!(collector.add_line("do"), Some(BlockState::ExpectingDone));
-        assert_eq!(
-            collector.add_line("  echo $i"),
-            Some(BlockState::ExpectingDone)
-        );
-        assert_eq!(collector.add_line("done"), None);
+        assert!(collector.add_line("do")); // 継続
+        assert!(collector.add_line("  echo $i")); // 継続
+        assert!(!collector.add_line("done")); // 完了
 
         assert_eq!(
             collector.get_complete_command(),
@@ -508,11 +417,11 @@ mod block_input_tests {
     fn test_while_loop() {
         let mut collector = BlockInputCollector::new();
 
-        collector.add_line("while test -f flag");
-        collector.add_line("do");
-        collector.add_line("  cat flag");
-        collector.add_line("  rm flag");
-        collector.add_line("done");
+        assert!(collector.add_line("while test -f flag"));
+        assert!(collector.add_line("do"));
+        assert!(collector.add_line("  cat flag"));
+        assert!(collector.add_line("  rm flag"));
+        assert!(!collector.add_line("done"));
 
         let cmd = collector.get_complete_command();
         assert!(cmd.contains("while test -f flag"));
@@ -525,21 +434,12 @@ mod block_input_tests {
     fn test_if_then_else_fi() {
         let mut collector = BlockInputCollector::new();
 
-        assert_eq!(
-            collector.add_line("if pwd"),
-            Some(BlockState::ExpectingThen)
-        );
-        assert_eq!(collector.add_line("then"), Some(BlockState::ExpectingFi));
-        assert_eq!(
-            collector.add_line("  echo exists"),
-            Some(BlockState::ExpectingFi)
-        );
-        assert_eq!(collector.add_line("else"), Some(BlockState::ExpectingFi));
-        assert_eq!(
-            collector.add_line("  echo not found"),
-            Some(BlockState::ExpectingFi)
-        );
-        assert_eq!(collector.add_line("fi"), None);
+        assert!(collector.add_line("if pwd")); // 継続
+        assert!(collector.add_line("then")); // 継続
+        assert!(collector.add_line("  echo exists")); // 継続
+        assert!(collector.add_line("else")); // 継続
+        assert!(collector.add_line("  echo not found")); // 継続
+        assert!(!collector.add_line("fi")); // 完了
 
         let cmd = collector.get_complete_command();
         assert_eq!(cmd, "if pwd; then echo exists; else echo not found; fi");
@@ -549,19 +449,32 @@ mod block_input_tests {
     fn test_nested_for_loops() {
         let mut collector = BlockInputCollector::new();
 
-        collector.add_line("for i in 1 2");
-        collector.add_line("do");
-        assert_eq!(collector.depth, 0);
-
-        collector.add_line("  for j in a b");
+        assert!(collector.add_line("for i in 1 2"));
+        assert!(collector.add_line("do"));
         assert_eq!(collector.depth, 1);
+        assert_eq!(collector.pending_keywords, vec![("done".to_string(), 1)]);
 
-        collector.add_line("  do");
-        collector.add_line("    echo $i$j");
-        collector.add_line("  done");
+        assert!(collector.add_line("  for j in a b"));
+        assert_eq!(collector.depth, 2);
+        assert_eq!(
+            collector.pending_keywords,
+            vec![("done".to_string(), 1), ("do".to_string(), 2)]
+        );
+
+        assert!(collector.add_line("  do"));
+        assert_eq!(
+            collector.pending_keywords,
+            vec![("done".to_string(), 1), ("done".to_string(), 2)]
+        );
+
+        assert!(collector.add_line("    echo $i$j"));
+        assert!(collector.add_line("  done"));
+        assert_eq!(collector.depth, 1);
+        assert_eq!(collector.pending_keywords, vec![("done".to_string(), 1)]);
+
+        assert!(!collector.add_line("done")); // 完了
         assert_eq!(collector.depth, 0);
-
-        collector.add_line("done");
+        assert!(collector.pending_keywords.is_empty());
 
         let cmd = collector.get_complete_command();
         assert!(cmd.contains("for i in 1 2"));
@@ -572,20 +485,11 @@ mod block_input_tests {
     fn test_function_multiline() {
         let mut collector = BlockInputCollector::new();
 
-        assert_eq!(
-            collector.add_line("function test()"),
-            Some(BlockState::ExpectingBrace)
-        );
-        assert_eq!(collector.add_line("{"), Some(BlockState::ExpectingBrace));
-        assert_eq!(
-            collector.add_line("  echo Hello"),
-            Some(BlockState::ExpectingBrace)
-        );
-        assert_eq!(
-            collector.add_line("  echo World"),
-            Some(BlockState::ExpectingBrace)
-        );
-        assert_eq!(collector.add_line("}"), None);
+        assert!(collector.add_line("function test()")); // 継続
+        assert!(collector.add_line("{")); // 継続
+        assert!(collector.add_line("  echo Hello")); // 継続
+        assert!(collector.add_line("  echo World")); // 継続
+        assert!(!collector.add_line("}")); // 完了
 
         let cmd = collector.get_complete_command();
         assert!(cmd.contains("function test()"));
@@ -597,69 +501,14 @@ mod block_input_tests {
     fn test_empty_lines_ignored() {
         let mut collector = BlockInputCollector::new();
 
-        collector.add_line("for i in 1 2 3");
-        collector.add_line("do");
-        collector.add_line(""); // 空行
-        collector.add_line("  echo $i");
-        collector.add_line(""); // 空行
-        collector.add_line("done");
+        assert!(collector.add_line("for i in 1 2 3"));
+        assert!(collector.add_line("do"));
+        assert!(collector.add_line("")); // 空行
+        assert!(collector.add_line("  echo $i"));
+        assert!(collector.add_line("")); // 空行
+        assert!(!collector.add_line("done"));
 
         let cmd = collector.get_complete_command();
         assert_eq!(cmd, "for i in 1 2 3; do echo $i; done");
-    }
-
-    #[test]
-    fn test_state_transitions() {
-        let mut collector = BlockInputCollector::new();
-
-        // Normal → ExpectingDo
-        assert_eq!(collector.state, BlockState::Normal);
-        collector.add_line("for i in 1 2 3");
-        assert_eq!(collector.state, BlockState::ExpectingDo);
-
-        // ExpectingDo → ExpectingDone
-        collector.add_line("do");
-        assert_eq!(collector.state, BlockState::ExpectingDone);
-
-        // Complete
-        collector.add_line("done");
-        assert_eq!(collector.state, BlockState::ExpectingDone); // 変更されない
-    }
-
-    #[test]
-    fn test_detect_keyword() {
-        assert_eq!(
-            BlockInputCollector::detect_keyword("for i in 1 2 3"),
-            Some("for")
-        );
-        assert_eq!(
-            BlockInputCollector::detect_keyword("while true"),
-            Some("while")
-        );
-        assert_eq!(BlockInputCollector::detect_keyword("if test"), Some("if"));
-        assert_eq!(BlockInputCollector::detect_keyword("do"), Some("do"));
-        assert_eq!(
-            BlockInputCollector::detect_keyword("  done  "),
-            Some("done")
-        );
-        assert_eq!(BlockInputCollector::detect_keyword("echo hello"), None);
-    }
-
-    #[test]
-    fn test_is_keyword_line() {
-        assert!(BlockInputCollector::is_keyword_line("do"));
-        assert!(BlockInputCollector::is_keyword_line("then"));
-        assert!(BlockInputCollector::is_keyword_line("done"));
-        assert!(!BlockInputCollector::is_keyword_line("echo"));
-        assert!(!BlockInputCollector::is_keyword_line("for i"));
-    }
-
-    #[test]
-    fn test_is_continuation() {
-        assert!(BlockInputCollector::is_continuation("for i in 1 2 3"));
-        assert!(BlockInputCollector::is_continuation("while test"));
-        assert!(BlockInputCollector::is_continuation("if pwd"));
-        assert!(!BlockInputCollector::is_continuation("echo hello"));
-        assert!(!BlockInputCollector::is_continuation("done"));
     }
 }

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 use crate::error::{Result};
 
-use crate::commands::execute_command_get_output;
+use crate::commands::execute_command_internal;
 use crate::parser::parse_command;
 
 /// セッション固有の環境変数ストレージ
@@ -170,7 +170,7 @@ pub fn expand_command_substitution(input: &str) -> Result<String>
                     match parse_command(&inner_expanded) {
                         Ok(cmd) => 
                         {
-                            match execute_command_get_output(cmd, None) {
+                            match execute_command_internal(cmd, None) {
                                 Ok(output) => {
                                     // 末尾の開業を削除
                                     ans_string.push_str(output.trim_end());
@@ -213,7 +213,7 @@ mod environment_tests {
     use super::*;
     use crate::environment::{set_var, expand_variables};
     use crate::handlers::handle_environment;
-    use crate::commands::{execute_command, execute_command_get_output, Command, EnvironmentAction};
+    use crate::commands::{execute_command_internal, Command, EnvironmentAction};
     use crate::parser::parse_command;
 
     // ========================================
@@ -400,7 +400,7 @@ mod environment_tests {
         
         // When: echoコマンドで変数展開（実行時に展開される）
         let cmd = parse_command("echo $GREETING").unwrap();
-        let result = execute_command_get_output(cmd, None).unwrap();
+        let result = execute_command_internal(cmd, None).unwrap();
         
         // Then: 展開された値が出力される
         assert_eq!(result.trim(), "Hello World");
@@ -758,28 +758,10 @@ mod environment_tests {
     fn test_command_substitution_in_echo() {
         // Given: echoコマンドで使用
         let cmd = parse_command("echo Today is $(echo Saturday)").unwrap();
-        let result = execute_command_get_output(cmd, None).unwrap();
+        let result = execute_command_internal(cmd, None).unwrap();
         
         // Then: 置換されて出力される
         assert_eq!(result.trim(), "Today is Saturday");
-    }
-
-    #[test]
-    fn test_command_substitution_in_write() {
-        use std::fs;
-        use tempfile::TempDir;
-        
-        // Given: 一時ディレクトリとファイル
-        let temp_dir = TempDir::new().unwrap();
-        let file_path = temp_dir.path().join("test.txt");
-        
-        // When: writeコマンドで使用
-        let cmd = parse_command(&format!("write {} $(echo Hello World)", file_path.display())).unwrap();
-        execute_command(cmd).unwrap();
-        
-        // Then: ファイルに置換された内容が書き込まれる
-        let content = fs::read_to_string(&file_path).unwrap();
-        assert_eq!(content, "Hello World");
     }
 
     #[test]

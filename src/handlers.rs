@@ -12,7 +12,7 @@ use std::time::Duration;
 use std::{env, fs, io, os::unix::fs::PermissionsExt, path::Path, process};
 
 use crate::commands::{
-    COMMANDS, Command, EnvironmentAction, execute_command, execute_command_get_output,
+    COMMANDS, Command, EnvironmentAction, execute_command, execute_command_internal,
 };
 use crate::parser::{DEFAULT_HOME_INDICATOR, PREVIOUS_DIR_INDICATOR};
 
@@ -161,7 +161,7 @@ pub fn handle_ls() -> Result<String> {
         if path.is_dir() {
             lines.push(format!("{name}/"));
         } else {
-            lines.push(format!("{name}"));
+            lines.push(name.to_string());
         }
 
         // ファイル情報表示
@@ -604,7 +604,7 @@ pub fn handle_background_execution(command: Box<Command>) -> Result<String> {
     // スレッドを起動
     let handle = thread::spawn(move || {
         // ここで実際にコマンドが実行される（遅延）
-        if let Err(e) = execute_command(*command) {
+        if let Err(e) = execute_command(*command, None) {
             eprintln!("Background job failed: {e}");
         }
         // 完了を通知
@@ -741,8 +741,8 @@ pub fn handle_environment(action: EnvironmentAction) -> Result<String> {
 /// * `name` - 関数名
 /// * `body` - 関数本体のコマンド
 ///
-pub fn handle_function_definition(name: &str, body: Box<Command>) -> Result<()> {
-    functions::define_function(name, *body);
+pub fn handle_function_definition(name: &str, body: Command) -> Result<()> {
+    functions::define_function(name, body);
     Ok(())
 }
 
@@ -765,7 +765,7 @@ pub fn handle_function_call(name: &str, args: &[String]) -> Result<String> {
             }
         }
 
-        let cmd_str = execute_command_get_output(cmd, None);
+        let cmd_str = execute_command_internal(cmd, None);
 
         // 引数のクリーンアップ
         // クリーンアップ

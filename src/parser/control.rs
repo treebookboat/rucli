@@ -63,7 +63,7 @@ pub(super) fn parse_if_statement(input: &str) -> Result<Command> {
     // 各部分をパース
     let condition_cmd = parse_command(condition_str)?;
     let then_cmd = parse_multiple_commands(then_str)?;
-    let else_cmd = else_str.map(|s| parse_multiple_commands(s)).transpose()?;
+    let else_cmd = else_str.map(parse_multiple_commands).transpose()?;
 
     Ok(Command::If {
         condition: Box::new(condition_cmd),

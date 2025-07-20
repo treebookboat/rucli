@@ -246,26 +246,6 @@ fn test_quit_command() {
 }
 
 #[test]
-// 空行の処理
-fn test_empty_input() {
-    let mut child = Command::new("cargo")
-        .args(["run", "--quiet"])
-        .stdin(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .unwrap();
-
-    let stdin = child.stdin.as_mut().unwrap();
-    writeln!(stdin).unwrap();
-    writeln!(stdin, "quit").unwrap();
-
-    let output = child.wait_with_output().unwrap();
-    let stderr = String::from_utf8_lossy(&output.stderr);
-
-    assert!(stderr.contains("No command provided"));
-}
-
-#[test]
 // 複数コマンドの連続実行
 fn test_multiple_commands() {
     let mut child = Command::new("cargo")

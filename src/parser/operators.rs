@@ -10,11 +10,6 @@ pub fn split_by_pipe(input: &str) -> Vec<&str> {
         .collect()
 }
 
-/// パイプラインを含むかチェック
-pub(super) fn contains_pipeline(input: &str) -> bool {
-    input.contains('|')
-}
-
 // リダイレクトでコマンドを分割
 /// 例: "echo hello > file.txt" → ("echo hello", Some((">", "file.txt")))
 pub(super) fn split_redirect(input: &str) -> (String, Option<(String, String)>) {
@@ -134,12 +129,6 @@ mod tests {
         let input = "echo hello world";
         let parts = split_by_pipe(input);
         assert_eq!(parts, vec!["echo hello world"]);
-    }
-
-    #[test]
-    fn test_contains_pipeline() {
-        assert!(contains_pipeline("echo | grep"));
-        assert!(!contains_pipeline("echo hello"));
     }
 
     #[test]

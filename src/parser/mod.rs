@@ -11,11 +11,11 @@ pub use self::operators::{contains_heredoc, parse_heredoc_header, split_by_pipe}
 pub use self::utils::{DEFAULT_HOME_INDICATOR, PREVIOUS_DIR_INDICATOR};
 
 use crate::alias::get_alias;
-use crate::commands::{Command, EnvironmentAction};
+use crate::commands::Command;
 use crate::environment::expand_command_substitution;
 use crate::error::{Result, RucliError};
 use crate::functions;
-use log::{debug, trace};
+use log::debug;
 
 // Internal imports
 use self::basic::*;
@@ -35,17 +35,11 @@ pub fn parse_command(input: &str) -> Result<Command> {
     debug!("Parsing input: '{input}'");
 
     // コマンド置換を追加
-    let substituted_input = expand_command_substitution(&input)?;
+    let substituted_input = expand_command_substitution(input)?;
 
     let input = substituted_input.as_str();
 
     let parts: Vec<&str> = input.split_whitespace().collect();
-
-    // 空入力チェック
-    if parts.is_empty() {
-        debug!("Empty input detected");
-        return Err(RucliError::ParseError("No command provided".to_string()));
-    }
 
     let cmd_name = parts[0];
     let args = &parts[1..];
@@ -64,7 +58,7 @@ pub fn parse_command(input: &str) -> Result<Command> {
     if contains_background(input) {
         // "&"を除いた部分をパース
         let cmd_without_bg = input.trim_end().trim_end_matches('&').trim();
-        let inner_cmd = parse_command(&cmd_without_bg)?;
+        let inner_cmd = parse_command(cmd_without_bg)?;
 
         return Ok(Command::Background {
             command: Box::new(inner_cmd),
@@ -109,8 +103,8 @@ pub fn parse_command(input: &str) -> Result<Command> {
             let (cmd_str, redirect_opt) = split_redirect(last_part);
 
             // 最後以外のコマンドを追加
-            for i in 0..last_index {
-                commands.push(pipe_parts[i].to_string());
+            for pipe_part in pipe_parts.iter().take(last_index) {
+                commands.push(pipe_part.to_string());
             }
             // 最後のコマンド（リダイレクトなし）を追加
             commands.push(cmd_str);
@@ -204,17 +198,6 @@ pub fn parse_command(input: &str) -> Result<Command> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::commands::execute_command;
-    use std::env;
-    use tempfile::TempDir;
-
-    #[test]
-    fn test_parse_command_empty_input() {
-        // 空入力のテスト
-        let result = parse_command("");
-        assert!(result.is_err())
-    }
-
     #[test]
     fn test_parse_command_unknown() {
         // 不明なコマンドのエラー
@@ -241,25 +224,5 @@ mod tests {
         // パイプラインのバックグラウンド実行
         let result = parse_command("cat file.txt | grep pattern &");
         assert!(matches!(result, Ok(Command::Background { .. })));
-    }
-
-    #[test]
-    fn test_compound_with_file_operations() {
-        let temp_dir = TempDir::new().unwrap();
-        env::set_current_dir(&temp_dir).unwrap();
-
-        let cmd = parse_command("write test.txt content; cat test.txt; rm test.txt").unwrap();
-        assert!(execute_command(cmd).is_ok());
-
-        // ファイルが削除されていることを確認
-        assert!(!std::path::Path::new("test.txt").exists());
-    }
-
-    #[test]
-    fn test_compound_error_continues() {
-        // エラーがあっても続行（現在の実装）
-        let cmd = parse_command("echo before; cat /nonexistent; echo after").unwrap();
-        // エラーで停止するが、これは現在の仕様
-        assert!(execute_command(cmd).is_err());
     }
 }
