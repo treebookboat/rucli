@@ -1812,3 +1812,433 @@ fn test_function_with_variables() {
         .success()
         .stdout(predicate::str::contains("Hello, World!"));
 }
+
+#[test]
+fn test_history_command_interactive() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "echo first command\n\
+             echo second command\n\
+             pwd\n\
+             history\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("first command"))
+        .stdout(predicate::str::contains("second command"))
+        .stdout(predicate::str::contains("1  echo first command"))
+        .stdout(predicate::str::contains("2  echo second command"))
+        .stdout(predicate::str::contains("3  pwd"))
+        .stdout(predicate::str::contains("4  history"));
+}
+
+#[test]
+fn test_history_command_empty() {
+    let temp_dir = TempDir::new().unwrap();
+
+    // 新しいセッションでhistoryをすぐ実行
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "history\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("1  history"));
+}
+
+#[test]
+fn test_history_with_multiple_sessions() {
+    let temp_dir = TempDir::new().unwrap();
+
+    // 最初のセッション
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "echo session 1\n\
+             exit\n",
+        )
+        .assert()
+        .success();
+
+    // 2番目のセッション（履歴は独立）
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "echo session 2\n\
+             history\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("1  echo session 2"))
+        .stdout(predicate::str::contains("2  history"))
+        .stdout(predicate::str::contains("session 1").not());
+}
+
+#[test]
+fn test_history_with_errors() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "echo valid command\n\
+             invalid_command_name\n\
+             cat nonexistent.txt\n\
+             history\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("1  echo valid command"))
+        .stdout(predicate::str::contains("2  invalid_command_name"))
+        .stdout(predicate::str::contains("3  cat nonexistent.txt"))
+        .stdout(predicate::str::contains("4  history"))
+        .stderr(predicate::str::contains("unknown command error"))
+        .stderr(predicate::str::contains("No such file"));
+}
+
+#[test]
+fn test_history_with_complex_commands() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "write test.txt content\n\
+             cat test.txt | grep content\n\
+             echo hello > output.txt\n\
+             echo background &\n\
+             if echo test; then echo ok; fi\n\
+             history\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("write test.txt content"))
+        .stdout(predicate::str::contains("cat test.txt | grep content"))
+        .stdout(predicate::str::contains("echo hello > output.txt"))
+        .stdout(predicate::str::contains("echo background &"))
+        .stdout(predicate::str::contains("if echo test; then echo ok; fi"));
+}
+
+#[test]
+fn test_history_formatting() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "echo test\n\
+             history\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        // 番号が右揃えで表示される（4桁幅）
+        .stdout(predicate::str::contains("   1  echo test"))
+        .stdout(predicate::str::contains("   2  history"));
+}
+
+#[test]
+fn test_history_with_variables() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "env VAR=test\n\
+             echo $VAR\n\
+             history\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("1  env VAR=test"))
+        .stdout(predicate::str::contains("2  echo $VAR"))
+        .stdout(predicate::str::contains("3  history"));
+}
+
+#[test]
+fn test_history_with_functions() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "function test() { echo hello; }\n\
+             test arg1 arg2\n\
+             history\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("function test() { echo hello; }"))
+        .stdout(predicate::str::contains("test arg1 arg2"))
+        .stdout(predicate::str::contains("history"));
+}
+
+#[test]
+fn test_history_with_aliases() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "alias ll=ls\n\
+             ll\n\
+             history\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("1  alias ll=ls"))
+        .stdout(predicate::str::contains("2  ll"))
+        .stdout(predicate::str::contains("3  history"));
+}
+
+#[test]
+fn test_history_with_long_commands() {
+    let temp_dir = TempDir::new().unwrap();
+
+    let long_command =
+        "echo this is a very long command with many words to test history formatting";
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(format!(
+            "{}\n\
+             history\n\
+             exit\n",
+            long_command
+        ))
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(long_command));
+}
+
+#[test]
+fn test_history_in_script() {
+    let temp_dir = TempDir::new().unwrap();
+    let script_file = temp_dir.path().join("history_test.rsh");
+
+    fs::write(
+        &script_file,
+        "#!/usr/bin/env rucli\n\
+         echo Script command 1\n\
+         echo Script command 2\n\
+         history\n",
+    )
+    .unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .arg(script_file.to_str().unwrap())
+        .current_dir(&temp_dir)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Script command 1"))
+        .stdout(predicate::str::contains("Script command 2"))
+        .stdout(predicate::str::contains("1  echo Script command 1"))
+        .stdout(predicate::str::contains("2  echo Script command 2"))
+        .stdout(predicate::str::contains("3  history"));
+}
+
+#[test]
+fn test_history_no_duplicates() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "echo same command\n\
+             echo same command\n\
+             echo different command\n\
+             echo same command\n\
+             history\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        // 連続する同じコマンドは1つだけ記録される
+        .stdout(predicate::str::contains("1  echo same command"))
+        .stdout(predicate::str::contains("2  echo different command"))
+        .stdout(predicate::str::contains("3  echo same command"))
+        .stdout(predicate::str::contains("4  history"));
+}
+
+#[test]
+fn test_history_empty_commands_ignored() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "echo first\n\
+             \n\
+             \n\
+             echo second\n\
+             history\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("1  echo first"))
+        .stdout(predicate::str::contains("2  echo second"))
+        .stdout(predicate::str::contains("3  history"));
+}
+
+#[test]
+fn test_history_with_multi_line_commands() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "for i in 1 2 3\n\
+             do\n\
+             echo $i\n\
+             done\n\
+             history\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("1"))
+        .stdout(predicate::str::contains("2"))
+        .stdout(predicate::str::contains("3"))
+        .stdout(predicate::str::contains("for i in 1 2 3; do echo $i; done"))
+        .stdout(predicate::str::contains("history"));
+}
+
+#[test]
+fn test_history_with_command_substitution() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "echo Current: $(pwd)\n\
+             history\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("echo Current: $(pwd)"))
+        .stdout(predicate::str::contains("Current:"));
+}
+
+#[test]
+fn test_history_with_job_control() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "sleep 1 &\n\
+             jobs\n\
+             history\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("[1]"))
+        .stdout(predicate::str::contains("1  sleep 1 &"))
+        .stdout(predicate::str::contains("2  jobs"))
+        .stdout(predicate::str::contains("3  history"));
+}
+
+#[test]
+fn test_history_max_entries() {
+    let temp_dir = TempDir::new().unwrap();
+    let script_file = temp_dir.path().join("many_commands.rsh");
+
+    // 多数のコマンドを生成（履歴の上限テスト）
+    let mut script_content = String::new();
+    script_content.push_str("#!/usr/bin/env rucli\n");
+
+    // 50個のコマンドを生成
+    for i in 1..=50 {
+        script_content.push_str(&format!("echo command {}\n", i));
+    }
+    script_content.push_str("history\n");
+
+    fs::write(&script_file, script_content).unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .arg(script_file.to_str().unwrap())
+        .current_dir(&temp_dir)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("echo command 1"))
+        .stdout(predicate::str::contains("echo command 50"))
+        .stdout(predicate::str::contains("51  history"));
+}
+
+#[test]
+fn test_history_argument_validation() {
+    let temp_dir = TempDir::new().unwrap();
+
+    // historyコマンドは引数を取らない
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "history extra args\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("accepts at most 0 argument"));
+}
+
+#[test]
+fn test_history_persistence_within_session() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "echo early command\n\
+             pwd\n\
+             ls\n\
+             echo another command\n\
+             history\n\
+             echo after history\n\
+             history\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("1  echo early command"))
+        .stdout(predicate::str::contains("2  pwd"))
+        .stdout(predicate::str::contains("3  ls"))
+        .stdout(predicate::str::contains("4  echo another command"))
+        .stdout(predicate::str::contains("5  history"))
+        .stdout(predicate::str::contains("6  echo after history"))
+        .stdout(predicate::str::contains("7  history"));
+}

@@ -6,6 +6,7 @@ mod environment;
 mod error;
 mod functions;
 mod handlers;
+mod history;
 mod job;
 mod parser;
 mod pipeline;
@@ -21,6 +22,7 @@ use std::path::Path;
 use std::time::Instant;
 use std::{env, fs};
 
+use crate::history::add_history;
 use crate::parser::parse_command;
 
 /// ブロック入力を管理する構造体
@@ -336,6 +338,8 @@ fn handle_heredoc_command(input: &str) {
 
 /// 通常のコマンドを処理（既存のコードを移動）
 fn handle_normal_command(input: &str) {
+    add_history(input.to_string());
+
     match parse_command(input) {
         Ok(command) => {
             debug!("Command parsed successfully");

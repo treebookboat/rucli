@@ -160,6 +160,7 @@ pub fn parse_command(input: &str) -> Result<Command> {
         "pwd" => Ok(Command::Pwd),
         "ls" => Ok(Command::Ls),
         "jobs" => Ok(Command::Jobs),
+        "history" => Ok(Command::History),
         "exit" | "quit" => Ok(Command::Exit),
 
         "echo" => parse_echo(args),

@@ -9,6 +9,7 @@ pub mod environment;
 pub mod error;
 pub mod functions;
 pub mod handlers;
+pub mod history;
 pub mod job;
 pub mod parser;
 pub mod pipeline;

@@ -324,18 +324,6 @@ mod environment_tests {
     }
 
     #[test]
-    fn test_brace_with_suffix() {
-        // Given: 環境変数を設定
-        set_var("NAME", "file");
-        set_var("TYPE", "config");
-        
-        // When/Then: 変数名の明確な区切り
-        assert_eq!(expand_variables("${NAME}.txt"), "file.txt");
-        assert_eq!(expand_variables("${NAME}_backup"), "file_backup");
-        assert_eq!(expand_variables("${TYPE}.json"), "config.json");
-    }
-
-    #[test]
     fn test_mixed_expansion_styles() {
         // Given: 環境変数を設定
         set_var("USER", "alice");

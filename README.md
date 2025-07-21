@@ -2,117 +2,73 @@
 
 100 Commit Challenge: Building a feature-rich CLI tool in 100 commits
 
-Progress: 67/100 Commits
+Progress: 71/100 Commits
 
-## Latest Changes (Commit #67)
+## Latest Changes (Commit #71)
 
-- **Script mode multi-line support**: Scripts can now use multi-line control structures
-- Unified processing between interactive and script modes using `BlockInputCollector`
-- Scripts can be written with natural formatting:
-  ```bash
-  for i in 1 2 3
-  do
-      echo "Number: $i"
-  done
-  ```
-- Added error detection for incomplete blocks at end of file
-- Maintained backward compatibility with single-line commands
+- **Command History Basics**: Added comprehensive command history functionality
+- Users can now view command history with the `history` command
+- Automatic history tracking for all commands (interactive and script modes)
+- Smart deduplication prevents consecutive identical commands from cluttering history
+- Clean formatting with right-aligned numbering (up to 1000 commands)
+- Compatible with all existing features: pipelines, redirects, functions, variables, etc.
+- Each session maintains independent history storage
+- Empty commands and whitespace-only input are filtered out
 
 ## Usage
 
+### Command History
+
+**View command history:**
+
+```bash
+> echo hello
+hello
+> pwd
+/home/user
+> ls
+file1.txt file2.txt
+> history
+   1  echo hello
+   2  pwd
+   3  ls
+   4  history
+```
+
+**History features:**
+
+- **Automatic tracking**: All commands are automatically added to history
+- **Smart deduplication**: Consecutive identical commands appear only once
+- **Clean formatting**: Commands numbered with right-aligned formatting
+- **Session-scoped**: Each rucli session has independent history
+- **Error tolerance**: Even commands that fail are recorded in history
+- **Capacity limit**: Stores up to 1000 commands (oldest removed when exceeded)
+
+**Works with all command types:**
+
+```bash
+> echo test | grep t        # Pipelines
+> echo hello > file.txt     # Redirects
+> sleep 5 &                 # Background jobs
+> if pwd; then echo ok; fi  # Control structures
+> function test() { echo hi; }  # Function definitions
+> env VAR=value             # Environment variables
+> history                   # All recorded in history
+```
+
 ### Script Files
 
-Create more readable scripts with proper formatting:
+History works in script mode too:
 
 **example.rsh:**
 
 ```bash
 #!/usr/bin/env rucli
-# Multi-line script example
-
-echo "Starting script..."
-
-# For loops with proper indentation
-for file in *.txt
-do
-    echo "Processing: $file"
-    cat $file | grep ERROR
-done
-
-# If statements across multiple lines
-if pwd
-then
-    echo "Current directory:"
-    pwd
-else
-    echo "Cannot get directory"
-fi
-
-# Function definitions
-function cleanup()
-{
-    echo "Cleaning up..."
-    rm -f *.tmp
-}
-
-# Call the function
-cleanup
+echo "Script starting..."
+pwd
+history  # Shows script commands executed so far
 echo "Script complete!"
 ```
-
-Run with:
-
-```bash
-cargo run -- example.rsh
-# or
-./rucli example.rsh
-```
-
-### Interactive Mode
-
-Interactive mode continues to work as before with multi-line input:
-
-```bash
-> for i in 1 2 3
->> do
->>   echo $i
->> done
-1
-2
-3
-```
-
-### Control Flow Features
-
-**Conditionals:**
-
-```bash
-if condition; then action; else alternative; fi
-```
-
-**While loops:**
-
-```bash
-while condition; do action; done
-```
-
-**For loops:**
-
-```bash
-for var in list; do action; done
-```
-
-**Functions:**
-
-```bash
-function name() { commands; }
-```
-
-**Limitations:**
-
-- Nested control structures are not supported (e.g., for loops inside for loops)
-- Each control structure must be completed before starting another
-- Complex scripts should use functions to organize logic
 
 ### Complete Feature Set
 
@@ -125,8 +81,6 @@ function name() { commands; }
 - Background execution with `&`
 - Pipeline chaining with `|`
 
-_Note: Nested control structures are not supported in the current implementation_
-
 **File Operations:** `cat`, `write`, `cp`, `mv`, `rm`
 
 **Directory Operations:** `ls`, `cd`, `pwd`, `mkdir`
@@ -136,6 +90,8 @@ _Note: Nested control structures are not supported in the current implementation
 **Environment:** `env` - manage environment variables
 
 **Job Control:** `jobs`, `fg` - background job management
+
+**History:** `history` - view command history
 
 **Utilities:** `echo`, `repeat`, `sleep`, `alias`, `version`, `help`, `exit`
 
@@ -156,62 +112,50 @@ _Note: Nested control structures are not supported in the current implementation
 
 ## Examples
 
-### Script Examples
+### History Examples
 
-**backup_script.rsh:**
+**Basic usage:**
 
 ```bash
-#!/usr/bin/env rucli
-# Backup script with functions
-
-function backup_file()
-{
-    if test -f $1
-    then
-        cp $1 $1.bak
-        echo "Backed up: $1"
-    else
-        echo "File not found: $1"
-    fi
-}
-
-# Process all text files
-for file in *.txt
-do
-    backup_file $file
-done
-
-echo "Backup complete"
+> echo "Hello World"
+Hello World
+> pwd
+/home/user/projects
+> echo "Testing history"
+Testing history
+> history
+   1  echo "Hello World"
+   2  pwd
+   3  echo "Testing history"
+   4  history
 ```
 
-**system_check.rsh:**
+**With complex commands:**
+
+```bash
+> write data.txt "sample content"
+File written successfully: data.txt
+> cat data.txt | grep sample
+sample content
+> echo result > output.txt
+> history
+   1  write data.txt "sample content"
+   2  cat data.txt | grep sample
+   3  echo result > output.txt
+   4  history
+```
+
+**Script with history:**
 
 ```bash
 #!/usr/bin/env rucli
-# System check script
+# history_demo.rsh
 
-echo "System Check Report"
-echo "=================="
-
-# Check current directory
-if pwd
-then
-    echo "Working directory: $(pwd)"
-fi
-
-# List files
-echo ""
-echo "Files in directory:"
+echo "Demonstrating history in scripts"
+pwd
 ls
-
-# Check for log files
-echo ""
-if find . *.log
-then
-    echo "Log files found"
-else
-    echo "No log files"
-fi
+echo "Commands executed:"
+history
 ```
 
 ## Project Structure
@@ -219,16 +163,17 @@ fi
 ```
 rucli/
 ├── src/
-│   ├── main.rs         # Entry point (unified script/interactive handling)
-│   ├── commands.rs     # Command definitions
+│   ├── main.rs         # Entry point with history integration
+│   ├── commands.rs     # Command definitions (including History)
 │   ├── parser/         # Modular parser
-│   │   ├── mod.rs      # Public interface
+│   │   ├── mod.rs      # Public interface (history parsing)
 │   │   ├── basic.rs    # Basic commands
 │   │   ├── file_ops.rs # File operations
 │   │   ├── control.rs  # Control structures
 │   │   ├── operators.rs# Operators
 │   │   └── utils.rs    # Utilities
-│   ├── handlers.rs     # Command implementations
+│   ├── handlers.rs     # Command implementations (handle_history)
+│   ├── history.rs      # History storage and management
 │   ├── functions.rs    # Function storage
 │   ├── environment.rs  # Variables & expansions
 │   ├── pipeline.rs     # Pipeline execution
@@ -237,18 +182,19 @@ rucli/
 │   ├── alias.rs        # Command aliases
 │   └── error.rs        # Error handling
 ├── tests/
-│   └── integration_tests.rs
+│   ├── integration_tests.rs  # Comprehensive integration tests
+│   └── cli_tests.rs          # CLI interaction tests
 └── examples/
-    ├── multi_line.rsh  # Multi-line examples
-    ├── functions.rsh   # Function examples
-    └── system.rsh      # System scripts
+    ├── multi_line.rsh    # Multi-line examples
+    ├── functions.rsh     # Function examples
+    └── system.rsh        # System scripts
 ```
 
 ## Testing
 
 ```bash
 cargo test              # Run all tests
-cargo test script       # Test script handling
+cargo test history      # Test history functionality
 cargo clippy           # Check code quality
 cargo run -- test.rsh   # Run a script file
 ```
@@ -259,12 +205,13 @@ cargo run -- test.rsh   # Run a script file
 - **No arithmetic operations**: Mathematical calculations are not supported
 - **Limited pattern matching**: Glob patterns are basic
 - **No arrays or complex data types**: Only simple string variables
+- **Session-only history**: History is not persisted between application restarts
 
 These limitations are due to the string-based parser implementation. A future version with a proper tokenizer and AST-based parser would address these issues.
 
 ## Roadmap
 
-### Phase 3: Advanced Features & Refactoring (46-70)
+### Phase 3: Advanced Features & Refactoring (46-70) - COMPLETED ✅
 
 - ✅ Command pipelines basic (46)
 - ✅ Pipeline error handling (47)
@@ -288,38 +235,49 @@ These limitations are due to the string-based parser implementation. A future ve
 - ✅ Parser refactoring (65)
 - ✅ Interactive input refactoring (66)
 - ✅ Script mode multi-line support (67)
-- Error handling improvements (68)
-- Documentation & flow diagrams (69)
-- Phase 3 integration tests (70)
 
-### Phase 4: Interactive Features (71-85)
+### Phase 4: Interactive Features (71-85) - IN PROGRESS 🚧
 
-- Command history basics (71-72)
-- History persistence & search (73-74)
-- Arrow key navigation (75-76)
-- Tab completion framework (77-78)
-- Syntax highlighting basics (79-80)
-- Prompt customization (81-82)
-- Terminal handling (83-84)
+- ✅ **Command history basics (71)** ← COMPLETED!
+- History persistence (file save/load) (72)
+- History search (Ctrl+R equivalent) (73)
+- History navigation (number-based execution) (74)
+- Arrow key navigation basics (75)
+- Line editing with arrows (76)
+- Tab completion framework (77)
+- Command/file completion (78)
+- Syntax highlighting basics (79)
+- Error highlighting (80)
+- Prompt customization (81)
+- Shell shortcuts (Ctrl+A, Ctrl+E) (82)
+- Terminal resize handling (83)
+- Session management (84)
 - Phase 4 integration (85)
 
-### Phase 5: Extensions & Polish (86-100)
+### Phase 5: Extensions & Polish (86-100) - PLANNED 🔮
 
 - Plugin system architecture (86-87)
-- Configuration file support (88-89)
+- Configuration file support (.ruclirc) (88-89)
 - Performance optimizations (90-91)
-- Advanced patterns (92-93)
+- Advanced glob patterns (92-93)
 - Network capabilities (94-95)
 - Final polish (96-97)
 - Comprehensive documentation (98)
 - Benchmarks & profiling (99)
-- 🎉 Project completion! (100)
+- 🎉 Project completion celebration! (100)
 
-## Next: Error Handling Improvements (Commit #68)
+## Next: History Persistence (Commit #72)
 
-Improve error handling consistency:
+Add file-based history persistence:
 
-- Unify error types and messages
-- Add better error context
-- Improve error recovery in interactive mode
-- Add proper exit codes for different error types
+- Save history to ~/.rucli_history on exit
+- Load previous history on startup
+- Configurable history file location
+- Handle file permissions and errors gracefully
+- Merge session history with file history
+
+---
+
+**Progress: 71/100 commits completed** 🎯
+**Current Phase: Interactive Features (Phase 4)** ⚡
+**Next Milestone: History Persistence** 💾

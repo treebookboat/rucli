@@ -3,6 +3,7 @@
 use crate::alias::{list_aliases, set_alias};
 use crate::environment::{get_var, list_all_vars, set_var};
 use crate::error::{Result, RucliError};
+use crate::history::get_history_list;
 use crate::{functions, job};
 use log::{debug, info, warn};
 use regex::Regex;
@@ -782,6 +783,22 @@ pub fn handle_function_call(name: &str, args: &[String]) -> Result<String> {
             "function '{name}' not found"
         )))
     }
+}
+
+/// 履歴コマンドのハンドラー
+pub fn handle_history() -> String {
+    let history_list = get_history_list();
+
+    // リストが空なら早期終了
+    if history_list.is_empty() {
+        return "No history".to_string();
+    }
+
+    history_list
+        .iter()
+        .map(|(num, cmd)| format!("{num:4}  {cmd}"))
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 /// プログラムを終了する

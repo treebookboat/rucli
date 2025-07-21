@@ -97,6 +97,8 @@ pub enum Command {
     FunctionCall { name: String, args: Vec<String> },
     /// 複数のコマンドを順次実行
     Compound { commands: Vec<Command> },
+    /// 履歴を表示
+    History,
     /// プログラムを終了
     Exit,
 }
@@ -279,6 +281,13 @@ pub const COMMANDS: &[CommandInfo] = &[
         min_args: 0,
         max_args: Some(1),
     },
+    CommandInfo {
+        name: "history",
+        description: "Show command history",
+        usage: "history",
+        min_args: 0,
+        max_args: Some(0),
+    },
 ];
 
 impl Command {
@@ -370,6 +379,7 @@ impl Command {
             Command::Ls => self,
             Command::Jobs => self,
             Command::Exit => self,
+            Command::History => self,
             Command::Sleep { .. } => self,
             Command::Fg { .. } => self,
             Command::Environment { .. } => self,
@@ -544,6 +554,7 @@ pub fn execute_command_internal(command: Command, input: Option<&str>) -> Result
             }
             Ok(String::new())
         }
+        Command::History => Ok(handle_history()),
         Command::Exit => {
             handle_exit();
             Ok(String::new())
