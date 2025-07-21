@@ -258,20 +258,38 @@ fn run_script_file(filename: &str) -> Result<(), Box<dyn std::error::Error>> {
     // ファイル全体を読み込む
     let contents = fs::read_to_string(filename)?;
 
-    // 内容を行ごとに分割
-    let lines = contents.lines();
+    let mut block_collector = BlockInputCollector::new();
 
-    // 各行を順番に処理
-    for line in lines {
-        // 行の前処理
+    for line in contents.lines() {
         let line = line.trim();
 
-        // シバンコメント。空行スキップ
+        // シバンコメント、空行スキップ
         if line.is_empty() || line.starts_with('#') {
             continue;
         }
 
-        handle_normal_command(line);
+        // すべての行をBlockInputCollectorに渡す（インタラクティブと同じ）
+        if !block_collector.add_line(line) {
+            // 完了したら実行
+            let complete_input = block_collector.get_complete_command();
+
+            if !complete_input.trim().is_empty() {
+                if parser::contains_heredoc(&complete_input) {
+                    handle_heredoc_command(&complete_input);
+                } else {
+                    handle_normal_command(&complete_input);
+                }
+            }
+
+            // リセット
+            block_collector = BlockInputCollector::new();
+        }
+    }
+
+    // ファイル終端で未完了のブロックがある場合
+    if block_collector.depth > 0 || !block_collector.pending_keywords.is_empty() {
+        eprintln!("Error: Incomplete block structure at end of file");
+        std::process::exit(1);
     }
 
     Ok(())

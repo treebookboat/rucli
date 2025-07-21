@@ -2,28 +2,77 @@
 
 100 Commit Challenge: Building a feature-rich CLI tool in 100 commits
 
-Progress: 66/100 Commits
+Progress: 67/100 Commits
 
-## Latest Changes (Commit #66)
+## Latest Changes (Commit #67)
 
-- **Interactive input refactoring**: Simplified multi-line input handling
-- Removed unused `BlockState` enum - now uses simple boolean return
-- Fixed nested loop processing with proper depth tracking
-- Added missing keyword handlers:
-  - `then` for if statements
-  - `function`, `{`, `}` for function definitions
-  - `else` for if-else statements
-- Improved code quality by fixing all clippy warnings
-- Updated all tests to match new API
+- **Script mode multi-line support**: Scripts can now use multi-line control structures
+- Unified processing between interactive and script modes using `BlockInputCollector`
+- Scripts can be written with natural formatting:
+  ```bash
+  for i in 1 2 3
+  do
+      echo "Number: $i"
+  done
+  ```
+- Added error detection for incomplete blocks at end of file
+- Maintained backward compatibility with single-line commands
 
 ## Usage
 
-### Interactive Multi-line Input
+### Script Files
 
-Execute commands with natural multi-line syntax:
+Create more readable scripts with proper formatting:
+
+**example.rsh:**
 
 ```bash
-# For loops
+#!/usr/bin/env rucli
+# Multi-line script example
+
+echo "Starting script..."
+
+# For loops with proper indentation
+for file in *.txt
+do
+    echo "Processing: $file"
+    cat $file | grep ERROR
+done
+
+# If statements across multiple lines
+if pwd
+then
+    echo "Current directory:"
+    pwd
+else
+    echo "Cannot get directory"
+fi
+
+# Function definitions
+function cleanup()
+{
+    echo "Cleaning up..."
+    rm -f *.tmp
+}
+
+# Call the function
+cleanup
+echo "Script complete!"
+```
+
+Run with:
+
+```bash
+cargo run -- example.rsh
+# or
+./rucli example.rsh
+```
+
+### Interactive Mode
+
+Interactive mode continues to work as before with multi-line input:
+
+```bash
 > for i in 1 2 3
 >> do
 >>   echo $i
@@ -31,48 +80,36 @@ Execute commands with natural multi-line syntax:
 1
 2
 3
-
-# If-then-else statements
-> if pwd
->> then
->>   echo "Directory exists"
->> else
->>   echo "Error"
->> fi
-
-# Function definitions
-> function greet()
->> {
->>   echo Hello
->>   echo World
->> }
 ```
-
-**Note**: Nested control structures (loops within loops) are not currently supported due to parser limitations. Each control structure must be completed before starting another.
 
 ### Control Flow Features
 
 **Conditionals:**
+
 ```bash
 if condition; then action; else alternative; fi
 ```
 
 **While loops:**
+
 ```bash
 while condition; do action; done
 ```
 
 **For loops:**
+
 ```bash
 for var in list; do action; done
 ```
 
 **Functions:**
+
 ```bash
 function name() { commands; }
 ```
 
 **Limitations:**
+
 - Nested control structures are not supported (e.g., for loops inside for loops)
 - Each control structure must be completed before starting another
 - Complex scripts should use functions to organize logic
@@ -80,6 +117,7 @@ function name() { commands; }
 ### Complete Feature Set
 
 **Control Flow:**
+
 - If-then-else conditionals
 - While loops
 - For loops
@@ -87,7 +125,7 @@ function name() { commands; }
 - Background execution with `&`
 - Pipeline chaining with `|`
 
-*Note: Nested control structures are not supported in the current implementation*
+_Note: Nested control structures are not supported in the current implementation_
 
 **File Operations:** `cat`, `write`, `cp`, `mv`, `rm`
 
@@ -118,39 +156,62 @@ function name() { commands; }
 
 ## Examples
 
-### Basic Scripts
-
-**simple_loop.rsh:**
-```bash
-#!/usr/bin/env rucli
-# Simple for loop example
-
-for file in *.txt
-do
-    echo "Processing: $file"
-    cat $file | grep ERROR
-done
-```
+### Script Examples
 
 **backup_script.rsh:**
+
 ```bash
 #!/usr/bin/env rucli
-# Use functions to organize logic
+# Backup script with functions
 
-function backup_file() {
-    cp $1 $1.bak
-    echo "Backed up: $1"
+function backup_file()
+{
+    if test -f $1
+    then
+        cp $1 $1.bak
+        echo "Backed up: $1"
+    else
+        echo "File not found: $1"
+    fi
 }
 
-function process_directory() {
-    for file in *.txt
-    do
-        backup_file $file
-    done
-}
+# Process all text files
+for file in *.txt
+do
+    backup_file $file
+done
 
-# Execute
-process_directory
+echo "Backup complete"
+```
+
+**system_check.rsh:**
+
+```bash
+#!/usr/bin/env rucli
+# System check script
+
+echo "System Check Report"
+echo "=================="
+
+# Check current directory
+if pwd
+then
+    echo "Working directory: $(pwd)"
+fi
+
+# List files
+echo ""
+echo "Files in directory:"
+ls
+
+# Check for log files
+echo ""
+if find . *.log
+then
+    echo "Log files found"
+else
+    echo "No log files"
+fi
 ```
 
 ## Project Structure
@@ -158,7 +219,7 @@ process_directory
 ```
 rucli/
 ├── src/
-│   ├── main.rs         # Entry point (refactored input handling)
+│   ├── main.rs         # Entry point (unified script/interactive handling)
 │   ├── commands.rs     # Command definitions
 │   ├── parser/         # Modular parser
 │   │   ├── mod.rs      # Public interface
@@ -178,23 +239,33 @@ rucli/
 ├── tests/
 │   └── integration_tests.rs
 └── examples/
+    ├── multi_line.rsh  # Multi-line examples
     ├── functions.rsh   # Function examples
-    ├── loops.rsh       # For/while loops
-    └── scripts.rsh     # General scripts
+    └── system.rsh      # System scripts
 ```
 
 ## Testing
 
 ```bash
 cargo test              # Run all tests
-cargo test nested       # Test nested structures
-cargo clippy           # Check code quality (now clean!)
-cargo run -- test.rsh   # Run a script
+cargo test script       # Test script handling
+cargo clippy           # Check code quality
+cargo run -- test.rsh   # Run a script file
 ```
+
+## Known Limitations
+
+- **No nested control structures**: Loops and conditionals cannot be nested within each other
+- **No arithmetic operations**: Mathematical calculations are not supported
+- **Limited pattern matching**: Glob patterns are basic
+- **No arrays or complex data types**: Only simple string variables
+
+These limitations are due to the string-based parser implementation. A future version with a proper tokenizer and AST-based parser would address these issues.
 
 ## Roadmap
 
 ### Phase 3: Advanced Features & Refactoring (46-70)
+
 - ✅ Command pipelines basic (46)
 - ✅ Pipeline error handling (47)
 - ✅ Pipeline performance optimization (48)
@@ -216,12 +287,13 @@ cargo run -- test.rsh   # Run a script
 - ✅ Interactive multi-line input (64)
 - ✅ Parser refactoring (65)
 - ✅ Interactive input refactoring (66)
-- Error handling improvements (67)
-- Documentation & flow diagrams (68)
-- Test organization (69)
+- ✅ Script mode multi-line support (67)
+- Error handling improvements (68)
+- Documentation & flow diagrams (69)
 - Phase 3 integration tests (70)
 
 ### Phase 4: Interactive Features (71-85)
+
 - Command history basics (71-72)
 - History persistence & search (73-74)
 - Arrow key navigation (75-76)
@@ -232,6 +304,7 @@ cargo run -- test.rsh   # Run a script
 - Phase 4 integration (85)
 
 ### Phase 5: Extensions & Polish (86-100)
+
 - Plugin system architecture (86-87)
 - Configuration file support (88-89)
 - Performance optimizations (90-91)
@@ -242,10 +315,11 @@ cargo run -- test.rsh   # Run a script
 - Benchmarks & profiling (99)
 - 🎉 Project completion! (100)
 
-## Next: Error Handling Improvements (Commit #67)
+## Next: Error Handling Improvements (Commit #68)
 
 Improve error handling consistency:
+
 - Unify error types and messages
 - Add better error context
 - Improve error recovery in interactive mode
-- Add proper error codes for script mode
+- Add proper exit codes for different error types
