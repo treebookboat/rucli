@@ -1,6 +1,10 @@
 //! パイプラインに関連する関数を提供するモジュール
 
-use crate::{commands::execute_command_internal, error::Result, parser::parse_command};
+use crate::{
+    commands::{CommandResult, execute_command_internal},
+    error::Result,
+    parser::parse_command,
+};
 
 /// パイプラインで繋がれた複数のコマンドを表現
 pub struct PipelineCommand {
@@ -23,7 +27,6 @@ impl PipelineCommand {
 pub struct PipelineExecutor;
 
 impl PipelineExecutor {
-    // 文字列として結果を返す
     pub fn execute(pipeline: &PipelineCommand) -> Result<String> {
         let commands = pipeline.commands();
 
@@ -40,7 +43,16 @@ impl PipelineExecutor {
             } else {
                 Some(previous_output.as_str())
             };
-            previous_output = execute_command_internal(cmd, input)?;
+
+            match execute_command_internal(cmd, input)? {
+                CommandResult::Continue(output) => {
+                    previous_output = output;
+                }
+                CommandResult::Exit => {
+                    // パイプライン内でのExitは特殊扱い
+                    previous_output = String::new();
+                }
+            }
         }
 
         Ok(previous_output)

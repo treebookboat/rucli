@@ -2,78 +2,77 @@
 
 100 Commit Challenge: Building a feature-rich CLI tool in 100 commits
 
-Progress: 71/100 Commits
+Progress: 72/100 Commits
 
-## Latest Changes (Commit #71)
+## Latest Changes (Commit #72)
 
-- **Command History Basics**: Added comprehensive command history functionality
-- Users can now view command history with the `history` command
-- Automatic history tracking for all commands (interactive and script modes)
-- Smart deduplication prevents consecutive identical commands from cluttering history
-- Clean formatting with right-aligned numbering (up to 1000 commands)
-- Compatible with all existing features: pipelines, redirects, functions, variables, etc.
-- Each session maintains independent history storage
-- Empty commands and whitespace-only input are filtered out
+- **History Persistence**: Command history is now saved between sessions!
+- History file stored at `.rucli_history` in current directory
+- Customizable location via `RUCLI_HISTFILE` environment variable
+- Automatic loading on startup and saving on exit
+- Graceful shutdown handling - removed immediate `process::exit(0)`
+- Added `CommandResult` enum for proper exit signal propagation
+- History preserved even when using `exit` command
 
 ## Usage
 
-### Command History
+### History Persistence
 
-**View command history:**
-
+**Default behavior:**
 ```bash
-> echo hello
-hello
+$ rucli
+> echo first session
+first session
 > pwd
 /home/user
-> ls
-file1.txt file2.txt
+> exit
+good bye
+
+$ rucli  # New session
 > history
-   1  echo hello
+   1  echo first session
    2  pwd
-   3  ls
+   3  exit
    4  history
 ```
 
-**History features:**
-
-- **Automatic tracking**: All commands are automatically added to history
-- **Smart deduplication**: Consecutive identical commands appear only once
-- **Clean formatting**: Commands numbered with right-aligned formatting
-- **Session-scoped**: Each rucli session has independent history
-- **Error tolerance**: Even commands that fail are recorded in history
-- **Capacity limit**: Stores up to 1000 commands (oldest removed when exceeded)
-
-**Works with all command types:**
-
+**Custom history file:**
 ```bash
-> echo test | grep t        # Pipelines
-> echo hello > file.txt     # Redirects
-> sleep 5 &                 # Background jobs
-> if pwd; then echo ok; fi  # Control structures
-> function test() { echo hi; }  # Function definitions
-> env VAR=value             # Environment variables
-> history                   # All recorded in history
+$ RUCLI_HISTFILE=/tmp/my_history rucli
+> echo custom location
+custom location
+> exit
+
+$ RUCLI_HISTFILE=/tmp/my_history rucli
+> history  # Previous commands preserved
+   1  echo custom location
+   2  exit
+   3  history
 ```
 
-### Script Files
-
-History works in script mode too:
-
-**example.rsh:**
-
+**Per-project history:**
+Each directory maintains its own `.rucli_history` file:
 ```bash
-#!/usr/bin/env rucli
-echo "Script starting..."
-pwd
-history  # Shows script commands executed so far
-echo "Script complete!"
+$ cd project1 && rucli
+> echo project1 command
+> exit
+
+$ cd project2 && rucli
+> echo project2 command
+> history  # Only project2 history
+   1  echo project2 command
+   2  history
 ```
 
 ### Complete Feature Set
 
-**Control Flow:**
+**Interactive Features:**
+- Command history with `history` command
+- History persistence between sessions
+- Automatic deduplication of consecutive commands
+- Up to 1000 commands stored
 
+**Control Flow:**
 - If-then-else conditionals
 - While loops
 - For loops
@@ -87,11 +86,12 @@ echo "Script complete!"
 
 **Search Operations:** `find`, `grep`
 
-**Environment:** `env` - manage environment variables
+**Environment:** 
+- `env` - manage environment variables
+- Variable expansion with `$VAR` and `${VAR}`
+- Command substitution with `$(command)`
 
 **Job Control:** `jobs`, `fg` - background job management
-
-**History:** `history` - view command history
 
 **Utilities:** `echo`, `repeat`, `sleep`, `alias`, `version`, `help`, `exit`
 
@@ -112,50 +112,47 @@ echo "Script complete!"
 
 ## Examples
 
-### History Examples
+### History Persistence Examples
 
-**Basic usage:**
-
+**Session continuity:**
 ```bash
-> echo "Hello World"
-Hello World
-> pwd
-/home/user/projects
-> echo "Testing history"
-Testing history
+# Session 1
+$ rucli
+> alias ll=ls
+> function greet() { echo Hello, $1!; }
+> greet World
+Hello, World!
+> exit
+
+# Session 2 - aliases need to be redefined, but history persists
+$ rucli
 > history
-   1  echo "Hello World"
-   2  pwd
-   3  echo "Testing history"
-   4  history
+   1  alias ll=ls
+   2  function greet() { echo Hello, $1!; }
+   3  greet World
+   4  exit
+   5  history
+> greet User  # Function needs to be redefined
+unknown command error: greet User
 ```
 
-**With complex commands:**
-
+**Complex workflow with persistence:**
 ```bash
-> write data.txt "sample content"
-File written successfully: data.txt
-> cat data.txt | grep sample
-sample content
-> echo result > output.txt
-> history
-   1  write data.txt "sample content"
-   2  cat data.txt | grep sample
-   3  echo result > output.txt
-   4  history
-```
+$ rucli
+> for i in 1 2 3; do echo Processing $i; done
+Processing 1
+Processing 2
+Processing 3
+> write results.txt "Analysis complete"
+File written successfully: results.txt
+> exit
 
-**Script with history:**
-
-```bash
-#!/usr/bin/env rucli
-# history_demo.rsh
-
-echo "Demonstrating history in scripts"
-pwd
-ls
-echo "Commands executed:"
-history
+# Later session
+$ rucli
+> history | grep write
+   2  write results.txt "Analysis complete"
+> cat results.txt
+Analysis complete
 ```
 
 ## Project Structure
@@ -163,17 +160,17 @@ history
 ```
 rucli/
 ├── src/
-│   ├── main.rs         # Entry point with history integration
-│   ├── commands.rs     # Command definitions (including History)
+│   ├── main.rs         # Entry point with history persistence
+│   ├── commands.rs     # Command definitions with CommandResult
 │   ├── parser/         # Modular parser
-│   │   ├── mod.rs      # Public interface (history parsing)
+│   │   ├── mod.rs      # Public interface
 │   │   ├── basic.rs    # Basic commands
 │   │   ├── file_ops.rs # File operations
 │   │   ├── control.rs  # Control structures
 │   │   ├── operators.rs# Operators
 │   │   └── utils.rs    # Utilities
-│   ├── handlers.rs     # Command implementations (handle_history)
-│   ├── history.rs      # History storage and management
+│   ├── handlers.rs     # Command implementations
+│   ├── history.rs      # History with persistence
 │   ├── functions.rs    # Function storage
 │   ├── environment.rs  # Variables & expansions
 │   ├── pipeline.rs     # Pipeline execution
@@ -182,7 +179,7 @@ rucli/
 │   ├── alias.rs        # Command aliases
 │   └── error.rs        # Error handling
 ├── tests/
-│   ├── integration_tests.rs  # Comprehensive integration tests
+│   ├── integration_tests.rs  # Comprehensive tests
 │   └── cli_tests.rs          # CLI interaction tests
 └── examples/
     ├── multi_line.rsh    # Multi-line examples
@@ -199,85 +196,73 @@ cargo clippy           # Check code quality
 cargo run -- test.rsh   # Run a script file
 ```
 
+## Environment Variables
+
+- `RUCLI_HISTFILE` - Custom history file location (default: `./.rucli_history`)
+- `HOME` - Used for `cd ~` command
+- `OLDPWD` - Previous directory for `cd -`
+
 ## Known Limitations
 
+- **Session-specific state**: Aliases and functions are not persisted between sessions
 - **No nested control structures**: Loops and conditionals cannot be nested within each other
 - **No arithmetic operations**: Mathematical calculations are not supported
 - **Limited pattern matching**: Glob patterns are basic
 - **No arrays or complex data types**: Only simple string variables
-- **Session-only history**: History is not persisted between application restarts
-
-These limitations are due to the string-based parser implementation. A future version with a proper tokenizer and AST-based parser would address these issues.
 
 ## Roadmap
 
 ### Phase 3: Advanced Features & Refactoring (46-70) - COMPLETED ✅
 
-- ✅ Command pipelines basic (46)
-- ✅ Pipeline error handling (47)
-- ✅ Pipeline performance optimization (48)
-- ✅ Output redirection (>) (49)
-- ✅ Append redirection (>>) (50)
-- ✅ Input redirection (<) (51)
-- ✅ Background processes (&) (52)
-- ✅ Job control (jobs, fg) (53)
-- ✅ Environment variables (env) (54)
-- ✅ Variable expansion ($VAR, ${VAR}) (55)
-- ✅ Command substitution ($()) (56)
-- ✅ Here documents (<<) (57)
-- ✅ Script file execution (58)
-- ✅ If conditions (if-then-else-fi) (59)
-- ✅ While loops (while-do-done) (60)
-- ✅ For loops (for-in-do-done) (61)
-- ✅ Functions (62)
-- ✅ Multiple commands (;) (63)
-- ✅ Interactive multi-line input (64)
-- ✅ Parser refactoring (65)
-- ✅ Interactive input refactoring (66)
-- ✅ Script mode multi-line support (67)
+✅ All 25 commits completed!
 
-### Phase 4: Interactive Features (71-85) - IN PROGRESS 🚧
+### Phase 3: Advanced Features (46-70) - COMPLETED ✅
 
-- ✅ **Command history basics (71)** ← COMPLETED!
-- History persistence (file save/load) (72)
+✅ All 25 commits completed!
+
+### Phase 4: Interactive Features (71-88) - IN PROGRESS 🚧
+
+- ✅ Command history basics (71)
+- ✅ **History persistence (72)** ← NEW!
 - History search (Ctrl+R equivalent) (73)
 - History navigation (number-based execution) (74)
-- Arrow key navigation basics (75)
-- Line editing with arrows (76)
-- Tab completion framework (77)
-- Command/file completion (78)
-- Syntax highlighting basics (79)
-- Error highlighting (80)
-- Prompt customization (81)
-- Shell shortcuts (Ctrl+A, Ctrl+E) (82)
-- Terminal resize handling (83)
-- Session management (84)
-- Phase 4 integration (85)
+- History expansion (!n, !!, !string) (75)
+- Arrow key navigation basics (76)
+- Line editing with arrows (77)
+- Command line cursor movement (78)
+- Tab completion framework (79)
+- Command/file completion (80)
+- Syntax highlighting basics (81)
+- Error highlighting (82)
+- Prompt customization (83)
+- Shell shortcuts (Ctrl+A, Ctrl+E) (84)
+- Terminal resize handling (85)
+- Session management (86)
+- Configuration loading (.ruclirc) (87)
+- Phase 4 integration (88)
 
-### Phase 5: Extensions & Polish (86-100) - PLANNED 🔮
+### Phase 5: Extensions & Polish (89-100) - PLANNED 🔮
 
-- Plugin system architecture (86-87)
-- Configuration file support (.ruclirc) (88-89)
-- Performance optimizations (90-91)
-- Advanced glob patterns (92-93)
-- Network capabilities (94-95)
-- Final polish (96-97)
+- Plugin system architecture (89-90)
+- Performance optimizations (91-92)
+- Advanced glob patterns (93-94)
+- Network capabilities (95-96)
+- Final polish (97)
 - Comprehensive documentation (98)
 - Benchmarks & profiling (99)
 - 🎉 Project completion celebration! (100)
 
-## Next: History Persistence (Commit #72)
+## Next: History Search (Commit #73)
 
-Add file-based history persistence:
+Implement interactive history search:
 
-- Save history to ~/.rucli_history on exit
-- Load previous history on startup
-- Configurable history file location
-- Handle file permissions and errors gracefully
-- Merge session history with file history
+- Search through history with a query
+- Filter commands containing specific text
+- Navigate through search results
+- Foundation for future Ctrl+R functionality
 
 ---
 
-**Progress: 71/100 commits completed** 🎯
+**Progress: 72/100 commits completed** 🎯
 **Current Phase: Interactive Features (Phase 4)** ⚡
-**Next Milestone: History Persistence** 💾
+**Next Milestone: History Search** 🔍

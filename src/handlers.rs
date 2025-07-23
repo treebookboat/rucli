@@ -13,7 +13,7 @@ use std::time::Duration;
 use std::{env, fs, io, os::unix::fs::PermissionsExt, path::Path, process};
 
 use crate::commands::{
-    COMMANDS, Command, EnvironmentAction, execute_command, execute_command_internal,
+    COMMANDS, Command, CommandResult, EnvironmentAction, execute_command, execute_command_internal,
 };
 use crate::parser::{DEFAULT_HOME_INDICATOR, PREVIOUS_DIR_INDICATOR};
 
@@ -766,10 +766,15 @@ pub fn handle_function_call(name: &str, args: &[String]) -> Result<String> {
             }
         }
 
-        let cmd_str = execute_command_internal(cmd, None);
+        let cmd_str = match execute_command_internal(cmd, None)? {
+            CommandResult::Continue(output) => output,
+            CommandResult::Exit => {
+                // 関数内でのExitは無視して空文字列を返す
+                String::new()
+            }
+        };
 
         // 引数のクリーンアップ
-        // クリーンアップ
         for i in 0..args.len() {
             let var_name = (i + 1).to_string();
             unsafe {
@@ -777,7 +782,7 @@ pub fn handle_function_call(name: &str, args: &[String]) -> Result<String> {
             }
         }
 
-        cmd_str
+        Ok(cmd_str)
     } else {
         Err(RucliError::UnknownCommand(format!(
             "function '{name}' not found"
@@ -805,6 +810,4 @@ pub fn handle_history() -> String {
 pub fn handle_exit() {
     info!("Exiting rucli");
     println!("good bye");
-    // 0が正常終了、1以上がエラー
-    process::exit(0);
 }

@@ -1,5 +1,9 @@
+use crate::error::Result;
+use log::debug;
 use once_cell::sync::Lazy;
 use std::collections::VecDeque;
+use std::io::{BufRead, BufReader, Write};
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 // グローバルな履歴インスタンス
@@ -51,8 +55,13 @@ impl History {
     }
 
     // 履歴リストの削除
-    pub fn clear(&mut self) {
+    pub fn _clear(&mut self) {
         self.commands.clear();
+    }
+
+    // 履歴を丸ごと置き換える
+    pub fn set_commands(&mut self, commands: VecDeque<String>) {
+        self.commands = commands;
     }
 }
 
@@ -68,8 +77,119 @@ pub fn get_history_list() -> Vec<(usize, String)> {
 }
 
 /// 履歴をクリア
-pub fn clear_history() {
-    HISTORY.lock().unwrap().clear();
+pub fn _clear_history() {
+    HISTORY.lock().unwrap()._clear();
+}
+
+// 現在の履歴を指定ファイル、もしくはデフォルトファイルに保存
+pub fn save_history_to_file(file_path: Option<&str>) -> Result<()> {
+    // ファイルパスの決定
+    let file_path = if let Some(path) = file_path {
+        PathBuf::from(path)
+    } else {
+        get_default_history_file()
+    };
+
+    // 親ディレクトリの存在確認と作成
+    if let Some(parent_dir) = file_path.parent() {
+        ensure_history_dir_exists(parent_dir)?;
+    }
+
+    //  現在の履歴データを取得
+    let history_list = get_history_list();
+
+    // ファイルに書き込み
+    let mut file = std::fs::File::create(&file_path)?;
+    for (_, cmd) in history_list {
+        writeln!(file, "{cmd}")?;
+    }
+
+    // ファイルの明示的なフラッシュで即時変更反映
+    file.flush()?;
+
+    // 成功ログの出力
+    debug!("History saved to: {}", file_path.display());
+
+    Ok(())
+}
+
+// ファイルから履歴を読み込む
+pub fn load_history_from_file(file_path: Option<&str>) -> Result<()> {
+    // ファイルパスの決定
+    let file_path = if let Some(path) = file_path {
+        PathBuf::from(path)
+    } else {
+        get_default_history_file()
+    };
+
+    // ファイル存在確認
+    if !file_path.exists() {
+        debug!("No {} file", file_path.display());
+        return Ok(());
+    }
+
+    // ファイルの読み込み準備
+    let file = std::fs::File::open(&file_path)?;
+    let reader = BufReader::new(file);
+    let mut file_history = Vec::new();
+
+    for line_result in reader.lines() {
+        match line_result {
+            Ok(line) => {
+                let trimmed = line.trim();
+
+                // 空行はスキップ
+                if trimmed.is_empty() {
+                    continue;
+                }
+                file_history.push(trimmed.to_string());
+            }
+            Err(e) => {
+                debug!("Failed to read line from history file: {e}");
+                continue;
+            }
+        }
+    }
+
+    set_history_from_vec(file_history);
+
+    // 成功ログの出力
+    debug!("History loaded from: {}", file_path.display());
+
+    Ok(())
+}
+
+// 履歴にコマンドを保存
+fn set_history_from_vec(commands: Vec<String>) {
+    let mut history = HISTORY.lock().unwrap();
+    history.set_commands(VecDeque::from(commands));
+}
+
+// 環境変数またはカレントディレクトリ/.rucli_historyを返す
+pub fn get_default_history_file() -> PathBuf {
+    // 環境変数RUCLI_HISTFILEをチェック
+    if let Ok(hist_path) = std::env::var("RUCLI_HISTFILE") {
+        return PathBuf::from(hist_path);
+    }
+
+    // デフォルトはカレントディレクトリの.rucli_history
+    PathBuf::from(".rucli_history")
+}
+
+// 必要に応じて親ディレクトリを作成
+fn ensure_history_dir_exists(dir_path: &Path) -> Result<()> {
+    // ディレクトリの存在確認
+    if dir_path.exists() {
+        return Ok(());
+    }
+
+    // ディレクトリの作成
+    std::fs::create_dir_all(dir_path)?;
+
+    // 作成成功ログの出力
+    debug!("create history directory : {}", dir_path.display());
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -83,7 +203,7 @@ mod tests {
     #[test]
     fn test_add_history() {
         let _guard = TEST_MUTEX.lock().unwrap();
-        clear_history();
+        _clear_history();
 
         add_history("test_add_1".to_string());
         add_history("test_add_2".to_string());
@@ -97,7 +217,7 @@ mod tests {
     #[test]
     fn test_no_duplicate() {
         let _guard = TEST_MUTEX.lock().unwrap();
-        clear_history();
+        _clear_history();
 
         add_history("test_dup".to_string());
         let count_before = get_history_list().len();
@@ -128,7 +248,7 @@ mod tests {
         add_history("test_clear_1".to_string());
         add_history("test_clear_2".to_string());
 
-        clear_history();
+        _clear_history();
         let list = get_history_list();
         assert_eq!(list.len(), 0);
     }
@@ -136,7 +256,7 @@ mod tests {
     #[test]
     fn test_history_order() {
         let _guard = TEST_MUTEX.lock().unwrap();
-        clear_history();
+        _clear_history();
 
         add_history("first".to_string());
         add_history("second".to_string());
@@ -158,7 +278,7 @@ mod tests {
     #[test]
     fn test_max_size() {
         let _guard = TEST_MUTEX.lock().unwrap();
-        clear_history();
+        _clear_history();
 
         // 1001個追加
         for i in 0..1001 {

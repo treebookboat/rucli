@@ -16,6 +16,7 @@ use commands::execute_command;
 use log::{debug, error, info};
 
 use env_logger::Builder;
+use history::{load_history_from_file, save_history_to_file};
 use log::LevelFilter;
 use std::io::{self, Write};
 use std::path::Path;
@@ -196,11 +197,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         info!("Debug mode enabled");
     }
 
+    if let Err(e) = load_history_from_file(None) {
+        debug!("Failed to load history: {e}");
+    }
+
     // 実行モードの分岐
     if let Some(filename) = script_file {
         run_script_file(filename)?;
     } else {
         run_interactive_mode()?;
+    }
+
+    // 履歴を保存
+    if let Err(e) = save_history_to_file(None) {
+        debug!("Failed to save history: {e}");
+    } else {
+        debug!("succeed to save history");
     }
 
     Ok(())
@@ -241,13 +253,16 @@ fn run_interactive_mode() -> Result<(), Box<dyn std::error::Error>> {
             continue;
         }
 
-        // 既存の処理（ヒアドキュメントチェックなど）
         if parser::contains_heredoc(&complete_input) {
-            handle_heredoc_command(&complete_input);
-        } else {
-            handle_normal_command(&complete_input);
+            if handle_heredoc_command(&complete_input) {
+                break; // Exitコマンドでループを終了
+            }
+        } else if handle_normal_command(&complete_input) {
+            break; // Exitコマンドでループを終了
         }
     }
+
+    Ok(())
 }
 
 fn run_script_file(filename: &str) -> Result<(), Box<dyn std::error::Error>> {
@@ -276,10 +291,13 @@ fn run_script_file(filename: &str) -> Result<(), Box<dyn std::error::Error>> {
             let complete_input = block_collector.get_complete_command();
 
             if !complete_input.trim().is_empty() {
+                // この行を追加
                 if parser::contains_heredoc(&complete_input) {
-                    handle_heredoc_command(&complete_input);
-                } else {
-                    handle_normal_command(&complete_input);
+                    if handle_heredoc_command(&complete_input) {
+                        break;
+                    }
+                } else if handle_normal_command(&complete_input) {
+                    break;
                 }
             }
 
@@ -311,7 +329,8 @@ fn read_input() -> String {
 }
 
 /// ヒアドキュメント付きコマンドを処理
-fn handle_heredoc_command(input: &str) {
+fn handle_heredoc_command(input: &str) -> bool {
+    // boolを返すように変更
     if let Some((cmd_str, delimiter, strip_indent)) = parser::parse_heredoc_header(input) {
         debug!(
             "Heredoc header: cmd='{cmd_str}', delimiter='{delimiter}', strip_indent={strip_indent}"
@@ -332,39 +351,25 @@ fn handle_heredoc_command(input: &str) {
         };
 
         // コマンドを実行
-        execute_with_input(&cmd_str, &final_content);
+        return execute_with_input(&cmd_str, &final_content); // bool を返す
     }
+    false
 }
 
-/// 通常のコマンドを処理（既存のコードを移動）
-fn handle_normal_command(input: &str) {
+/// 通常のコマンドを処理
+fn handle_normal_command(input: &str) -> bool {
     add_history(input.to_string());
 
     match parse_command(input) {
         Ok(command) => {
             debug!("Command parsed successfully");
             let start = Instant::now();
-            if let Err(err) = execute_command(command, None) {
-                error!("Command execution failed: {err}");
-                eprintln!("{err}");
-            }
-            let duration = start.elapsed().as_secs_f64() * 1000.0;
-            debug!("処理時間: {duration:?}ms");
-        }
-        Err(error) => {
-            debug!("Parse error occurred: {error}");
-            eprintln!("{error}");
-        }
-    }
-}
-
-/// 入力付きでコマンドを実行
-fn execute_with_input(cmd_str: &str, input: &str) {
-    match parse_command(cmd_str) {
-        Ok(command) => {
-            let start = Instant::now();
-            match commands::execute_command(command, Some(input)) {
-                Ok(_) => {}
+            match execute_command(command, None) {
+                Ok(should_exit) => {
+                    if should_exit {
+                        return true; // 終了シグナル
+                    }
+                }
                 Err(err) => {
                     error!("Command execution failed: {err}");
                     eprintln!("{err}");
@@ -378,6 +383,36 @@ fn execute_with_input(cmd_str: &str, input: &str) {
             eprintln!("{error}");
         }
     }
+
+    false // 継続
+}
+
+/// 入力付きでコマンドを実行
+fn execute_with_input(cmd_str: &str, input: &str) -> bool {
+    // boolを返すように変更
+    match parse_command(cmd_str) {
+        Ok(command) => {
+            let start = Instant::now();
+            match commands::execute_command(command, Some(input)) {
+                Ok(should_exit) => {
+                    if should_exit {
+                        return true;
+                    }
+                }
+                Err(err) => {
+                    error!("Command execution failed: {err}");
+                    eprintln!("{err}");
+                }
+            }
+            let duration = start.elapsed().as_secs_f64() * 1000.0;
+            debug!("処理時間: {duration:?}ms");
+        }
+        Err(error) => {
+            debug!("Parse error occurred: {error}");
+            eprintln!("{error}");
+        }
+    }
+    false
 }
 
 /// ヒアドキュメントの内容を読み取る

@@ -7,6 +7,14 @@ use crate::pipeline::{PipelineCommand, PipelineExecutor};
 use crate::redirect::execute_redirect;
 use log::debug;
 
+/// コマンドの実行結果を表す列挙型
+pub enum CommandResult {
+    /// 通常のコマンド実行結果（出力文字列）
+    Continue(String),
+    /// プログラムの終了要求
+    Exit,
+}
+
 /// 実行可能なコマンドを表す列挙型
 #[derive(Debug, Clone)]
 pub enum Command {
@@ -389,43 +397,49 @@ impl Command {
 
 /// コマンドの実行
 ///
-/// # Errors
-///
-/// - ファイル操作系コマンドでI/Oエラーが発生した場合
-/// - ファイルが存在しない、権限がない等
-pub fn execute_command(command: Command, input: Option<&str>) -> Result<()> {
-    let output = execute_command_internal(command, input)?;
-    if !output.is_empty() {
-        println!("{output}");
+/// # Returns
+/// * `Ok(true)` - プログラムを終了すべき場合
+/// * `Ok(false)` - 実行を継続する場合
+/// * `Err(...)` - エラーが発生した場合
+pub fn execute_command(command: Command, input: Option<&str>) -> Result<bool> {
+    match execute_command_internal(command, input)? {
+        CommandResult::Continue(output) => {
+            if !output.is_empty() {
+                println!("{output}");
+            }
+            Ok(false)
+        }
+        CommandResult::Exit => Ok(true),
     }
-    Ok(())
 }
 
 /// execute_commandの内部処理
-pub fn execute_command_internal(command: Command, input: Option<&str>) -> Result<String> {
+pub fn execute_command_internal(command: Command, input: Option<&str>) -> Result<CommandResult> {
     // コマンド実行開始を記録
     debug!("Executing command: {command:?}");
 
     let command = command.expand_variables();
 
     match command {
-        Command::Help => Ok(handle_help()),
-        Command::Cat { filename } => handle_cat(&filename, input),
-        Command::Echo { message } => Ok(handle_echo(&message)),
+        Command::Help => Ok(CommandResult::Continue(handle_help())),
+        Command::Cat { filename } => Ok(CommandResult::Continue(handle_cat(&filename, input)?)),
+        Command::Echo { message } => Ok(CommandResult::Continue(handle_echo(&message))),
         Command::Write { filename, content } => {
             handle_write(&filename, &content)?;
-            Ok(String::new())
+            Ok(CommandResult::Continue(String::new()))
         }
-        Command::Repeat { count, message } => Ok(handle_repeat(count, &message)),
-        Command::Ls => handle_ls(),
+        Command::Repeat { count, message } => {
+            Ok(CommandResult::Continue(handle_repeat(count, &message)))
+        }
+        Command::Ls => Ok(CommandResult::Continue(handle_ls()?)),
         Command::Cd { path } => {
             handle_cd(&path)?;
-            Ok(String::new())
+            Ok(CommandResult::Continue(String::new()))
         }
-        Command::Pwd => handle_pwd(),
+        Command::Pwd => Ok(CommandResult::Continue(handle_pwd()?)),
         Command::Mkdir { path, parents } => {
             handle_mkdir(&path, parents)?;
-            Ok(String::new())
+            Ok(CommandResult::Continue(String::new()))
         }
         Command::Rm {
             path,
@@ -433,7 +447,7 @@ pub fn execute_command_internal(command: Command, input: Option<&str>) -> Result
             force,
         } => {
             handle_rm(&path, recursive, force)?;
-            Ok(String::new())
+            Ok(CommandResult::Continue(String::new()))
         }
         Command::Cp {
             source,
@@ -441,42 +455,55 @@ pub fn execute_command_internal(command: Command, input: Option<&str>) -> Result
             recursive,
         } => {
             handle_cp(&source, &destination, recursive)?;
-            Ok(String::new())
+            Ok(CommandResult::Continue(String::new()))
         }
         Command::Mv {
             source,
             destination,
         } => {
             handle_mv(&source, &destination)?;
-            Ok(String::new())
+            Ok(CommandResult::Continue(String::new()))
         }
-        Command::Find { path, name } => handle_find(path.as_deref(), &name),
-        Command::Grep { pattern, files } => handle_grep(&pattern, &files, input),
+        Command::Find { path, name } => Ok(CommandResult::Continue(handle_find(
+            path.as_deref(),
+            &name,
+        )?)),
+        Command::Grep { pattern, files } => Ok(CommandResult::Continue(handle_grep(
+            &pattern, &files, input,
+        )?)),
         Command::Alias { name, command } => {
             handle_alias(name.as_deref(), command.as_deref())?;
-            Ok(String::new())
+            Ok(CommandResult::Continue(String::new()))
         }
-        Command::Version => Ok(handle_version()),
+        Command::Version => Ok(CommandResult::Continue(handle_version())),
         Command::Pipeline { commands } => {
             let pipeline = PipelineCommand::new(commands);
-            PipelineExecutor::execute(&pipeline) // 文字列を返す
+            Ok(CommandResult::Continue(PipelineExecutor::execute(
+                &pipeline,
+            )?))
         }
         Command::Redirect {
             command,
             redirect_type,
             target,
-        } => execute_redirect(*command, &redirect_type, &target),
-        Command::Background { command } => handle_background_execution(command),
+        } => Ok(CommandResult::Continue(execute_redirect(
+            *command,
+            &redirect_type,
+            &target,
+        )?)),
+        Command::Background { command } => Ok(CommandResult::Continue(
+            handle_background_execution(command)?,
+        )),
         Command::Sleep { seconds } => {
             handle_sleep(seconds)?;
-            Ok(String::new())
+            Ok(CommandResult::Continue(String::new()))
         }
-        Command::Jobs => handle_jobs(),
+        Command::Jobs => Ok(CommandResult::Continue(handle_jobs()?)),
         Command::Fg { job_id } => {
             handle_fg(job_id)?;
-            Ok(String::new())
+            Ok(CommandResult::Continue(String::new()))
         }
-        Command::Environment { action } => handle_environment(action),
+        Command::Environment { action } => Ok(CommandResult::Continue(handle_environment(action)?)),
         Command::If {
             condition,
             then_part,
@@ -484,18 +511,24 @@ pub fn execute_command_internal(command: Command, input: Option<&str>) -> Result
         } => {
             // conditionが成功すればthen,失敗すればelseパートを実行
             match execute_command(*condition, input) {
-                Ok(_) => {
+                Ok(should_exit) => {
+                    if should_exit {
+                        return Ok(CommandResult::Exit);
+                    }
                     // thenの出力
-                    execute_command(*then_part, input)?;
-                    Ok(String::new())
+                    if execute_command(*then_part, input)? {
+                        return Ok(CommandResult::Exit);
+                    }
                 }
                 Err(_) => {
                     if let Some(else_cmd) = else_part {
-                        execute_command(*else_cmd, input)?;
+                        if execute_command(*else_cmd, input)? {
+                            return Ok(CommandResult::Exit);
+                        }
                     }
-                    Ok(String::new())
                 }
             }
+            Ok(CommandResult::Continue(String::new()))
         }
         Command::While { condition, body } => {
             let mut loop_count = 0;
@@ -510,8 +543,13 @@ pub fn execute_command_internal(command: Command, input: Option<&str>) -> Result
 
                 // inputは無視してexecute_commandを使う
                 match execute_command(*condition.clone(), None) {
-                    Ok(_) => {
-                        execute_command(*body.clone(), None)?;
+                    Ok(should_exit) => {
+                        if should_exit {
+                            return Ok(CommandResult::Exit);
+                        }
+                        if execute_command(*body.clone(), None)? {
+                            return Ok(CommandResult::Exit);
+                        }
                     }
                     Err(_) => break,
                 }
@@ -519,7 +557,7 @@ pub fn execute_command_internal(command: Command, input: Option<&str>) -> Result
                 loop_count += 1;
             }
 
-            Ok(String::new())
+            Ok(CommandResult::Continue(String::new()))
         }
         Command::For {
             variable,
@@ -533,7 +571,12 @@ pub fn execute_command_internal(command: Command, input: Option<&str>) -> Result
                 }
 
                 // bodyを実行
-                execute_command(*body.clone(), None)?;
+                if execute_command(*body.clone(), None)? {
+                    unsafe {
+                        std::env::remove_var(&variable);
+                    }
+                    return Ok(CommandResult::Exit);
+                }
             }
 
             // ループ変数をクリア
@@ -541,23 +584,27 @@ pub fn execute_command_internal(command: Command, input: Option<&str>) -> Result
                 std::env::remove_var(&variable);
             }
 
-            Ok(String::new())
+            Ok(CommandResult::Continue(String::new()))
         }
         Command::Function { name, body } => {
             handle_function_definition(&name, *body)?;
-            Ok(String::new())
+            Ok(CommandResult::Continue(String::new()))
         }
-        Command::FunctionCall { name, args } => handle_function_call(&name, &args),
+        Command::FunctionCall { name, args } => {
+            Ok(CommandResult::Continue(handle_function_call(&name, &args)?))
+        }
         Command::Compound { commands } => {
             for cmd in commands {
-                execute_command(cmd, input)?;
+                if execute_command(cmd, input)? {
+                    return Ok(CommandResult::Exit);
+                }
             }
-            Ok(String::new())
+            Ok(CommandResult::Continue(String::new()))
         }
-        Command::History => Ok(handle_history()),
+        Command::History => Ok(CommandResult::Continue(handle_history())),
         Command::Exit => {
             handle_exit();
-            Ok(String::new())
+            Ok(CommandResult::Exit)
         }
     }
 }

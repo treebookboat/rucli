@@ -1857,10 +1857,12 @@ fn test_history_command_empty() {
 #[test]
 fn test_history_with_multiple_sessions() {
     let temp_dir = TempDir::new().unwrap();
+    let history_file = temp_dir.path().join(".test_multiple_sessions_history");
 
     // 最初のセッション
     Command::cargo_bin("rucli")
         .unwrap()
+        .env("RUCLI_HISTFILE", history_file.to_str().unwrap())
         .current_dir(&temp_dir)
         .write_stdin(
             "echo session 1\n\
@@ -1869,9 +1871,10 @@ fn test_history_with_multiple_sessions() {
         .assert()
         .success();
 
-    // 2番目のセッション（履歴は独立）
+    // 2番目のセッション（履歴は累積される）
     Command::cargo_bin("rucli")
         .unwrap()
+        .env("RUCLI_HISTFILE", history_file.to_str().unwrap())
         .current_dir(&temp_dir)
         .write_stdin(
             "echo session 2\n\
@@ -1880,17 +1883,20 @@ fn test_history_with_multiple_sessions() {
         )
         .assert()
         .success()
-        .stdout(predicate::str::contains("1  echo session 2"))
-        .stdout(predicate::str::contains("2  history"))
-        .stdout(predicate::str::contains("session 1").not());
+        .stdout(predicate::str::contains("1  echo session 1"))
+        .stdout(predicate::str::contains("2  exit"))
+        .stdout(predicate::str::contains("3  echo session 2"))
+        .stdout(predicate::str::contains("4  history"));
 }
 
 #[test]
 fn test_history_with_errors() {
     let temp_dir = TempDir::new().unwrap();
+    let history_file = temp_dir.path().join(".test_errors_history");
 
     Command::cargo_bin("rucli")
         .unwrap()
+        .env("RUCLI_HISTFILE", history_file.to_str().unwrap())
         .current_dir(&temp_dir)
         .write_stdin(
             "echo valid command\n\
@@ -1908,7 +1914,6 @@ fn test_history_with_errors() {
         .stderr(predicate::str::contains("unknown command error"))
         .stderr(predicate::str::contains("No such file"));
 }
-
 #[test]
 fn test_history_with_complex_commands() {
     let temp_dir = TempDir::new().unwrap();
@@ -1996,21 +2001,30 @@ fn test_history_with_functions() {
 #[test]
 fn test_history_with_aliases() {
     let temp_dir = TempDir::new().unwrap();
+    let history_file = temp_dir.path().join(".test_aliases_history");
 
+    // エイリアスの設定と使用を一つのセッションで
     Command::cargo_bin("rucli")
         .unwrap()
+        .env("RUCLI_HISTFILE", history_file.to_str().unwrap())
         .current_dir(&temp_dir)
         .write_stdin(
-            "alias ll=ls\n\
+            "write test.txt content\n\
+             alias ll=ls\n\
+             alias\n\
              ll\n\
              history\n\
              exit\n",
         )
         .assert()
         .success()
-        .stdout(predicate::str::contains("1  alias ll=ls"))
-        .stdout(predicate::str::contains("2  ll"))
-        .stdout(predicate::str::contains("3  history"));
+        .stdout(predicate::str::contains("ll = ls"))
+        .stdout(predicate::str::contains("test.txt"))
+        .stdout(predicate::str::contains("1  write test.txt content"))
+        .stdout(predicate::str::contains("2  alias ll=ls"))
+        .stdout(predicate::str::contains("3  alias"))
+        .stdout(predicate::str::contains("4  ll"))
+        .stdout(predicate::str::contains("5  history"));
 }
 
 #[test]
@@ -2218,9 +2232,11 @@ fn test_history_argument_validation() {
 #[test]
 fn test_history_persistence_within_session() {
     let temp_dir = TempDir::new().unwrap();
+    let history_file = temp_dir.path().join(".test_persistence_within_history");
 
     Command::cargo_bin("rucli")
         .unwrap()
+        .env("RUCLI_HISTFILE", history_file.to_str().unwrap())
         .current_dir(&temp_dir)
         .write_stdin(
             "echo early command\n\
@@ -2241,4 +2257,244 @@ fn test_history_persistence_within_session() {
         .stdout(predicate::str::contains("5  history"))
         .stdout(predicate::str::contains("6  echo after history"))
         .stdout(predicate::str::contains("7  history"));
+}
+
+#[test]
+fn test_history_persistence_across_sessions() {
+    let temp_dir = TempDir::new().unwrap();
+    let history_file = temp_dir.path().join(".rucli_history");
+
+    // 環境変数でhistoryファイルの場所を指定
+    unsafe {
+        std::env::set_var("RUCLI_HISTFILE", history_file.to_str().unwrap());
+    }
+
+    // セッション1: コマンドを実行して終了
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .env("RUCLI_HISTFILE", history_file.to_str().unwrap())
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "echo first session\n\
+             pwd\n\
+             echo goodbye\n\
+             exit\n",
+        )
+        .assert()
+        .success();
+
+    // 履歴ファイルが作成されたことを確認
+    assert!(history_file.exists(), "History file was not created");
+
+    // セッション2: 新しいセッションで履歴を確認
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .env("RUCLI_HISTFILE", history_file.to_str().unwrap())
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "history\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("echo first session"))
+        .stdout(predicate::str::contains("pwd"))
+        .stdout(predicate::str::contains("echo goodbye"))
+        .stdout(predicate::str::contains("exit"));
+
+    // 環境変数をクリア
+    unsafe {
+        std::env::remove_var("RUCLI_HISTFILE");
+    }
+}
+
+#[test]
+fn test_history_file_append() {
+    let temp_dir = TempDir::new().unwrap();
+    let history_file = temp_dir.path().join(".rucli_history");
+
+    // セッション1
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .env("RUCLI_HISTFILE", history_file.to_str().unwrap())
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "echo session 1 command 1\n\
+             echo session 1 command 2\n\
+             exit\n",
+        )
+        .assert()
+        .success();
+
+    // セッション2: 追加のコマンド
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .env("RUCLI_HISTFILE", history_file.to_str().unwrap())
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "echo session 2 command 1\n\
+             exit\n",
+        )
+        .assert()
+        .success();
+
+    // セッション3: 全履歴を確認
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .env("RUCLI_HISTFILE", history_file.to_str().unwrap())
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "history\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("echo session 1 command 1"))
+        .stdout(predicate::str::contains("echo session 1 command 2"))
+        .stdout(predicate::str::contains("echo session 2 command 1"));
+}
+
+#[test]
+fn test_history_persistence_with_custom_file() {
+    let temp_dir = TempDir::new().unwrap();
+    let custom_history = temp_dir.path().join("my_custom_history.txt");
+
+    // カスタム履歴ファイルを使用
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .env("RUCLI_HISTFILE", custom_history.to_str().unwrap())
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "echo custom history test\n\
+             ls\n\
+             exit\n",
+        )
+        .assert()
+        .success();
+
+    // カスタムファイルが作成されたことを確認
+    assert!(custom_history.exists());
+
+    // ファイルの内容を直接確認
+    let contents = std::fs::read_to_string(&custom_history).unwrap();
+    assert!(contents.contains("echo custom history test"));
+    assert!(contents.contains("ls"));
+    assert!(contents.contains("exit"));
+}
+
+#[test]
+fn test_history_persistence_empty_session() {
+    let temp_dir = TempDir::new().unwrap();
+    let history_file = temp_dir.path().join(".rucli_history");
+
+    // 空のセッション（すぐ終了）
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .env("RUCLI_HISTFILE", history_file.to_str().unwrap())
+        .current_dir(&temp_dir)
+        .write_stdin("exit\n")
+        .assert()
+        .success();
+
+    // 履歴ファイルが作成され、exitが記録されている
+    assert!(history_file.exists());
+    let contents = std::fs::read_to_string(&history_file).unwrap();
+    assert_eq!(contents.trim(), "exit");
+}
+
+#[test]
+fn test_history_persistence_no_duplicate_on_reload() {
+    let temp_dir = TempDir::new().unwrap();
+    let history_file = temp_dir.path().join(".rucli_history");
+
+    // セッション1: 同じコマンドを連続実行
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .env("RUCLI_HISTFILE", history_file.to_str().unwrap())
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "echo test\n\
+             echo test\n\
+             exit\n",
+        )
+        .assert()
+        .success();
+
+    // ファイルの内容を確認（重複なし）
+    let contents = std::fs::read_to_string(&history_file).unwrap();
+    let lines: Vec<&str> = contents.lines().collect();
+    assert_eq!(lines.len(), 2); // "echo test" と "exit" のみ
+
+    // セッション2: 履歴を確認
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .env("RUCLI_HISTFILE", history_file.to_str().unwrap())
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "history\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("1  echo test"))
+        .stdout(predicate::str::contains("2  exit"))
+        .stdout(predicate::str::contains("3  history"));
+}
+
+#[test]
+fn test_history_file_creation_with_parent_dirs() {
+    let temp_dir = TempDir::new().unwrap();
+    let nested_history = temp_dir.path().join("nested/dirs/.rucli_history");
+
+    // 親ディレクトリが存在しない状態で実行
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .env("RUCLI_HISTFILE", nested_history.to_str().unwrap())
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "echo test with nested dirs\n\
+             exit\n",
+        )
+        .assert()
+        .success();
+
+    // ディレクトリとファイルが作成されたことを確認
+    assert!(nested_history.exists());
+    assert!(nested_history.parent().unwrap().exists());
+}
+
+#[test]
+fn test_history_persistence_with_special_chars() {
+    let temp_dir = TempDir::new().unwrap();
+    let history_file = temp_dir.path().join(".rucli_history");
+
+    // 特殊文字を含むコマンド
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .env("RUCLI_HISTFILE", history_file.to_str().unwrap())
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "echo \"Hello, World!\"\n\
+             echo $HOME\n\
+             echo test > output.txt\n\
+             exit\n",
+        )
+        .assert()
+        .success();
+
+    // ファイルの内容を確認
+    let contents = std::fs::read_to_string(&history_file).unwrap();
+    assert!(contents.contains("echo \"Hello, World!\""));
+    assert!(contents.contains("echo $HOME"));
+    assert!(contents.contains("echo test > output.txt"));
+}
+
+#[test]
+fn test_history_persistence_ctrl_c_no_save() {
+    // Note: Ctrl+Cのテストは現在の実装では履歴を保存しない
+    // このテストは将来のドキュメント用
+
+    // 現在の仕様：
+    // - 正常終了（exit/quit）: 履歴を保存
+    // - Ctrl+C: 履歴を保存しない
 }
