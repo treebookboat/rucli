@@ -2,66 +2,61 @@
 
 100 Commit Challenge: Building a feature-rich CLI tool in 100 commits
 
-Progress: 72/100 Commits
+Progress: 70/100 Commits
 
-## Latest Changes (Commit #72)
+## Latest Changes (Commit #70)
 
-- **History Persistence**: Command history is now saved between sessions!
-- History file stored at `.rucli_history` in current directory
-- Customizable location via `RUCLI_HISTFILE` environment variable
-- Automatic loading on startup and saving on exit
-- Graceful shutdown handling - removed immediate `process::exit(0)`
-- Added `CommandResult` enum for proper exit signal propagation
-- History preserved even when using `exit` command
+- **History Search**: Search through command history with partial matching!
+- Case-insensitive search across all previous commands
+- `history search <query>` finds all commands containing the query
+- Excludes the current search command from results
+- Empty query shows all history (except current command)
 
 ## Usage
 
-### History Persistence
+### History Search
 
-**Default behavior:**
+**Basic search:**
 ```bash
 $ rucli
-> echo first session
-first session
-> pwd
-/home/user
-> exit
-good bye
-
-$ rucli  # New session
-> history
-   1  echo first session
-   2  pwd
-   3  exit
-   4  history
+> echo hello world
+hello world
+> echo goodbye
+goodbye
+> cat file.txt
+> history search echo
+   1  echo hello world
+   2  echo goodbye
 ```
 
-**Custom history file:**
+**Case-insensitive matching:**
 ```bash
-$ RUCLI_HISTFILE=/tmp/my_history rucli
-> echo custom location
-custom location
-> exit
-
-$ RUCLI_HISTFILE=/tmp/my_history rucli
-> history  # Previous commands preserved
-   1  echo custom location
-   2  exit
-   3  history
+> echo HELLO
+HELLO
+> ECHO test
+test
+> history search echo
+   1  echo HELLO
+   2  ECHO test
 ```
 
-**Per-project history:**
-Each directory maintains its own `.rucli_history` file:
+**Partial matching:**
 ```bash
-$ cd project1 && rucli
-> echo project1 command
-> exit
+> cat important_file.txt
+> write file.txt content
+> rm file.txt
+> history search file
+   1  cat important_file.txt
+   2  write file.txt content
+   3  rm file.txt
+```
 
-$ cd project2 && rucli
-> echo project2 command
-> history  # Only project2 history
-   1  echo project2 command
-   2  history
+**No results:**
+```bash
+> echo test
+test
+> history search xyz
+No commands found matching 'xyz'
 ```
 
 ### Complete Feature Set
@@ -69,6 +64,7 @@ $ cd project2 && rucli
 **Interactive Features:**
 - Command history with `history` command
 - History persistence between sessions
+- **History search with `history search <query>`** ← NEW!
 - Automatic deduplication of consecutive commands
 - Up to 1000 commands stored
 
@@ -112,48 +108,46 @@ $ cd project2 && rucli
 
 ## Examples
 
-### History Persistence Examples
+### History Search Examples
 
-**Session continuity:**
-```bash
-# Session 1
-$ rucli
-> alias ll=ls
-> function greet() { echo Hello, $1!; }
-> greet World
-Hello, World!
-> exit
-
-# Session 2 - aliases need to be redefined, but history persists
-$ rucli
-> history
-   1  alias ll=ls
-   2  function greet() { echo Hello, $1!; }
-   3  greet World
-   4  exit
-   5  history
-> greet User  # Function needs to be redefined
-unknown command error: greet User
-```
-
-**Complex workflow with persistence:**
+**Search for specific commands:**
 ```bash
 $ rucli
-> for i in 1 2 3; do echo Processing $i; done
-Processing 1
-Processing 2
-Processing 3
-> write results.txt "Analysis complete"
-File written successfully: results.txt
-> exit
-
-# Later session
-$ rucli
-> history | grep write
-   2  write results.txt "Analysis complete"
-> cat results.txt
-Analysis complete
+> cd /home/user
+> cd /tmp
+> cd ~/documents
+> history search cd
+   1  cd /home/user
+   2  cd /tmp
+   3  cd ~/documents
 ```
+
+**Complex search in scripts:**
+```bash
+> for i in 1 2 3; do echo $i; done
+1
+2
+3
+> while test -f lock; do sleep 1; done
+> history search do
+   1  for i in 1 2 3; do echo $i; done
+   2  while test -f lock; do sleep 1; done
+```
+
+**Search with special characters:**
+```bash
+> echo "hello world" > output.txt
+> cat < input.txt
+> ls | grep txt
+> history search >
+   1  echo "hello world" > output.txt
+```
+
+## Environment Variables
+
+- `RUCLI_HISTFILE` - Custom history file location (default: `./.rucli_history`)
+- `HOME` - Used for `cd ~` command
+- `OLDPWD` - Previous directory for `cd -`
 
 ## Project Structure
 
@@ -161,16 +155,16 @@ Analysis complete
 rucli/
 ├── src/
 │   ├── main.rs         # Entry point with history persistence
-│   ├── commands.rs     # Command definitions with CommandResult
+│   ├── commands.rs     # Command definitions with History search
 │   ├── parser/         # Modular parser
 │   │   ├── mod.rs      # Public interface
-│   │   ├── basic.rs    # Basic commands
+│   │   ├── basic.rs    # Basic commands & history parsing
 │   │   ├── file_ops.rs # File operations
 │   │   ├── control.rs  # Control structures
 │   │   ├── operators.rs# Operators
 │   │   └── utils.rs    # Utilities
 │   ├── handlers.rs     # Command implementations
-│   ├── history.rs      # History with persistence
+│   ├── history.rs      # History with search functionality
 │   ├── functions.rs    # Function storage
 │   ├── environment.rs  # Variables & expansions
 │   ├── pipeline.rs     # Pipeline execution
@@ -196,12 +190,6 @@ cargo clippy           # Check code quality
 cargo run -- test.rsh   # Run a script file
 ```
 
-## Environment Variables
-
-- `RUCLI_HISTFILE` - Custom history file location (default: `./.rucli_history`)
-- `HOME` - Used for `cd ~` command
-- `OLDPWD` - Previous directory for `cd -`
-
 ## Known Limitations
 
 - **Session-specific state**: Aliases and functions are not persisted between sessions
@@ -212,57 +200,55 @@ cargo run -- test.rsh   # Run a script file
 
 ## Roadmap
 
-### Phase 3: Advanced Features & Refactoring (46-70) - COMPLETED ✅
-
-✅ All 25 commits completed!
-
 ### Phase 3: Advanced Features (46-70) - COMPLETED ✅
 
-✅ All 25 commits completed!
+- ✅ Commits 46-67: All implemented
+- ✅ Command history basics (68)
+- ✅ History persistence (69)
+- ✅ **History search (70)** ← NEW!
 
-### Phase 4: Interactive Features (71-88) - IN PROGRESS 🚧
+### Phase 4: Interactive Features (71-85) - STARTING 🚧
 
-- ✅ Command history basics (71)
-- ✅ **History persistence (72)** ← NEW!
-- History search (Ctrl+R equivalent) (73)
-- History navigation (number-based execution) (74)
-- History expansion (!n, !!, !string) (75)
-- Arrow key navigation basics (76)
-- Line editing with arrows (77)
-- Command line cursor movement (78)
-- Tab completion framework (79)
-- Command/file completion (80)
-- Syntax highlighting basics (81)
-- Error highlighting (82)
-- Prompt customization (83)
-- Shell shortcuts (Ctrl+A, Ctrl+E) (84)
-- Terminal resize handling (85)
-- Session management (86)
-- Configuration loading (.ruclirc) (87)
-- Phase 4 integration (88)
+- History navigation (number-based execution) (71)
+- History expansion (!n, !!, !string) (72)
+- Arrow key navigation basics (73)
+- Line editing with arrows (74)
+- Command line cursor movement (75)
+- Tab completion framework (76)
+- Command/file completion (77)
+- Syntax highlighting basics (78)
+- Error highlighting (79)
+- Prompt customization (80)
+- Shell shortcuts (Ctrl+A, Ctrl+E) (81)
+- Terminal resize handling (82)
+- Session management (83)
+- Configuration loading (.ruclirc) (84)
+- Phase 4 integration (85)
 
-### Phase 5: Extensions & Polish (89-100) - PLANNED 🔮
+### Phase 5: Extensions & Polish (86-100) - PLANNED 🔮
 
-- Plugin system architecture (89-90)
-- Performance optimizations (91-92)
-- Advanced glob patterns (93-94)
-- Network capabilities (95-96)
-- Final polish (97)
-- Comprehensive documentation (98)
-- Benchmarks & profiling (99)
+- Plugin system architecture (86-87)
+- Performance optimizations (88-89)
+- Advanced glob patterns (90-91)
+- Network capabilities (92-93)
+- Security enhancements (94)
+- Final polish (95-96)
+- Comprehensive documentation (97)
+- Benchmarks & profiling (98)
+- Release preparation (99)
 - 🎉 Project completion celebration! (100)
 
-## Next: History Search (Commit #73)
+## Next: History Navigation (Commit #71)
 
-Implement interactive history search:
+Implement number-based history execution:
 
-- Search through history with a query
-- Filter commands containing specific text
-- Navigate through search results
-- Foundation for future Ctrl+R functionality
+- Execute commands by history number (!n equivalent)
+- Support for negative indexing (!-n)
+- Range-based history display
+- Foundation for history expansion
 
 ---
 
-**Progress: 72/100 commits completed** 🎯
+**Progress: 70/100 commits completed** 🎯
 **Current Phase: Interactive Features (Phase 4)** ⚡
-**Next Milestone: History Search** 🔍
+**Next Milestone: History Navigation** 🔢

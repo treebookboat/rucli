@@ -123,6 +123,24 @@ pub(super) fn parse_environment(args: &[&str]) -> Result<Command> {
     }
 }
 
+// historyコマンドの処理
+pub(super) fn parse_history(args: &[&str]) -> Result<Command> {
+    // 処理内容：
+    // - 引数なし → History { query: None }
+    // - "search" + クエリ → History { query: Some(結合した文字列) }
+    // - その他 → エラー
+
+    match args {
+        [] => Ok(Command::History { query: None }),
+        ["search" , query @ ..] => {
+            Ok(Command::History { query : Some(query.join(" ")) })
+        }
+        _ => Err(RucliError::InvalidArgument(
+            "Usage: history [search <query>]".to_string()
+        ))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

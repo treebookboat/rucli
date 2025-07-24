@@ -106,7 +106,9 @@ pub enum Command {
     /// 複数のコマンドを順次実行
     Compound { commands: Vec<Command> },
     /// 履歴を表示
-    History,
+    History {
+        query: Option<String>, // 検索クエリ（Noneなら全履歴表示）
+    },
     /// プログラムを終了
     Exit,
 }
@@ -291,10 +293,10 @@ pub const COMMANDS: &[CommandInfo] = &[
     },
     CommandInfo {
         name: "history",
-        description: "Show command history",
-        usage: "history",
+        description: "Show command history or search",
+        usage: "history [search <query>]",
         min_args: 0,
-        max_args: Some(0),
+        max_args: None,
     },
 ];
 
@@ -379,6 +381,7 @@ impl Command {
             Command::Redirect { .. } => self,
             Command::Background { .. } => self,
             Command::Function { .. } => self,
+            Command::History { .. } => self,
 
             // 変数を含まないコマンド
             Command::Help => self,
@@ -387,7 +390,6 @@ impl Command {
             Command::Ls => self,
             Command::Jobs => self,
             Command::Exit => self,
-            Command::History => self,
             Command::Sleep { .. } => self,
             Command::Fg { .. } => self,
             Command::Environment { .. } => self,
@@ -601,7 +603,7 @@ pub fn execute_command_internal(command: Command, input: Option<&str>) -> Result
             }
             Ok(CommandResult::Continue(String::new()))
         }
-        Command::History => Ok(CommandResult::Continue(handle_history())),
+        Command::History { query } => Ok(CommandResult::Continue(handle_history(query.as_deref()))),
         Command::Exit => {
             handle_exit();
             Ok(CommandResult::Exit)

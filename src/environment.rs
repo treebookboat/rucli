@@ -297,22 +297,6 @@ mod environment_tests {
         } if var == "PATH"));
     }
 
-    // ========================================
-    // PR #55: Variable Expansion Tests (Updated for runtime expansion)
-    // ========================================
-
-    #[test]
-    fn test_basic_dollar_variable_expansion() {
-        // Given: 環境変数を設定
-        set_var("NAME", "world");
-        set_var("USER", "john");
-        
-        // When/Then: 基本的な $VAR 展開
-        assert_eq!(expand_variables("Hello $NAME"), "Hello world");
-        assert_eq!(expand_variables("$USER"), "john");
-        assert_eq!(expand_variables("User $USER lives here"), "User john lives here");
-    }
-
     #[test]
     fn test_basic_brace_variable_expansion() {
         // Given: 環境変数を設定

@@ -113,7 +113,7 @@ pub fn save_history_to_file(file_path: Option<&str>) -> Result<()> {
     Ok(())
 }
 
-// ファイルから履歴を読み込む
+/// ファイルから履歴を読み込む
 pub fn load_history_from_file(file_path: Option<&str>) -> Result<()> {
     // ファイルパスの決定
     let file_path = if let Some(path) = file_path {
@@ -174,6 +174,31 @@ pub fn get_default_history_file() -> PathBuf {
 
     // デフォルトはカレントディレクトリの.rucli_history
     PathBuf::from(".rucli_history")
+}
+
+/// 履歴を検索する
+///
+/// # Arguments
+/// * `query` - 検索文字列
+///
+/// # Returns
+/// * マッチした履歴のリスト（番号とコマンド）
+pub fn search_history(query: &str) -> Vec<(usize, String)> {
+    let mut history = get_history_list();
+
+    // 最後の要素（現在実行中のコマンド）を除外
+    if !history.is_empty() {
+        history.pop();
+    }
+
+    // 文字を小文字で統一
+    let query = query.to_lowercase();
+
+    // 履歴で文字列を含んでいるものだけ残す
+    history
+        .into_iter()
+        .filter(|(_, cmd)| cmd.to_lowercase().contains(&query))
+        .collect()
 }
 
 // 必要に応じて親ディレクトリを作成

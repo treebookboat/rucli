@@ -1961,9 +1961,11 @@ fn test_history_formatting() {
 #[test]
 fn test_history_with_variables() {
     let temp_dir = TempDir::new().unwrap();
+    let history_file = temp_dir.path().join(".test_variables_history"); // 独自のファイル名
 
     Command::cargo_bin("rucli")
         .unwrap()
+        .env("RUCLI_HISTFILE", history_file.to_str().unwrap())
         .current_dir(&temp_dir)
         .write_stdin(
             "env VAR=test\n\
@@ -1977,7 +1979,6 @@ fn test_history_with_variables() {
         .stdout(predicate::str::contains("2  echo $VAR"))
         .stdout(predicate::str::contains("3  history"));
 }
-
 #[test]
 fn test_history_with_functions() {
     let temp_dir = TempDir::new().unwrap();
@@ -2215,10 +2216,12 @@ fn test_history_max_entries() {
 #[test]
 fn test_history_argument_validation() {
     let temp_dir = TempDir::new().unwrap();
+    let history_file = temp_dir.path().join(".test_arg_validation");
 
-    // historyコマンドは引数を取らない
+    // searchサブコマンド以外はエラー
     Command::cargo_bin("rucli")
         .unwrap()
+        .env("RUCLI_HISTFILE", history_file.to_str().unwrap())
         .current_dir(&temp_dir)
         .write_stdin(
             "history extra args\n\
@@ -2226,7 +2229,7 @@ fn test_history_argument_validation() {
         )
         .assert()
         .success()
-        .stderr(predicate::str::contains("accepts at most 0 argument"));
+        .stderr(predicate::str::contains("Usage: history [search <query>]"));
 }
 
 #[test]
@@ -2262,12 +2265,7 @@ fn test_history_persistence_within_session() {
 #[test]
 fn test_history_persistence_across_sessions() {
     let temp_dir = TempDir::new().unwrap();
-    let history_file = temp_dir.path().join(".rucli_history");
-
-    // 環境変数でhistoryファイルの場所を指定
-    unsafe {
-        std::env::set_var("RUCLI_HISTFILE", history_file.to_str().unwrap());
-    }
+    let history_file = temp_dir.path().join(".test_persistence_history"); // 独自のファイル名
 
     // セッション1: コマンドを実行して終了
     Command::cargo_bin("rucli")
@@ -2297,15 +2295,11 @@ fn test_history_persistence_across_sessions() {
         )
         .assert()
         .success()
-        .stdout(predicate::str::contains("echo first session"))
-        .stdout(predicate::str::contains("pwd"))
-        .stdout(predicate::str::contains("echo goodbye"))
-        .stdout(predicate::str::contains("exit"));
-
-    // 環境変数をクリア
-    unsafe {
-        std::env::remove_var("RUCLI_HISTFILE");
-    }
+        .stdout(predicate::str::contains("1  echo first session"))
+        .stdout(predicate::str::contains("2  pwd"))
+        .stdout(predicate::str::contains("3  echo goodbye"))
+        .stdout(predicate::str::contains("4  exit"))
+        .stdout(predicate::str::contains("5  history"));
 }
 
 #[test]
@@ -2497,4 +2491,136 @@ fn test_history_persistence_ctrl_c_no_save() {
     // 現在の仕様：
     // - 正常終了（exit/quit）: 履歴を保存
     // - Ctrl+C: 履歴を保存しない
+}
+
+#[test]
+fn test_history_search_no_results() {
+    let temp_dir = TempDir::new().unwrap();
+    let history_file = temp_dir.path().join(".test_search_empty");
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .env("RUCLI_HISTFILE", history_file.to_str().unwrap())
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "echo test\n\
+             history search nonexistentcommand\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "No commands found matching 'nonexistentcommand'",
+        ));
+}
+
+#[test]
+fn test_history_search_basic() {
+    let temp_dir = TempDir::new().unwrap();
+    let history_file = temp_dir.path().join(".test_search_history");
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .env("RUCLI_HISTFILE", history_file.to_str().unwrap())
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "echo hello world\n\
+             echo goodbye world\n\
+             cat test.txt\n\
+             echo hello again\n\
+             history search hello\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("1  echo hello world"))
+        .stdout(predicate::str::contains("4  echo hello again"));
+}
+
+#[test]
+fn test_history_search_case_insensitive() {
+    let temp_dir = TempDir::new().unwrap();
+    let history_file = temp_dir.path().join(".test_search_case");
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .env("RUCLI_HISTFILE", history_file.to_str().unwrap())
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "echo HELLO\n\
+             echo hello\n\
+             echo HeLLo\n\
+             history search hello\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("1  echo HELLO"))
+        .stdout(predicate::str::contains("2  echo hello"))
+        .stdout(predicate::str::contains("3  echo HeLLo"));
+}
+
+#[test]
+fn test_history_search_partial_match() {
+    let temp_dir = TempDir::new().unwrap();
+    let history_file = temp_dir.path().join(".test_search_partial");
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .env("RUCLI_HISTFILE", history_file.to_str().unwrap())
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "cat file.txt\n\
+             write file.txt content\n\
+             rm file.txt\n\
+             history search file\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("1  cat file.txt"))
+        .stdout(predicate::str::contains("2  write file.txt content"))
+        .stdout(predicate::str::contains("3  rm file.txt"));
+}
+
+#[test]
+fn test_history_search_empty_query() {
+    let temp_dir = TempDir::new().unwrap();
+    let history_file = temp_dir.path().join(".test_search_empty_query");
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .env("RUCLI_HISTFILE", history_file.to_str().unwrap())
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "echo test1\n\
+             echo test2\n\
+             history search\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("1  echo test1"))
+        .stdout(predicate::str::contains("2  echo test2"));
+}
+
+#[test]
+fn test_history_search_special_characters() {
+    let temp_dir = TempDir::new().unwrap();
+    let history_file = temp_dir.path().join(".test_search_special");
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .env("RUCLI_HISTFILE", history_file.to_str().unwrap())
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "echo $HOME\n\
+             echo test > file.txt\n\
+             cat < input.txt\n\
+             history search >\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("2  echo test > file.txt"));
 }

@@ -3,7 +3,7 @@
 use crate::alias::{list_aliases, set_alias};
 use crate::environment::{get_var, list_all_vars, set_var};
 use crate::error::{Result, RucliError};
-use crate::history::get_history_list;
+use crate::history::{get_history_list, search_history};
 use crate::{functions, job};
 use log::{debug, info, warn};
 use regex::Regex;
@@ -791,19 +791,23 @@ pub fn handle_function_call(name: &str, args: &[String]) -> Result<String> {
 }
 
 /// 履歴コマンドのハンドラー
-pub fn handle_history() -> String {
-    let history_list = get_history_list();
+pub fn handle_history(query: Option<&str>) -> String {
+    let list = match query {
+        None => get_history_list(),
+        Some(q) => search_history(q),
+    };
 
-    // リストが空なら早期終了
-    if history_list.is_empty() {
-        return "No history".to_string();
+    if list.is_empty() {
+        match query {
+            None => "No history".to_string(),
+            Some(q) => format!("No commands found matching '{}'", q),
+        }
+    } else {
+        list.iter()
+            .map(|(num, cmd)| format!("{num:4}  {cmd}"))
+            .collect::<Vec<_>>()
+            .join("\n")
     }
-
-    history_list
-        .iter()
-        .map(|(num, cmd)| format!("{num:4}  {cmd}"))
-        .collect::<Vec<_>>()
-        .join("\n")
 }
 
 /// プログラムを終了する
