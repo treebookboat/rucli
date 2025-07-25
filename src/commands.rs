@@ -3,6 +3,7 @@
 use crate::environment::expand_variables;
 use crate::error::Result;
 use crate::handlers::*;
+use crate::parser::parse_command;
 use crate::pipeline::{PipelineCommand, PipelineExecutor};
 use crate::redirect::execute_redirect;
 use log::debug;
@@ -13,6 +14,13 @@ pub enum CommandResult {
     Continue(String),
     /// プログラムの終了要求
     Exit,
+}
+
+#[derive(Debug, Clone)]
+pub enum HistoryAction {
+    List,           // 全履歴表示
+    Search(String), // 検索
+    Execute(usize), // 番号で実行
 }
 
 /// 実行可能なコマンドを表す列挙型
@@ -106,9 +114,7 @@ pub enum Command {
     /// 複数のコマンドを順次実行
     Compound { commands: Vec<Command> },
     /// 履歴を表示
-    History {
-        query: Option<String>, // 検索クエリ（Noneなら全履歴表示）
-    },
+    History { action: HistoryAction },
     /// プログラムを終了
     Exit,
 }
@@ -603,7 +609,16 @@ pub fn execute_command_internal(command: Command, input: Option<&str>) -> Result
             }
             Ok(CommandResult::Continue(String::new()))
         }
-        Command::History { query } => Ok(CommandResult::Continue(handle_history(query.as_deref()))),
+        Command::History { action } => match action {
+            HistoryAction::List | HistoryAction::Search(_) => {
+                Ok(CommandResult::Continue(handle_history(action)?))
+            }
+            HistoryAction::Execute(_) => {
+                let cmd_str = handle_history(action)?;
+                let cmd = parse_command(&cmd_str)?;
+                execute_command_internal(cmd, input)
+            }
+        },
         Command::Exit => {
             handle_exit();
             Ok(CommandResult::Exit)

@@ -1,6 +1,6 @@
 //! 基本コマンドのパース関数
 
-use crate::commands::{Command, EnvironmentAction};
+use crate::commands::{Command, EnvironmentAction, HistoryAction};
 use crate::error::{Result, RucliError};
 use crate::parser::utils::DEFAULT_HOME_INDICATOR;
 
@@ -125,19 +125,29 @@ pub(super) fn parse_environment(args: &[&str]) -> Result<Command> {
 
 // historyコマンドの処理
 pub(super) fn parse_history(args: &[&str]) -> Result<Command> {
-    // 処理内容：
-    // - 引数なし → History { query: None }
-    // - "search" + クエリ → History { query: Some(結合した文字列) }
-    // - その他 → エラー
-
     match args {
-        [] => Ok(Command::History { query: None }),
-        ["search" , query @ ..] => {
-            Ok(Command::History { query : Some(query.join(" ")) })
+        [] => Ok(Command::History {
+            action: HistoryAction::List,
+        }),
+        ["search", query @ ..] => Ok(Command::History {
+            action: HistoryAction::Search(query.join(" ")),
+        }),
+        [index] => {
+            match index.parse::<usize>() {
+                Ok(num) => Ok(Command::History {
+                    action: HistoryAction::Execute(num),
+                }),
+                Err(_) => {
+                    // 数値でない場合
+                    Err(RucliError::InvalidArgument(
+                        "Usage: history [number | search <query>]".to_string(),
+                    ))
+                }
+            }
         }
         _ => Err(RucliError::InvalidArgument(
-            "Usage: history [search <query>]".to_string()
-        ))
+            "Usage: history [search <query>]".to_string(),
+        )),
     }
 }
 
@@ -196,7 +206,12 @@ mod tests {
 
         let result2 = parse_repeat(&["abc", "test"]);
         assert!(result2.is_err());
-        assert!(result2.unwrap_err().to_string().contains("isn't a valid number"));
+        assert!(
+            result2
+                .unwrap_err()
+                .to_string()
+                .contains("isn't a valid number")
+        );
     }
 
     #[test]
@@ -226,7 +241,13 @@ mod tests {
     #[test]
     fn test_parse_alias_no_args() {
         let result = parse_alias(&[]);
-        assert!(matches!(result, Ok(Command::Alias { name: None, command: None })));
+        assert!(matches!(
+            result,
+            Ok(Command::Alias {
+                name: None,
+                command: None
+            })
+        ));
     }
 
     #[test]
@@ -269,7 +290,12 @@ mod tests {
     #[test]
     fn test_parse_env_command_list() {
         let result = parse_environment(&[]);
-        assert!(matches!(result, Ok(Command::Environment { action: EnvironmentAction::List })));
+        assert!(matches!(
+            result,
+            Ok(Command::Environment {
+                action: EnvironmentAction::List
+            })
+        ));
     }
 
     #[test]
@@ -286,5 +312,51 @@ mod tests {
         assert!(matches!(result, Ok(Command::Environment { 
             action: EnvironmentAction::Show(var) 
         }) if var == "PATH"));
+    }
+
+    #[test]
+fn test_parse_history_execute() {
+    // 正常系：数字
+    let result = parse_history(&["5"]);
+    assert!(matches!(result, Ok(Command::History { 
+        action: HistoryAction::Execute(5) 
+    })));
+    
+    let result = parse_history(&["123"]);
+    assert!(matches!(result, Ok(Command::History { 
+        action: HistoryAction::Execute(123) 
+    })));
+}
+
+    #[test]
+    fn test_parse_history_execute_invalid() {
+        // 異常系：数字でない
+        let result = parse_history(&["abc"]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Usage"));
+        
+        // 異常系：負の数（usizeなのでパースエラー）
+        let result = parse_history(&["-1"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_history_list_and_search_still_work() {
+        // 既存機能の確認：リスト
+        let result = parse_history(&[]);
+        assert!(matches!(result, Ok(Command::History { 
+            action: HistoryAction::List 
+        })));
+        
+        // 既存機能の確認：検索
+        let result = parse_history(&["search", "echo"]);
+        assert!(matches!(result, Ok(Command::History { 
+            action: HistoryAction::Search(s) 
+        }) if s == "echo"));
+        
+        let result = parse_history(&["search", "echo", "hello"]);
+        assert!(matches!(result, Ok(Command::History { 
+            action: HistoryAction::Search(s) 
+        }) if s == "echo hello"));
     }
 }

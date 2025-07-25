@@ -72,8 +72,14 @@ pub fn add_history(command: String) {
     HISTORY.lock().unwrap().add(command);
 }
 
+// インデックス付きの配列を取得
 pub fn get_history_list() -> Vec<(usize, String)> {
     HISTORY.lock().unwrap().list()
+}
+
+// コマンド配列を取得
+pub fn get_history_commands() -> VecDeque<String> {
+    HISTORY.lock().unwrap().commands.clone()
 }
 
 /// 履歴をクリア
@@ -217,6 +223,23 @@ fn ensure_history_dir_exists(dir_path: &Path) -> Result<()> {
     Ok(())
 }
 
+/// 指定された番号の履歴コマンドを取得
+///
+/// # Arguments
+/// * `number` - 履歴番号（1から始まる）
+///
+/// # Returns
+/// * 該当するコマンド文字列、または None
+pub fn get_history_by_number(number: usize) -> Option<String> {
+    let commands = get_history_commands();
+
+    if 0 < number && number <= commands.len() {
+        Some(commands[number - 1].clone())
+    } else {
+        None
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -315,5 +338,35 @@ mod tests {
         // 最初のものは削除されているはず
         assert!(!list.iter().any(|(_, cmd)| cmd == "maxtest_0"));
         assert!(list.iter().any(|(_, cmd)| cmd == "maxtest_1000"));
+    }
+
+    #[test]
+    fn test_get_history_by_number() {
+        let _guard = TEST_MUTEX.lock().unwrap();
+        _clear_history();
+
+        // 履歴を追加
+        add_history("echo first".to_string());
+        add_history("echo second".to_string());
+        add_history("echo third".to_string());
+
+        // 正常系
+        assert_eq!(get_history_by_number(1), Some("echo first".to_string()));
+        assert_eq!(get_history_by_number(2), Some("echo second".to_string()));
+        assert_eq!(get_history_by_number(3), Some("echo third".to_string()));
+
+        // 異常系
+        assert_eq!(get_history_by_number(0), None); // 0は無効
+        assert_eq!(get_history_by_number(4), None); // 範囲外
+    }
+
+    #[test]
+    fn test_get_history_by_number_empty() {
+        let _guard = TEST_MUTEX.lock().unwrap();
+        _clear_history();
+
+        // 空の履歴
+        assert_eq!(get_history_by_number(1), None);
+        assert_eq!(get_history_by_number(100), None);
     }
 }

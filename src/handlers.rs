@@ -3,17 +3,18 @@
 use crate::alias::{list_aliases, set_alias};
 use crate::environment::{get_var, list_all_vars, set_var};
 use crate::error::{Result, RucliError};
-use crate::history::{get_history_list, search_history};
+use crate::history::{get_history_by_number, get_history_list, search_history};
 use crate::{functions, job};
 use log::{debug, info, warn};
 use regex::Regex;
 use std::io::{BufRead, BufReader};
 use std::thread;
 use std::time::Duration;
-use std::{env, fs, io, os::unix::fs::PermissionsExt, path::Path, process};
+use std::{env, fs, io, os::unix::fs::PermissionsExt, path::Path};
 
 use crate::commands::{
-    COMMANDS, Command, CommandResult, EnvironmentAction, execute_command, execute_command_internal,
+    COMMANDS, Command, CommandResult, EnvironmentAction, HistoryAction, execute_command,
+    execute_command_internal,
 };
 use crate::parser::{DEFAULT_HOME_INDICATOR, PREVIOUS_DIR_INDICATOR};
 
@@ -791,22 +792,32 @@ pub fn handle_function_call(name: &str, args: &[String]) -> Result<String> {
 }
 
 /// 履歴コマンドのハンドラー
-pub fn handle_history(query: Option<&str>) -> String {
-    let list = match query {
-        None => get_history_list(),
-        Some(q) => search_history(q),
-    };
+pub fn handle_history(action: HistoryAction) -> Result<String> {
+    match action {
+        HistoryAction::List => {
+            let list = get_history_list();
 
-    if list.is_empty() {
-        match query {
-            None => "No history".to_string(),
-            Some(q) => format!("No commands found matching '{}'", q),
+            Ok(list
+                .iter()
+                .map(|(num, cmd)| format!("{num:4}  {cmd}"))
+                .collect::<Vec<_>>()
+                .join("\n"))
         }
-    } else {
-        list.iter()
-            .map(|(num, cmd)| format!("{num:4}  {cmd}"))
-            .collect::<Vec<_>>()
-            .join("\n")
+        HistoryAction::Search(query) => {
+            let list = search_history(&query);
+
+            Ok(list
+                .iter()
+                .map(|(num, cmd)| format!("{num:4}  {cmd}"))
+                .collect::<Vec<_>>()
+                .join("\n"))
+        }
+        HistoryAction::Execute(index) => match get_history_by_number(index) {
+            Some(cmd) => Ok(cmd),
+            None => Err(RucliError::InvalidArgument(format!(
+                "history: {index}: history position out of range",
+            ))),
+        },
     }
 }
 

@@ -1,9 +1,9 @@
+use crate::error::Result;
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use std::sync::Mutex;
-use crate::error::{Result};
 
-use crate::commands::{execute_command_internal, CommandResult};
+use crate::commands::{CommandResult, execute_command_internal};
 use crate::parser::parse_command;
 
 /// セッション固有の環境変数ストレージ
@@ -136,16 +136,16 @@ pub fn expand_command_substitution(input: &str) -> Result<String> {
     while let Some(ch) = chars.next() {
         if ch == '$' {
             // 次の文字が(かチェック
-            if chars.peek() == Some(&'('){
+            if chars.peek() == Some(&'(') {
                 // (を消費
                 chars.next();
-                
+
                 let mut paren_count = 1;
                 let mut cmd_string = String::new();
                 let mut found_closing_brace = false;
 
                 // )まで読み取る
-                for next_ch in chars.by_ref(){
+                for next_ch in chars.by_ref() {
                     if next_ch == '(' {
                         paren_count += 1;
                         cmd_string.push(next_ch);
@@ -172,10 +172,10 @@ pub fn expand_command_substitution(input: &str) -> Result<String> {
                                 Ok(CommandResult::Continue(output)) => {
                                     // 末尾の改行を削除
                                     ans_string.push_str(output.trim_end());
-                                },
+                                }
                                 Ok(CommandResult::Exit) => {
                                     // コマンド置換内でのExitは無視
-                                },
+                                }
                                 Err(_) => {
                                     // エラーなのでなにもしない
                                 }
@@ -197,11 +197,10 @@ pub fn expand_command_substitution(input: &str) -> Result<String> {
                 }
             }
             // $だけなのでそのまま残しておく
-            else{
+            else {
                 ans_string.push(ch);
             }
-        }
-        else {
+        } else {
             ans_string.push(ch);
         }
     }
@@ -212,9 +211,9 @@ pub fn expand_command_substitution(input: &str) -> Result<String> {
 #[cfg(test)]
 mod environment_tests {
     use super::*;
-    use crate::environment::{set_var, expand_variables};
+    use crate::commands::{Command, EnvironmentAction, execute_command_internal};
+    use crate::environment::{expand_variables, set_var};
     use crate::handlers::handle_environment;
-    use crate::commands::{execute_command_internal, Command, EnvironmentAction};
     use crate::parser::parse_command;
 
     // ========================================
@@ -225,7 +224,7 @@ mod environment_tests {
     fn test_env_command_list_all() {
         // When: env コマンドを引数なしで実行
         let result = handle_environment(EnvironmentAction::List).unwrap();
-        
+
         // Then: システム環境変数が表示される
         assert!(result.contains("PATH="));
         assert!(!result.is_empty());
@@ -234,11 +233,15 @@ mod environment_tests {
     #[test]
     fn test_env_set_and_get() {
         // Given: 新しい環境変数を設定
-        handle_environment(EnvironmentAction::Set("TEST_VAR".to_string(), "test_value".to_string())).unwrap();
-        
+        handle_environment(EnvironmentAction::Set(
+            "TEST_VAR".to_string(),
+            "test_value".to_string(),
+        ))
+        .unwrap();
+
         // When: その変数を取得
         let result = handle_environment(EnvironmentAction::Show("TEST_VAR".to_string())).unwrap();
-        
+
         // Then: 設定した値が返される
         assert_eq!(result.trim(), "test_value");
     }
@@ -246,13 +249,22 @@ mod environment_tests {
     #[test]
     fn test_env_set_overwrites_existing() {
         // Given: 変数を設定
-        handle_environment(EnvironmentAction::Set("OVERWRITE_TEST".to_string(), "original".to_string())).unwrap();
-        
+        handle_environment(EnvironmentAction::Set(
+            "OVERWRITE_TEST".to_string(),
+            "original".to_string(),
+        ))
+        .unwrap();
+
         // When: 同じ変数に別の値を設定
-        handle_environment(EnvironmentAction::Set("OVERWRITE_TEST".to_string(), "updated".to_string())).unwrap();
-        
+        handle_environment(EnvironmentAction::Set(
+            "OVERWRITE_TEST".to_string(),
+            "updated".to_string(),
+        ))
+        .unwrap();
+
         // Then: 新しい値で上書きされる
-        let result = handle_environment(EnvironmentAction::Show("OVERWRITE_TEST".to_string())).unwrap();
+        let result =
+            handle_environment(EnvironmentAction::Show("OVERWRITE_TEST".to_string())).unwrap();
         assert_eq!(result.trim(), "updated");
     }
 
@@ -260,26 +272,36 @@ mod environment_tests {
     fn test_env_show_nonexistent_variable() {
         // When: 存在しない変数を表示しようとする
         let result = handle_environment(EnvironmentAction::Show("NONEXISTENT_VAR".to_string()));
-        
+
         // Then: エラーが返される
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Environment variable 'NONEXISTENT_VAR' not found"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Environment variable 'NONEXISTENT_VAR' not found")
+        );
     }
 
     #[test]
     fn test_parse_env_command_list() {
         // When: env コマンドをパース
         let cmd = parse_command("env").unwrap();
-        
+
         // Then: Environment::List コマンドが生成される
-        assert!(matches!(cmd, Command::Environment { action: EnvironmentAction::List }));
+        assert!(matches!(
+            cmd,
+            Command::Environment {
+                action: EnvironmentAction::List
+            }
+        ));
     }
 
     #[test]
     fn test_parse_env_command_set() {
         // When: env VAR=value コマンドをパース
         let cmd = parse_command("env TEST_VAR=test_value").unwrap();
-        
+
         // Then: Environment::Set コマンドが生成される
         assert!(matches!(cmd, Command::Environment { 
             action: EnvironmentAction::Set(var, val) 
@@ -290,7 +312,7 @@ mod environment_tests {
     fn test_parse_env_command_show() {
         // When: env VAR コマンドをパース
         let cmd = parse_command("env PATH").unwrap();
-        
+
         // Then: Environment::Show コマンドが生成される
         assert!(matches!(cmd, Command::Environment { 
             action: EnvironmentAction::Show(var) 
@@ -302,7 +324,7 @@ mod environment_tests {
         // Given: 環境変数を設定
         set_var("PREFIX", "test");
         set_var("PATH", "/usr/bin");
-        
+
         // When/Then: 基本的な ${VAR} 展開
         assert_eq!(expand_variables("${PREFIX}"), "test");
         assert_eq!(expand_variables("${PATH}"), "/usr/bin");
@@ -313,7 +335,7 @@ mod environment_tests {
         // Given: 環境変数を設定
         set_var("USER", "alice");
         set_var("HOST", "server");
-        
+
         // When/Then: $VAR と ${VAR} の混在
         assert_eq!(expand_variables("$USER@${HOST}.com"), "alice@server.com");
         assert_eq!(expand_variables("${USER} on $HOST"), "alice on server");
@@ -325,10 +347,13 @@ mod environment_tests {
         set_var("FIRST", "Hello");
         set_var("SECOND", "World");
         set_var("THIRD", "!");
-        
+
         // When/Then: 複数変数を展開
         assert_eq!(expand_variables("$FIRST $SECOND$THIRD"), "Hello World!");
-        assert_eq!(expand_variables("${FIRST} ${SECOND} ${THIRD}"), "Hello World !");
+        assert_eq!(
+            expand_variables("${FIRST} ${SECOND} ${THIRD}"),
+            "Hello World !"
+        );
     }
 
     #[test]
@@ -341,8 +366,8 @@ mod environment_tests {
     #[test]
     fn test_brace_error_cases() {
         // When/Then: ブレース記法のエラーケース
-        assert_eq!(expand_variables("${VAR"), "${VAR");           // 閉じブレースなし
-        assert_eq!(expand_variables("${}"), "${}");               // 空の変数名
+        assert_eq!(expand_variables("${VAR"), "${VAR"); // 閉じブレースなし
+        assert_eq!(expand_variables("${}"), "${}"); // 空の変数名
         assert_eq!(expand_variables("${INCOMPLETE text"), "${INCOMPLETE text"); // 途中終了
     }
 
@@ -350,17 +375,17 @@ mod environment_tests {
     fn test_dollar_edge_cases() {
         // When/Then: $ のエッジケース
         assert_eq!(expand_variables("Price $100"), "Price "); // 数字始まり変数は無効→空文字列
-        assert_eq!(expand_variables("$$"), "$$");                 // 連続$
-        assert_eq!(expand_variables("$"), "$");                   // 単独$
+        assert_eq!(expand_variables("$$"), "$$"); // 連続$
+        assert_eq!(expand_variables("$"), "$"); // 単独$
     }
 
     #[test]
     fn test_system_variable_expansion() {
         // When/Then: システム環境変数の展開
         let result = expand_variables("Home: $HOME");
-        assert!(result.starts_with("Home: /") || result == "Home: ");  // HOMEがない環境もある
+        assert!(result.starts_with("Home: /") || result == "Home: "); // HOMEがない環境もある
         assert!(!result.contains("$HOME"));
-        
+
         let path_result = expand_variables("Path: $PATH");
         assert!(path_result.contains("Path: "));
         assert!(!path_result.contains("$PATH"));
@@ -370,12 +395,12 @@ mod environment_tests {
     fn test_cat_command_with_variable_filename() {
         // Given: 環境変数を設定
         set_var("FILENAME", "test.txt");
-        
+
         let cmd = parse_command("cat $FILENAME").unwrap();
-        
+
         // パース時点では変数展開されない
         assert!(matches!(cmd.clone(), Command::Cat { filename } if filename == "$FILENAME"));
-        
+
         // expand_variablesメソッドで展開
         let expanded_cmd = cmd.expand_variables();
         assert!(matches!(expanded_cmd, Command::Cat { filename } if filename == "test.txt"));
@@ -386,10 +411,10 @@ mod environment_tests {
         // Given: ファイル名と内容を環境変数に設定
         set_var("OUTPUT", "output.txt");
         set_var("MESSAGE", "Hello File");
-        
+
         // When: writeコマンドで変数展開
         let cmd = parse_command("write $OUTPUT $MESSAGE").unwrap();
-        
+
         // パース時点では変数展開されない
         match &cmd {
             Command::Write { filename, content } => {
@@ -398,7 +423,7 @@ mod environment_tests {
             }
             _ => panic!("Expected Write command"),
         }
-        
+
         // expand_variablesメソッドで展開
         let expanded_cmd = cmd.expand_variables();
         assert!(matches!(expanded_cmd, Command::Write { filename, content } 
@@ -410,10 +435,10 @@ mod environment_tests {
         // Given: 環境変数を設定
         set_var("PATTERN", "error");
         set_var("LOGFILE", "app.log");
-        
+
         // When: パイプラインで変数展開
         let cmd = parse_command("cat $LOGFILE | grep $PATTERN").unwrap();
-        
+
         // Then: パイプライン内の変数はまだ展開されていない（文字列のまま）
         if let Command::Pipeline { commands } = cmd {
             assert_eq!(commands.len(), 2);
@@ -430,15 +455,20 @@ mod environment_tests {
         // Given: 環境変数を設定
         set_var("INPUT", "source.txt");
         set_var("OUTPUT", "dest.txt");
-        
+
         // When: リダイレクトで変数展開
         let cmd = parse_command("cat $INPUT > $OUTPUT").unwrap();
-        
+
         // Then: パース時点では展開されていない
-        if let Command::Redirect { command, redirect_type, target } = cmd {
+        if let Command::Redirect {
+            command,
+            redirect_type,
+            target,
+        } = cmd
+        {
             assert_eq!(redirect_type, ">");
             assert_eq!(target, "$OUTPUT");
-            
+
             match *command {
                 Command::Cat { filename } => {
                     assert_eq!(filename, "$INPUT");
@@ -455,10 +485,10 @@ mod environment_tests {
         // Given: 環境変数を設定
         set_var("CMD", "echo");
         set_var("MSG", "hello");
-        
+
         // When: バックグラウンド実行で変数展開
         let result = parse_command("$CMD $MSG &");
-        
+
         // パース時点では$CMDがコマンド名として認識されずエラーになる可能性
         // これは現在の実装の制限
         assert!(result.is_err() || matches!(result, Ok(Command::Background { .. })));
@@ -469,17 +499,23 @@ mod environment_tests {
         // Given: 特殊文字を含む値
         set_var("EMAIL", "user@domain.com");
         set_var("PATH_WITH_SPACES", "/path with spaces");
-        
+
         // When: 特殊文字を含む変数を展開
-        assert_eq!(expand_variables("Contact: $EMAIL"), "Contact: user@domain.com");
-        assert_eq!(expand_variables("Dir: ${PATH_WITH_SPACES}"), "Dir: /path with spaces");
+        assert_eq!(
+            expand_variables("Contact: $EMAIL"),
+            "Contact: user@domain.com"
+        );
+        assert_eq!(
+            expand_variables("Dir: ${PATH_WITH_SPACES}"),
+            "Dir: /path with spaces"
+        );
     }
 
     #[test]
     fn test_empty_variable_expansion() {
         // Given: 空文字列の環境変数
         set_var("EMPTY", "");
-        
+
         // When: 空変数を展開
         assert_eq!(expand_variables("Value: $EMPTY end"), "Value:  end");
         assert_eq!(expand_variables("${EMPTY}test"), "test");
@@ -489,9 +525,12 @@ mod environment_tests {
     fn test_variable_expansion_preserves_quotes() {
         // Given: 環境変数を設定
         set_var("QUOTED", "with spaces");
-        
+
         // When: クォート内で変数展開
-        assert_eq!(expand_variables("\"Message: $QUOTED\""), "\"Message: with spaces\"");
+        assert_eq!(
+            expand_variables("\"Message: $QUOTED\""),
+            "\"Message: with spaces\""
+        );
         assert_eq!(expand_variables("'${QUOTED}'"), "'with spaces'");
     }
 
@@ -501,7 +540,7 @@ mod environment_tests {
         set_var("VAR1", "first");
         set_var("VAR2", "second");
         set_var("PATH123", "custom_path");
-        
+
         // When/Then: 数字を含む変数名の展開
         assert_eq!(expand_variables("$VAR1 and $VAR2"), "first and second");
         assert_eq!(expand_variables("${PATH123}"), "custom_path");
@@ -512,7 +551,7 @@ mod environment_tests {
         // Given: アンダースコアを含む変数名
         set_var("MY_VAR", "underscore_value");
         set_var("TEST_123", "test_value");
-        
+
         // When/Then: アンダースコア変数の展開
         assert_eq!(expand_variables("$MY_VAR"), "underscore_value");
         assert_eq!(expand_variables("${TEST_123}"), "test_value");
@@ -522,10 +561,10 @@ mod environment_tests {
     fn test_session_vs_system_variable_priority() {
         // Given: システム変数と同名のセッション変数を設定
         set_var("PATH", "/custom/path");
-        
+
         // When: 変数を展開
         let result = expand_variables("$PATH");
-        
+
         // Then: セッション変数が優先される
         assert_eq!(result, "/custom/path");
     }
@@ -536,10 +575,10 @@ mod environment_tests {
         set_var("PROJECT", "myapp");
         set_var("VERSION", "1.0");
         set_var("ENV", "prod");
-        
+
         // When: 複雑な変数展開
         let result = expand_variables("${PROJECT}-${VERSION}-${ENV}.tar.gz");
-        
+
         // Then: 正しく展開される
         assert_eq!(result, "myapp-1.0-prod.tar.gz");
     }
@@ -549,15 +588,15 @@ mod environment_tests {
         // デバッグ: 変数名の境界確認
         set_var("VAR", "value");
         set_var("_UNDERSCORE", "underscore_value");
-        
+
         // 数字との境界（bash準拠）
         assert_eq!(expand_variables("$VAR123"), ""); // VAR123という変数（存在しない）
         assert_eq!(expand_variables("${VAR}123"), "value123"); // VAR + "123"
-        
-        // 記号との境界  
+
+        // 記号との境界
         assert_eq!(expand_variables("$VAR.txt"), "value.txt"); // VAR + ".txt"
         assert_eq!(expand_variables("$VAR/path"), "value/path"); // VAR + "/path"
-        
+
         // アンダースコア始まり
         assert_eq!(expand_variables("$_UNDERSCORE"), "underscore_value"); // 有効
     }
@@ -570,10 +609,10 @@ mod environment_tests {
     fn test_basic_command_substitution() {
         // Given: pwdコマンドの出力を置換
         let input = "Current dir: $(pwd)";
-        
+
         // When: コマンド置換を実行
         let result = expand_command_substitution(input).unwrap();
-        
+
         // Then: pwdの出力が含まれる
         assert!(result.starts_with("Current dir: /"));
         assert!(!result.contains("$(pwd)"));
@@ -583,10 +622,10 @@ mod environment_tests {
     fn test_multiple_command_substitutions() {
         // Given: 複数のコマンド置換
         let input = "First: $(echo hello) Second: $(echo world)";
-        
+
         // When: 置換実行
         let result = expand_command_substitution(input).unwrap();
-        
+
         // Then: 両方が置換される
         assert_eq!(result, "First: hello Second: world");
     }
@@ -595,10 +634,10 @@ mod environment_tests {
     fn test_nested_command_substitution() {
         // Given: ネストされたコマンド置換
         let input = "Result: $(echo $(echo nested))";
-        
+
         // When: 置換実行
         let result = expand_command_substitution(input).unwrap();
-        
+
         // Then: 正しく評価される
         assert_eq!(result, "Result: nested");
     }
@@ -607,10 +646,10 @@ mod environment_tests {
     fn test_command_substitution_with_pipe() {
         // Given: echoコマンドでパイプをシミュレート
         let input = "Result: $(echo hello | cat)";
-        
+
         // When: 置換実行
         let result = expand_command_substitution(input).unwrap();
-        
+
         // Then: パイプラインが実行される
         assert_eq!(result, "Result: hello");
     }
@@ -619,10 +658,10 @@ mod environment_tests {
     fn test_failed_command_substitution() {
         // Given: 失敗するコマンド
         let input = "Error: $(nonexistent_command)";
-        
+
         // When: 置換実行
         let result = expand_command_substitution(input).unwrap();
-        
+
         // Then: 空文字列に置換される
         assert_eq!(result, "Error: ");
     }
@@ -631,10 +670,10 @@ mod environment_tests {
     fn test_unclosed_command_substitution() {
         // Given: 閉じていない括弧
         let input = "Incomplete: $(echo hello";
-        
+
         // When: 置換実行
         let result = expand_command_substitution(input).unwrap();
-        
+
         // Then: 元の文字列が保持される
         assert_eq!(result, input);
     }
@@ -643,10 +682,10 @@ mod environment_tests {
     fn test_empty_command_substitution() {
         // Given: 空のコマンド
         let input = "Empty: $() end";
-        
+
         // When: 置換実行
         let result = expand_command_substitution(input).unwrap();
-        
+
         // Then: 空文字列に置換
         assert_eq!(result, "Empty:  end");
     }
@@ -655,10 +694,10 @@ mod environment_tests {
     fn test_command_substitution_preserves_quotes() {
         // Given: クォート内でのコマンド置換
         let input = r#"Message: "$(echo hello world)""#;
-        
+
         // When: 置換実行
         let result = expand_command_substitution(input).unwrap();
-        
+
         // Then: クォートが保持される
         assert_eq!(result, r#"Message: "hello world""#);
     }
@@ -668,11 +707,11 @@ mod environment_tests {
         // Given: 変数を含むコマンド
         set_var("NAME", "test");
         let input = "Result: $(echo $NAME)";
-        
+
         // When: 変数展開してから置換実行
         let expanded = expand_variables(input);
         let result = expand_command_substitution(&expanded).unwrap();
-        
+
         // Then: 変数が展開されてから実行される
         assert_eq!(result, "Result: test");
     }
@@ -681,10 +720,10 @@ mod environment_tests {
     fn test_complex_nested_substitution() {
         // Given: 複雑なネスト
         let input = "$(echo Result: $(echo $(echo deep)))";
-        
+
         // When: 置換実行
         let result = expand_command_substitution(input).unwrap();
-        
+
         // Then: 正しく評価される
         assert_eq!(result, "Result: deep");
     }
@@ -693,10 +732,10 @@ mod environment_tests {
     fn test_command_substitution_trims_newline() {
         // Given: 改行を含む出力
         let input = "Dir: $(pwd)!";
-        
+
         // When: 置換実行
         let result = expand_command_substitution(input).unwrap();
-        
+
         // Then: 改行が除去される
         assert!(result.ends_with("!"));
         assert!(!result.contains('\n'));
@@ -706,10 +745,10 @@ mod environment_tests {
     fn test_dollar_without_parenthesis() {
         // Given: $だけの文字列
         let input = "Price is $100";
-        
+
         // When: 置換実行
         let result = expand_command_substitution(input).unwrap();
-        
+
         // Then: 変更されない
         assert_eq!(result, "Price is $100");
     }
@@ -719,11 +758,11 @@ mod environment_tests {
         // Given: 変数展開とコマンド置換の混在
         set_var("PREFIX", "Hello");
         let input = "$PREFIX $(echo World)!";
-        
+
         // When: 両方の展開を実行
         let var_expanded = expand_variables(input);
         let result = expand_command_substitution(&var_expanded).unwrap();
-        
+
         // Then: 両方が正しく処理される
         assert_eq!(result, "Hello World!");
     }
@@ -733,17 +772,21 @@ mod environment_tests {
         // Given: 環境変数を設定
         set_var("FILE", "test.txt");
         set_var("MSG", "Hello World");
-        
+
         // Catコマンドのテスト
-        let cat_cmd = Command::Cat { filename: "$FILE".to_string() };
+        let cat_cmd = Command::Cat {
+            filename: "$FILE".to_string(),
+        };
         let expanded_cat = cat_cmd.expand_variables();
         assert!(matches!(expanded_cat, Command::Cat { filename } if filename == "test.txt"));
-        
+
         // Echoコマンドのテスト
-        let echo_cmd = Command::Echo { message: "$MSG".to_string() };
+        let echo_cmd = Command::Echo {
+            message: "$MSG".to_string(),
+        };
         let expanded_echo = echo_cmd.expand_variables();
         assert!(matches!(expanded_echo, Command::Echo { message } if message == "Hello World"));
-        
+
         // 複数変数のテスト
         unsafe {
             std::env::set_var("USER", "testuser");

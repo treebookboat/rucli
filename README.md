@@ -2,21 +2,21 @@
 
 100 Commit Challenge: Building a feature-rich CLI tool in 100 commits
 
-Progress: 70/100 Commits
+Progress: 71/100 Commits
 
-## Latest Changes (Commit #70)
+## Latest Changes (Commit #71)
 
-- **History Search**: Search through command history with partial matching!
-- Case-insensitive search across all previous commands
-- `history search <query>` finds all commands containing the query
-- Excludes the current search command from results
-- Empty query shows all history (except current command)
+- **History Navigation**: Execute previous commands by their history number!
+- Use `history n` to re-execute the nth command from history
+- Provides bash-like `!n` functionality with familiar syntax
+- Error handling for invalid history positions
+- Foundation for advanced history expansion features
 
 ## Usage
 
-### History Search
+### History Navigation
 
-**Basic search:**
+**Basic navigation:**
 ```bash
 $ rucli
 > echo hello world
@@ -24,47 +24,62 @@ hello world
 > echo goodbye
 goodbye
 > cat file.txt
-> history search echo
+file content
+> history
    1  echo hello world
    2  echo goodbye
+   3  cat file.txt
+   4  history
+> history 1
+hello world
+> history 3
+file content
 ```
 
-**Case-insensitive matching:**
+**Error handling:**
 ```bash
-> echo HELLO
-HELLO
-> ECHO test
+> history 0
+history: 0: history position out of range
+> history 999
+history: 999: history position out of range
+> history abc
+Usage: history [number | search <query>]
+```
+
+**Complex commands:**
+```bash
+> echo test | grep t
 test
-> history search echo
-   1  echo HELLO
-   2  ECHO test
+> for i in 1 2 3; do echo $i; done
+1
+2
+3
+> history
+   1  echo test | grep t
+   2  for i in 1 2 3; do echo $i; done
+   3  history
+> history 2
+1
+2
+3
 ```
 
-**Partial matching:**
-```bash
-> cat important_file.txt
-> write file.txt content
-> rm file.txt
-> history search file
-   1  cat important_file.txt
-   2  write file.txt content
-   3  rm file.txt
-```
+### History Features
 
-**No results:**
-```bash
-> echo test
-test
-> history search xyz
-No commands found matching 'xyz'
-```
+- **View history**: `history` - displays numbered command list
+- **Search history**: `history search <query>` - case-insensitive partial matching
+- **Execute from history**: `history n` - re-execute the nth command ← NEW!
+- Persistence between sessions via RUCLI_HISTFILE
+- Automatic deduplication of consecutive commands
+- Up to 1000 commands stored
 
 ### Complete Feature Set
 
 **Interactive Features:**
 - Command history with `history` command
 - History persistence between sessions
-- **History search with `history search <query>`** ← NEW!
+- History search with `history search <query>`
+- **History navigation with `history n`** ← NEW!
 - Automatic deduplication of consecutive commands
 - Up to 1000 commands stored
 
@@ -108,39 +123,53 @@ No commands found matching 'xyz'
 
 ## Examples
 
-### History Search Examples
+### History Navigation Examples
 
-**Search for specific commands:**
+**Re-execute previous commands:**
 ```bash
 $ rucli
-> cd /home/user
+> write test.txt "Hello, World!"
+File written successfully: test.txt
+> cat test.txt
+Hello, World!
+> rm test.txt
+> history
+   1  write test.txt "Hello, World!"
+   2  cat test.txt
+   3  rm test.txt
+   4  history
+> history 1
+File written successfully: test.txt
+> history 2
+Hello, World!
+```
+
+**Navigate through session history:**
+```bash
+> pwd
+/home/user
 > cd /tmp
-> cd ~/documents
-> history search cd
-   1  cd /home/user
+> pwd
+/tmp
+> history
+   1  pwd
    2  cd /tmp
-   3  cd ~/documents
+   3  pwd
+   4  history
+> history 1
+/tmp
 ```
 
-**Complex search in scripts:**
+**Re-execute complex commands:**
 ```bash
-> for i in 1 2 3; do echo $i; done
-1
-2
-3
-> while test -f lock; do sleep 1; done
-> history search do
-   1  for i in 1 2 3; do echo $i; done
-   2  while test -f lock; do sleep 1; done
-```
-
-**Search with special characters:**
-```bash
-> echo "hello world" > output.txt
-> cat < input.txt
-> ls | grep txt
-> history search >
-   1  echo "hello world" > output.txt
+> echo "Line 1" > file.txt
+> echo "Line 2" >> file.txt
+> cat file.txt | grep Line
+Line 1
+Line 2
+> history 3
+Line 1
+Line 2
 ```
 
 ## Environment Variables
@@ -155,7 +184,7 @@ $ rucli
 rucli/
 ├── src/
 │   ├── main.rs         # Entry point with history persistence
-│   ├── commands.rs     # Command definitions with History search
+│   ├── commands.rs     # Command definitions with HistoryAction enum
 │   ├── parser/         # Modular parser
 │   │   ├── mod.rs      # Public interface
 │   │   ├── basic.rs    # Basic commands & history parsing
@@ -163,8 +192,8 @@ rucli/
 │   │   ├── control.rs  # Control structures
 │   │   ├── operators.rs# Operators
 │   │   └── utils.rs    # Utilities
-│   ├── handlers.rs     # Command implementations
-│   ├── history.rs      # History with search functionality
+│   ├── handlers.rs     # Command implementations with history execution
+│   ├── history.rs      # History with navigation functionality
 │   ├── functions.rs    # Function storage
 │   ├── environment.rs  # Variables & expansions
 │   ├── pipeline.rs     # Pipeline execution
@@ -202,14 +231,11 @@ cargo run -- test.rsh   # Run a script file
 
 ### Phase 3: Advanced Features (46-70) - COMPLETED ✅
 
-- ✅ Commits 46-67: All implemented
-- ✅ Command history basics (68)
-- ✅ History persistence (69)
-- ✅ **History search (70)** ← NEW!
+- ✅ All commits implemented
 
-### Phase 4: Interactive Features (71-85) - STARTING 🚧
+### Phase 4: Interactive Features (71-85) - IN PROGRESS 🚧
 
-- History navigation (number-based execution) (71)
+- ✅ History navigation (number-based execution) (71) ← DONE!
 - History expansion (!n, !!, !string) (72)
 - Arrow key navigation basics (73)
 - Line editing with arrows (74)
@@ -238,17 +264,17 @@ cargo run -- test.rsh   # Run a script file
 - Release preparation (99)
 - 🎉 Project completion celebration! (100)
 
-## Next: History Navigation (Commit #71)
+## Next: History Expansion (Commit #72)
 
-Implement number-based history execution:
+Implement bash-style history expansion:
 
-- Execute commands by history number (!n equivalent)
-- Support for negative indexing (!-n)
-- Range-based history display
-- Foundation for history expansion
+- `!!` - Execute the last command
+- `!n` - Execute nth command (alternative syntax)
+- `!-n` - Execute nth command from the end
+- `!string` - Execute most recent command starting with string
 
 ---
 
-**Progress: 70/100 commits completed** 🎯
+**Progress: 71/100 commits completed** 🎯
 **Current Phase: Interactive Features (Phase 4)** ⚡
-**Next Milestone: History Navigation** 🔢
+**Next Milestone: History Expansion** 🔥

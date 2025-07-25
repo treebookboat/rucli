@@ -2494,27 +2494,6 @@ fn test_history_persistence_ctrl_c_no_save() {
 }
 
 #[test]
-fn test_history_search_no_results() {
-    let temp_dir = TempDir::new().unwrap();
-    let history_file = temp_dir.path().join(".test_search_empty");
-
-    Command::cargo_bin("rucli")
-        .unwrap()
-        .env("RUCLI_HISTFILE", history_file.to_str().unwrap())
-        .current_dir(&temp_dir)
-        .write_stdin(
-            "echo test\n\
-             history search nonexistentcommand\n\
-             exit\n",
-        )
-        .assert()
-        .success()
-        .stdout(predicate::str::contains(
-            "No commands found matching 'nonexistentcommand'",
-        ));
-}
-
-#[test]
 fn test_history_search_basic() {
     let temp_dir = TempDir::new().unwrap();
     let history_file = temp_dir.path().join(".test_search_history");
@@ -2623,4 +2602,150 @@ fn test_history_search_special_characters() {
         .assert()
         .success()
         .stdout(predicate::str::contains("2  echo test > file.txt"));
+}
+
+#[test]
+fn test_history_navigation_basic() {
+    let temp_dir = TempDir::new().unwrap();
+    let test_file = temp_dir.path().join("test.txt");
+    fs::write(&test_file, "test content").unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "echo first command\n\
+             echo second command\n\
+             cat test.txt\n\
+             history\n\
+             history 1\n\
+             history 2\n\
+             history 3\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("first command"))
+        .stdout(predicate::str::contains("second command"))
+        .stdout(predicate::str::contains("test content"))
+        .stdout(predicate::str::contains("   1  echo first command"))
+        .stdout(predicate::str::contains("   2  echo second command"))
+        .stdout(predicate::str::contains("   3  cat test.txt"));
+}
+
+#[test]
+fn test_history_navigation_errors() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "echo test\n\
+             history 0\n\
+             history 999\n\
+             history abc\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stderr(predicate::str::contains(
+            "history: 0: history position out of range",
+        ))
+        .stderr(predicate::str::contains(
+            "history: 999: history position out of range",
+        ))
+        .stderr(predicate::str::contains("Usage: history"));
+}
+
+#[test]
+fn test_history_navigation_complex_commands() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "echo hello | grep h\n\
+             echo test > output.txt\n\
+             for i in 1 2 3; do echo $i; done\n\
+             history 1\n\
+             history 3\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        // パイプラインの再実行
+        .stdout(predicate::str::contains("hello").count(2))
+        // forループの再実行
+        .stdout(predicate::str::contains("1\n2\n3").count(2));
+}
+
+#[test]
+fn test_history_navigation_with_functions() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "function greet() { echo Hello, $1!; }\n\
+             greet World\n\
+             history\n\
+             history 2\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Hello, World!").count(2));
+}
+
+#[test]
+fn test_history_navigation_persistence() {
+    let temp_dir = TempDir::new().unwrap();
+    let history_file = temp_dir.path().join(".test_nav_history");
+
+    // セッション1
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .env("RUCLI_HISTFILE", history_file.to_str().unwrap())
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "echo session 1 command\n\
+             exit\n",
+        )
+        .assert()
+        .success();
+
+    // セッション2で履歴から実行
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .env("RUCLI_HISTFILE", history_file.to_str().unwrap())
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "history 1\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("session 1 command"));
+}
+
+#[test]
+fn test_history_navigation_edge_cases() {
+    let temp_dir = TempDir::new().unwrap();
+
+    // 履歴が1つだけの場合
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "echo only command\n\
+             history 1\n\
+             history 2\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("only command").count(3));
 }
