@@ -2,6 +2,7 @@
 
 mod basic;
 mod control;
+pub mod expansion;
 mod file_ops;
 mod operators;
 mod utils;
@@ -34,6 +35,17 @@ use self::utils::*;
 pub fn parse_command(input: &str) -> Result<Command> {
     debug!("Parsing input: '{input}'");
 
+    // "&"があるかチェック
+    if contains_background(input) {
+        // "&"を除いた部分をパース
+        let cmd_without_bg = input.trim_end().trim_end_matches('&').trim();
+        let inner_cmd = parse_command(cmd_without_bg)?;
+
+        return Ok(Command::Background {
+            command: Box::new(inner_cmd),
+        });
+    }
+
     // コマンド置換を追加
     let substituted_input = expand_command_substitution(input)?;
 
@@ -53,17 +65,6 @@ pub fn parse_command(input: &str) -> Result<Command> {
         debug!("no alias");
         cmd_name
     };
-
-    // "&"があるかチェック
-    if contains_background(input) {
-        // "&"を除いた部分をパース
-        let cmd_without_bg = input.trim_end().trim_end_matches('&').trim();
-        let inner_cmd = parse_command(cmd_without_bg)?;
-
-        return Ok(Command::Background {
-            command: Box::new(inner_cmd),
-        });
-    }
 
     // ifのチェック
     if contains_if(input) {

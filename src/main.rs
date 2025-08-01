@@ -24,6 +24,7 @@ use std::time::Instant;
 use std::{env, fs};
 
 use crate::history::add_history;
+use crate::parser::expansion;
 use crate::parser::parse_command;
 
 /// ブロック入力を管理する構造体
@@ -358,9 +359,22 @@ fn handle_heredoc_command(input: &str) -> bool {
 
 /// 通常のコマンドを処理
 fn handle_normal_command(input: &str) -> bool {
-    add_history(input.to_string());
+    // 履歴展開を実行
+    let expanded_input = if expansion::contains_history_expansion(input) {
+        match expansion::expand_history(input) {
+            Ok(expanded) => expanded,
+            Err(e) => {
+                eprintln!("{e}");
+                return false; // エラーでも継続
+            }
+        }
+    } else {
+        input.to_string()
+    };
 
-    match parse_command(input) {
+    add_history(expanded_input.clone());
+
+    match parse_command(expanded_input.as_str()) {
         Ok(command) => {
             debug!("Command parsed successfully");
             let start = Instant::now();

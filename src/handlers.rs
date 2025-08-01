@@ -409,10 +409,10 @@ pub fn handle_find(path: Option<&str>, name: &str) -> Result<String> {
         let entry_path = entry.path();
 
         // ファイル名が一致すればパスを出力
-        if let Some(filename) = entry_path.file_name().and_then(|n| n.to_str()) {
-            if matches_pattern(filename, name) {
-                lines.push(format!("{}", entry_path.display()));
-            }
+        if let Some(filename) = entry_path.file_name().and_then(|n| n.to_str())
+            && matches_pattern(filename, name)
+        {
+            lines.push(format!("{}", entry_path.display()));
         }
 
         // ディレクトリであれば再帰的に探索
@@ -491,16 +491,17 @@ fn match_helper(filename: &[u8], pattern: &[u8], fi: usize, pi: usize) -> bool {
 pub fn handle_grep(pattern: &str, files: &[String], input: Option<&str>) -> Result<String> {
     let mut lines = Vec::new();
 
-    if files.is_empty() && input.is_some() {
-        // パイプラインからの入力を処理
-        let input_text = input.unwrap();
-        let results = grep_from_string(pattern, input_text)?;
+    if files.is_empty() {
+        if let Some(input_text) = input {
+            // パイプラインからの入力を処理
+            let results = grep_from_string(pattern, input_text)?;
 
-        for (line_num, content) in results {
-            if input.is_some() {
-                lines.push(content);
-            } else {
-                lines.push(format!("{}: {}", line_num + 1, content));
+            for (line_num, content) in results {
+                if input.is_some() {
+                    lines.push(content);
+                } else {
+                    lines.push(format!("{}: {}", line_num + 1, content));
+                }
             }
         }
     } else {

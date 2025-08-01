@@ -240,6 +240,69 @@ pub fn get_history_by_number(number: usize) -> Option<String> {
     }
 }
 
+/// 最後のコマンドを取得（現在実行中を除く）
+///
+/// # Returns
+/// * 履歴に2つ以上のコマンドがある場合は最後から2番目のコマンド
+/// * それ以外は None
+pub fn get_last_command() -> Option<String> {
+    let commands = get_history_commands();
+
+    // コマンド履歴の長さが二つ以上なら返す値がある
+    match commands.len() {
+        n if n >= 1 => Some(commands[n - 1].clone()),
+        _ => None,
+    }
+}
+
+/// 相対オフセットで履歴を取得
+///
+/// # Arguments
+/// * `offset` - 現在位置からの相対位置（通常は負の値）
+///
+/// # Returns
+/// * 指定位置のコマンドが存在すれば Some(コマンド)
+/// * 範囲外なら None
+pub fn get_history_by_offset(offset: i32) -> Option<String> {
+    let commands = get_history_commands();
+
+    // 現在の終端を計算
+    let last_pos = commands.len() as i32;
+
+    // 検索したい位置を計算
+    let target_pos = last_pos + offset;
+
+    // 検索したい値が負数ではなく、リスト上限も超えていなければ値を返す
+    match target_pos {
+        n if 0 <= n && n <= last_pos => Some(commands[n as usize].clone()),
+        _ => None,
+    }
+}
+
+/// プレフィックスで履歴を検索（最新のものを返す）
+///
+/// # Arguments
+/// * `prefix` - 検索するプレフィックス
+///
+/// # Returns
+/// * プレフィックスにマッチする最新のコマンド
+/// * 見つからなければ None
+pub fn search_history_by_prefix(prefix: &str) -> Option<String> {
+    let commands = get_history_commands();
+
+    // コマンド履歴の長さが二つ以上なら検索
+    // プレフィックスコマンドを抜くため、一番最新コマンドは除く
+    match commands.len() {
+        n if n > 1 => commands
+            .iter()
+            .take(n)
+            .rev()
+            .find(|cmd| cmd.starts_with(prefix))
+            .cloned(),
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -350,13 +413,11 @@ mod tests {
         add_history("echo second".to_string());
         add_history("echo third".to_string());
 
-        // 正常系
-        assert_eq!(get_history_by_number(1), Some("echo first".to_string()));
-        assert_eq!(get_history_by_number(2), Some("echo second".to_string()));
-        assert_eq!(get_history_by_number(3), Some("echo third".to_string()));
-
-        // 異常系
+        // 正常系 - 1ベース番号での取得をテスト
         assert_eq!(get_history_by_number(0), None); // 0は無効
+        assert_eq!(get_history_by_number(1), Some("echo first".to_string())); // commands[0]
+        assert_eq!(get_history_by_number(2), Some("echo second".to_string())); // commands[1]
+        assert_eq!(get_history_by_number(3), Some("echo third".to_string())); // commands[2]
         assert_eq!(get_history_by_number(4), None); // 範囲外
     }
 

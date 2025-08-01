@@ -2039,10 +2039,9 @@ fn test_history_with_long_commands() {
         .unwrap()
         .current_dir(&temp_dir)
         .write_stdin(format!(
-            "{}\n\
+            "{long_command}\n\
              history\n\
-             exit\n",
-            long_command
+             exit\n"
         ))
         .assert()
         .success()
@@ -2196,7 +2195,7 @@ fn test_history_max_entries() {
 
     // 50個のコマンドを生成
     for i in 1..=50 {
-        script_content.push_str(&format!("echo command {}\n", i));
+        script_content.push_str(&format!("echo command {i}\n"));
     }
     script_content.push_str("history\n");
 
@@ -2748,4 +2747,256 @@ fn test_history_navigation_edge_cases() {
         .assert()
         .success()
         .stdout(predicate::str::contains("only command").count(3));
+}
+
+#[test]
+fn test_history_expansion_previous_command() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "echo hello world\n\
+             !!\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("hello world").count(2));
+}
+
+#[test]
+fn test_history_expansion_by_number() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "echo first\n\
+             echo second\n\
+             echo third\n\
+             !1\n\
+             !3\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("first").count(2))
+        .stdout(predicate::str::contains("third").count(2));
+}
+
+#[test]
+fn test_history_expansion_by_negative_offset() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "echo one\n\
+             echo two\n\
+             echo three\n\
+             !-2\n\
+             !-1\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("two").count(3));
+}
+
+#[test]
+fn test_history_expansion_not_found() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "echo test\n\
+             !99\n\
+             !xyz\n\
+             !-99\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("event not found").count(3));
+}
+
+#[test]
+fn test_history_expansion_with_arguments() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "echo hello\n\
+             !! world\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("hello world"));
+}
+
+#[test]
+fn test_history_expansion_in_pipeline() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "echo hello world\n\
+             !! | grep world\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("hello world").count(2));
+}
+
+#[test]
+fn test_history_expansion_with_redirect() {
+    let temp_dir = TempDir::new().unwrap();
+    let output_file = temp_dir.path().join("output.txt");
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(format!(
+            "echo test content\n\
+             !! > {}\n\
+             cat {}\n\
+             exit\n",
+            output_file.display(),
+            output_file.display()
+        ))
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("test content").count(2));
+}
+
+#[test]
+fn test_history_expansion_with_background() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "echo background test\n\
+             !! &\n\
+             sleep 1\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("[1]"));
+}
+
+#[test]
+fn test_history_expansion_complex() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "write test.txt hello\n\
+             cat test.txt\n\
+             grep hello test.txt\n\
+             !cat | !grep\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("hello").count(3));
+}
+
+#[test]
+fn test_history_expansion_persistence() {
+    let temp_dir = TempDir::new().unwrap();
+    let history_file = temp_dir.path().join(".test_expansion_history");
+
+    // セッション1
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .env("RUCLI_HISTFILE", history_file.to_str().unwrap())
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "echo session 1\n\
+             exit\n",
+        )
+        .assert()
+        .success();
+
+    // セッション2で履歴展開
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .env("RUCLI_HISTFILE", history_file.to_str().unwrap())
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "!echo\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("session 1"));
+}
+
+#[test]
+fn test_history_expansion_with_variables() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "env MSG=hello\n\
+             echo $MSG\n\
+             !!\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("hello").count(2));
+}
+
+#[test]
+fn test_history_expansion_multiword() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "echo multiple words here\n\
+             !!\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("multiple words here").count(2));
+}
+
+#[test]
+fn test_history_expansion_special_chars() {
+    let temp_dir = TempDir::new().unwrap();
+
+    Command::cargo_bin("rucli")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .write_stdin(
+            "echo \"quoted text\"\n\
+             !!\n\
+             exit\n",
+        )
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("quoted text").count(2));
 }

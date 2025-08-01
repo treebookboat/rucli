@@ -529,10 +529,10 @@ pub fn execute_command_internal(command: Command, input: Option<&str>) -> Result
                     }
                 }
                 Err(_) => {
-                    if let Some(else_cmd) = else_part {
-                        if execute_command(*else_cmd, input)? {
-                            return Ok(CommandResult::Exit);
-                        }
+                    if let Some(else_cmd) = else_part
+                        && execute_command(*else_cmd, input)?
+                    {
+                        return Ok(CommandResult::Exit);
                     }
                 }
             }

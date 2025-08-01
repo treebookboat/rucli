@@ -211,7 +211,7 @@ pub fn expand_command_substitution(input: &str) -> Result<String> {
 #[cfg(test)]
 mod environment_tests {
     use super::*;
-    use crate::commands::{Command, EnvironmentAction, execute_command_internal};
+    use crate::commands::{Command, EnvironmentAction};
     use crate::environment::{expand_variables, set_var};
     use crate::handlers::handle_environment;
     use crate::parser::parse_command;
